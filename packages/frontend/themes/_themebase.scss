@@ -3,6 +3,7 @@
 $hover-contrast-change: 2%;
 // set light theme variables as fallback
 $colorPrimary: #42a5f5 !default;
+$bellIconColor: #FFF;
 $colorDanger: #f96856 !default;
 $colorNone: #a0a0a0 !default;
 $colorLessContrast: #676767 !default;
@@ -53,6 +54,7 @@ $scrollbarTransparency: 0.34 !default;
 /* Root Variables */
 :root {
   --colorPrimary: #{$colorPrimary};
+  --bellIconColor: #{$bellIconColor};
   --colorDanger: #{$colorDanger};
   --colorNone: #{$colorNone};
   --bgPrimary: #{$bgPrimary};
@@ -88,7 +90,7 @@ $scrollbarTransparency: 0.34 !default;
   --composerText: #{$textPrimary};
   --composerPlaceholderText: #{rgba($textPrimary, 0.5)};
   --composerBtnColor: #{rgba($textPrimary, 0.9)};
-  --composerSendButton: #415e6b;
+  --composerSendButton: #6750A4;
   --emojiSelectorSelectionColor: #{$accentColor};
   /* Chat List */
   --chatListItemSelectedBg: #{$chatListItemSelectedBg};

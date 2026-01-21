@@ -103,10 +103,10 @@
       height: 32px;
       padding: 0;
       margin: 4px 5px 4px 3px;
-      background-color: var(--composerSendButton);
       border: none;
       border-radius: 180px;
       cursor: pointer;
+      transition: background-color 0.2s ease;
 
       &:focus:not(:focus-visible) {
         outline: none;
@@ -115,15 +115,19 @@
       .paper-plane {
         height: 24px;
         width: 24px;
-        margin: 4px;
         border: none;
-        background-image: url(./images/send-button.png);
+        // padding: 3px;
+        background-image: url(./images/send-button.svg);
         background-color: transparent;
         background-repeat: no-repeat;
         background-position: 3px 1px;
         background-size: contain;
         vertical-align: middle;
       }
+    }
+
+    .send-button-active {
+      background-color: var(--composerSendButton);
     }
 
     textarea.message-input-area {

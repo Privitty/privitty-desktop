@@ -645,7 +645,7 @@ const Composer = forwardRef<
                 <span />
               </button>
             )}
-          {showSendButton && (
+          {(
             <button
               // This ensures that the button loses focus as we switch between
               // the editing mode and the regular mode,
@@ -653,7 +653,7 @@ const Composer = forwardRef<
               // right after sending the draft by using the keyboard.
               // Conceptually those are two different buttons.
               key={messageEditing.isEditingModeActive.toString()}
-              className='send-button'
+              className={`send-button ${showSendButton ? 'send-button-active' : ''}`}
               // TODO apply `disabled` if the textarea is empty
               // or includes only whitespace.
               // See `doSendEditRequest`.
@@ -667,14 +667,6 @@ const Composer = forwardRef<
             >
               <div className='paper-plane'></div>
             </button>
-          )}
-          {!showSendButton && !voiceMessageDisabled && (
-            <AudioRecorder
-              recording={recording}
-              setRecording={setRecording}
-              saveVoiceAsDraft={saveVoiceAsDraft}
-              onError={onAudioError}
-            />
           )}
         </div>
         {/* We don't want to show the app picker when

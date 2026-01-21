@@ -79,12 +79,12 @@
     display: inline-block;
     max-width: 100%;
     border-radius: 16px;
-    --msg-container-padding-horizontal: 12px;
-    --msg-container-padding-top: 10px;
+    --msg-container-padding-horizontal: 16px;
+    --msg-container-padding-top: 16px;
     padding-right: var(--msg-container-padding-horizontal);
     padding-left: var(--msg-container-padding-horizontal);
     padding-top: var(--msg-container-padding-top);
-    padding-bottom: 10px;
+    padding-bottom: 16px;
 
     .msg-body {
       &.msg-body--clickable {
@@ -97,7 +97,7 @@
       }
 
       & > .text {
-        color: var(--messageText);
+        // color: var(--messageText);
         font-size: 14px;
         line-height: 18px;
         text-align: start;
@@ -253,6 +253,26 @@
     .message-attachment-media {
       border-bottom-left-radius: 1px;
     }
+    .msg-body{
+      color: var(--messageIncomingTextColor);
+
+      &,
+      .document-wrapper {
+        .message-attachment-generic {
+          background-color: #7F66C5;
+          
+          &,
+          .text-part{
+            .name{
+              color: white;
+            }
+            .size{
+              color: white;
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -343,8 +363,28 @@
     --messageBg: var(--messageOutgoingBg);
 
     &,
-    .message-attachment-media {
-      border-bottom-right-radius: 1px;
+    .file-access-bell-button{
+      color: #fff;
+    }
+    .msg-body{
+      color: var(--messageOutgoingTextColor);
+
+      &,
+      .document-wrapper {
+        .message-attachment-generic {
+          background-color: white;
+          
+          &,
+          .text-part{
+            .name{
+              color: #010101;
+            }
+            .size{
+              color: #010101;
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -459,6 +499,8 @@
 
 .message.forwarded {
   .forwarded-indicator {
+    display: flex;
+    justify-content: space-between;
     font-weight: bold;
     font-size: 0.9em;
     margin-bottom: 3px;

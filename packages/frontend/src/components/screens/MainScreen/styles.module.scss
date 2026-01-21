@@ -18,6 +18,7 @@
   background-color: var(--navBarBackground);
   color: var(--navBarText);
   border-bottom: var(--outlineProperties);
+  box-shadow: 0 2px 4px rgba(90, 90, 90, 0.5);
   // Just in case the "main" section below the navbar decides
   // to do something like `height: 100%` instead of `flex-grow: 1`.
   flex-shrink: 0;

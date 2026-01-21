@@ -16,6 +16,7 @@ import { selectedAccountId } from '../ScreenController'
 import { unmuteChat } from '../backend/chat'
 
 import type { T } from '@deltachat/jsonrpc-client'
+import { runtime } from '@deltachat-desktop/runtime-interface'
 
 export function useThreeDotMenu(selectedChat?: T.FullChat) {
   const { openDialog } = useDialog()
@@ -52,6 +53,21 @@ export function useThreeDotMenu(selectedChat?: T.FullChat) {
     const onDeleteChat = () =>
       openDeleteChatDialog(accountId, selectedChat, chatId)
 
+    const deleteChat = async () => {
+      try {
+        const response = await runtime.PrivittySendMessage('sendEvent', {
+          event_type: 'deleteChatRoom',
+          event_data: {
+            chat_id: String(selectedChat.id),
+          },
+        })
+        onDeleteChat();
+      } catch (error) {
+        console.error('Error Deleting chat:', error)
+      }
+    }
+
+
     const onUnmuteChat = () => unmuteChat(accountId, chatId)
 
     const onChatAudit = () => openChatAuditDialog(selectedChat)
@@ -78,6 +94,7 @@ export function useThreeDotMenu(selectedChat?: T.FullChat) {
             0
           )
         },
+        rightIcon: 'search',
       },
       canSend &&
         selectedChat.chatType !== C.DC_CHAT_TYPE_MAILINGLIST && {
@@ -94,6 +111,7 @@ export function useThreeDotMenu(selectedChat?: T.FullChat) {
       !selectedChat.isMuted
         ? {
             label: tx('menu_mute'),
+            rightIcon: 'mute',
             subitems: [
               {
                 label: tx('mute_for_one_hour'),
@@ -177,17 +195,21 @@ export function useThreeDotMenu(selectedChat?: T.FullChat) {
               BackendRemote.rpc.setChatVisibility(accountId, chatId, 'Archived')
               unselectChat()
             },
+            rightIcon: 'download',
           },
       { type: 'separator' },
       !isGroup &&
         !(isSelfTalk || isDeviceChat) && {
           label: tx('menu_block_contact'),
           action: onBlockContact,
+          rightIcon: 'blocked',
+          danger: true,
         },
       isGroup &&
         selfInGroup && {
           label: tx('menu_leave_group'),
           action: onLeaveGroup,
+          rightIcon: 'leave',
         },
       {
         label: tx('clear_chat'),
@@ -195,7 +217,11 @@ export function useThreeDotMenu(selectedChat?: T.FullChat) {
       },
       {
         label: tx('menu_delete_chat'),
-        action: onDeleteChat,
+
+        action: deleteChat,
+        // action: onDeleteChat,
+        rightIcon: 'trash',
+        danger: true,
       },
     ]
   }

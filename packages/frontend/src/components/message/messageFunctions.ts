@@ -80,50 +80,75 @@ export async function openAttachmentInShell(
   }
 
   let filePathName = tmpFile
+  console.log('messagefuntions 🛣️🛣️🛣️', filePathName)
+
   if (extname(msg.fileName) === '.prv') {
     filePathName = tmpFile.replace(/\\/g, '/')
-    const response = await runtime.PrivittySendMessage('decryptFile', {
-      chatId: msg.chatId,
-      filePath: dirname(filePathName),
-      fileName: msg.fileName,
-      direction: msg.fromId === C.DC_CONTACT_ID_SELF ? 1 : 0,
+    const response = await runtime.PrivittySendMessage('sendEvent', {
+      event_type: 'fileDecryptRequest',
+      event_data: {
+        chat_id: String(msg.chatId),
+        prv_file: filePathName,
+      },
+      // chatId: msg.chatId,
+      // filePath: dirname(filePathName),
+      // fileName: msg.fileName,
+      // direction: msg.fromId === C.DC_CONTACT_ID_SELF ? 1 : 0,
     })
-    filePathName = JSON.parse(JSON.parse(response).result).decryptedFile
-    if (filePathName === 'SPLITKEYS_EXPIRED') {
-      runtime.showNotification({
-        title: 'Privitty',
-        body: 'OTSP expired',
-        icon: null,
-        chatId: msg.chatId,
-        messageId: msg.id,
-        accountId: selectedAccountId(),
-        notificationType: 0,
-      })
 
-      return
-    } else if (filePathName === 'SPLITKEYS_REQUESTED') {
-      runtime.showNotification({
-        title: 'Privitty',
-        body: 'OTSP already requested',
-        icon: null,
-        chatId: msg.chatId,
-        messageId: msg.id,
-        accountId: selectedAccountId(),
-        notificationType: 0,
-      })
-      return
-    }
+    console.log('messagefuntions 🛣️🛣️🛣️', response)
+
+    // filePathName = JSON.parse(JSON.parse(response).result).decryptedFile
+    // if (filePathName === 'SPLITKEYS_EXPIRED') {
+    //   runtime.showNotification({
+    //     title: 'Privitty',
+    //     body: 'OTSP expired',
+    //     icon: null,
+    //     chatId: msg.chatId,
+    //     messageId: msg.id,
+    //     accountId: selectedAccountId(),
+    //     notificationType: 0,
+    //   })
+
+    //   return
+    // } else if (filePathName === 'SPLITKEYS_REQUESTED') {
+    //   runtime.showNotification({
+    //     title: 'Privitty',
+    //     body: 'OTSP already requested',
+    //     icon: null,
+    //     chatId: msg.chatId,
+    //     messageId: msg.id,
+    //     accountId: selectedAccountId(),
+    //     notificationType: 0,
+    //   })
+    //   return
+    // }
+    console.log('msg ⚠️⚠️⚠️⚠️⚠️⚠️', msg)
+
     if (msg.fromId === C.DC_CONTACT_ID_SELF) {
       // we will open the viewer if the file is not downloadable
       //we will open the viewer if the file is not downloadable
+      console.log(
+        'we will open the viewer if the file is not downloadable ⬇️⬇️⬇️⬇️⬇️⬇️'
+      )
+
+      console.log(
+        'Message Functions 1 ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
+        filePathName
+      )
+
       const fileAccessResponse = await runtime.PrivittySendMessage(
-        'getFileAccessState',
+        'sendEvent',
         {
-          chatId: msg.chatId,
-          fileName: msg.fileName,
-          outgoing: true,
+          event_type: 'getFileAccessStatus',
+          event_data: {
+            chat_id: String(msg.chatId),
+            file_path: filePathName,
+          },
         }
       )
+      console.log('fileAccessResponse ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️', fileAccessResponse)
+
       if (JSON.parse(fileAccessResponse).fileAccessState != 'revoked') {
         // Check if the decrypted file is a supported media type that should be opened in secure viewer
         const decryptedFileExtension = extname(filePathName).toLowerCase()
@@ -173,16 +198,23 @@ export async function openAttachmentInShell(
       }
     } else {
       //we will open the viewer if the file is not downloadable
+      console.log(
+        'Message Functions 2 ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
+        filePathName
+      )
       const fileAccessResponse = await runtime.PrivittySendMessage(
-        'canDownloadFile',
+        'sendEvent',
         {
-          chatId: msg.chatId,
-          fileName: msg.fileName,
-          outgoing: msg.fromId === C.DC_CONTACT_ID_SELF,
+          event_type: 'getFileAccessStatus',
+          event_data: {
+            chat_id: String(msg.chatId),
+            file_path: filePathName,
+          },
         }
       )
-      if (JSON.parse(JSON.parse(fileAccessResponse).result).status === 'false') {
-      //if (JSON.parse(fileAccessResponse).status === 'false') {
+      console.log('fileAccessResponse ⚠️⚠️⚠️⚠️⚠️', fileAccessResponse)
+      if (fileAccessResponse.result?.data?.success === 'false') {
+        //if (JSON.parse(fileAccessResponse).status === 'false') {
         // Check if the decrypted file is a supported media type that should be opened in secure viewer
         const decryptedFileExtension = extname(filePathName).toLowerCase()
         const supportedImageExtensions = [
@@ -232,7 +264,7 @@ export async function openAttachmentInShell(
           // Return a result to indicate this should be opened in secure viewer
           return {
             useSecureViewer: true,
-            filePath: cleanFilePath,
+            filePath: filePathName,
             fileName: msg.fileName,
             viewerType: viewerType,
           }
@@ -299,27 +331,35 @@ const privittyForwardable = async (message: T.Message): Promise<boolean> => {
     isforwardable = false
     if (message.fromId === C.DC_CONTACT_ID_SELF) {
       // check if the file is forwardable
-      const response = await runtime.PrivittySendMessage('getFileAccessState', {
-        chatId: message.chatId,
-        fileName: message.fileName,
-        outgoing: true,
+      // console.log('Message Functions 3 ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️', filePathName);
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'getFileAccessStatus',
+        event_data: {
+          chat_id: String(message.chatId),
+          file_path: message.file,
+        },
       })
       const result = JSON.parse(response)
-      //"result":"{"fileAccessState":"active"}
-      if (result) {
-        isforwardable = JSON.parse(result.result).fileAccessState === 'active'
-      }
+      console.log('result ⏭️⏭️⏭️⏭️⏭️⏭️ =====>>>', result)
 
-    } else {
-      const response = await runtime.PrivittySendMessage('canForwardFile', {
-        chatId: message.chatId,
-        fileName: message.fileName,
-        outgoing: message.fromId === C.DC_CONTACT_ID_SELF,
-      })
-      const result = JSON.parse(response)
       //"result":"{"fileAccessState":"active"}
       if (result) {
-        isforwardable = JSON.parse(result.result).status === 'true'
+        isforwardable = result.result?.data?.is_forward === 'true'
+      }
+    } else {
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'getFileAccessStatus',
+        event_data: {
+          chat_id: String(message.chatId),
+          file_path: message.file,
+        },
+      })
+      const result = JSON.parse(response)
+      console.log('isforwardable ↪️↪️↪️↪️', result.result?.data?.is_forward)
+
+      //"result":"{"fileAccessState":"active"}
+      if (result) {
+        isforwardable = result.result?.data?.is_forward
       }
     }
   }
@@ -331,6 +371,8 @@ export async function openForwardDialog(
   message: Type.Message
 ) {
   const forwardable = await privittyForwardable(message)
+  console.log('forwardable ⏭️⏭️⏭️⏭️⏭️⏭️ =====>>>', forwardable)
+
   try {
     if (!forwardable) {
       log.error('message has no file to forward:', message)
@@ -386,80 +428,80 @@ export async function confirmForwardMessage(
   )
   if (yes) {
     if (message.file && message.fileName) {
-      const result = await runtime.PrivittySendMessage(
-        'isChatPrivittyProtected',
-        {
-          chatId: chat?.id,
-        }
-      )
-      if (result) {
-        try {
-          const resp = JSON.parse(result)
-          if (resp.result === 'false') {
-            const addpeerResponse = await runtime.PrivittySendMessage(
-              'produceEvent',
+      const result = await runtime.PrivittySendMessage('isChatProtected', {
+        chat_id: String(chat?.id),
+      })
+      const resp = JSON.parse(result)
+      try {
+        if (resp.result.is_protected == false) {
+          // Get contact email dynamically
+          let peerEmail = '' // fallback
+          try {
+            const fullChat = await BackendRemote.rpc.getFullChatById(
+              accountId,
+              chat?.id || 0
+            )
+            if (fullChat && fullChat.contactIds && fullChat.contactIds.length > 0) {
+              const contact = await BackendRemote.rpc.getContact(
+                accountId,
+                fullChat.contactIds[0]
+              )
+              if (contact && contact.address) {
+                peerEmail = contact.address
+              }
+            }
+          } catch (error) {
+            console.error('Error getting contact email:', error)
+            // Use fallback email if there's an error
+          }
+          const addpeerResponse = await runtime.PrivittySendMessage(
+            'sendEvent',
+            {
+              event_type: 'initPeerAddRequest',
+              event_data: {
+                chat_id: String(chat.id),
+                peer_name: chat.name,
+                peer_email: peerEmail,
+                peer_id: String(chat.id),
+              },
+            }
+          )
+          console.log('addpeerResponse =', addpeerResponse)
+          const parsedResponse = JSON.parse(addpeerResponse)
+          if (parsedResponse.result.success == true) {
+            const pdu = parsedResponse?.result?.data?.pdu
+
+            const MESSAGE_DEFAULT: T.MessageData = {
+              file: null,
+              filename: null,
+              viewtype: null,
+              html: null,
+              location: null,
+              overrideSenderName: null,
+              quotedMessageId: null,
+              quotedText: null,
+              text: null,
+            }
+            const message: Partial<T.MessageData> = {
+              text: pdu,
+              file: undefined,
+              filename: undefined,
+              quotedMessageId: null,
+              viewtype: 'Text',
+            }
+
+            const msgId = await BackendRemote.rpc.sendMsg(
+              accountId,
+              chat?.id || 0,
               {
-                eventType: PRV_EVENT_ADD_NEW_PEER,
-                mID: '',
-                mName: chat.name,
-                msgId: chat.id,
-                fromId: 0,
-                chatId: chat.id,
-                pCode: '',
-                filePath: '',
-                fileName: '',
-                direction: 0,
-                pdu: [],
+                ...MESSAGE_DEFAULT,
+                ...message,
               }
             )
-            const parsedResponse = JSON.parse(addpeerResponse)
-            if (parsedResponse.message_type === PRV_APP_STATUS_SEND_PEER_PDU) {
-              const base64Msg = btoa(
-                String.fromCharCode.apply(null, parsedResponse.pdu)
-              )
-              const MESSAGE_DEFAULT: T.MessageData = {
-                file: null,
-                filename: null,
-                viewtype: null,
-                html: null,
-                location: null,
-                overrideSenderName: null,
-                quotedMessageId: null,
-                quotedText: null,
-                text: null,
-              }
-              const message: Partial<T.MessageData> = {
-                text: base64Msg,
-                file: undefined,
-                filename: undefined,
-                quotedMessageId: null,
-                viewtype: 'Text',
-              }
-
-              const msgId = await BackendRemote.rpc.sendMsgWithSubject(
-                accountId,
-                chat?.id || 0,
-                {
-                  ...MESSAGE_DEFAULT,
-                  ...message,
-                },
-                "{'privitty':'true', 'type':'new_peer_add'}"
-              )
-            } else {
-              runtime.showNotification({
-                title: 'Privitty',
-                body: 'Privitty ADD peer state =' + parsedResponse.message_type,
-                icon: null,
-                chatId: 0,
-                messageId: 0,
-                accountId,
-                notificationType: 0,
-              })
-              return
-            }
+          } else {
             runtime.showNotification({
               title: 'Privitty',
-              body: 'Enabling Privitty security',
+              body: 'Privitty ADD peer state =' + parsedResponse.message_type,
               icon: null,
               chatId: 0,
               messageId: 0,
@@ -468,65 +510,95 @@ export async function confirmForwardMessage(
             })
             return
           }
-        } catch (e) {
-          console.error('Error in MenuAttachment', e)
-          return
+          runtime.showNotification({
+            title: 'Privitty',
+            body: 'Enabling Privitty security',
+            icon: null,
+            chatId: 0,
+            messageId: 0,
+            accountId,
+            notificationType: 0,
+          })
         }
-      }
-      await BackendRemote.rpc.forwardMessages(accountId, [message.id], chat.id)
-      //work around for privitty file forwarding create the temp
-      const tmpFile = await runtime.copyFileToInternalTmpDir(
-        message.fileName,
-        message.file
-      )
-      let filePathName1 = tmpFile
-      filePathName1 = tmpFile.replace(/\\/g, '/')
 
-      //we need to send a split key to the peer
-      const filePathName = message.file.replace(/\\/g, '/')
-      const responseFwdPeerAdd = await runtime.PrivittySendMessage(
-        'forwardPeerAdd',
-        {
-          sourceChatId: message.chatId,
-          fwdToChatId: chat.id,
-          fwdToName: chat.name,
-          filePath: dirname(filePathName1),
-          fileName: basename(filePathName1),
-          outgoing: 1,
-        }
-      )
-      const parsedResponse = JSON.parse(responseFwdPeerAdd)
-      if (parsedResponse.message_type === PRV_APP_STATUS_SEND_PEER_PDU) {
-        const base64Msg = btoa(
-          String.fromCharCode.apply(null, parsedResponse.pdu)
-        )
-        const MESSAGE_DEFAULT: T.MessageData = {
-          file: null,
-          filename: null,
-          viewtype: null,
-          html: null,
-          location: null,
-          overrideSenderName: null,
-          quotedMessageId: null,
-          quotedText: null,
-          text: null,
-        }
-        const message: Partial<T.MessageData> = {
-          text: base64Msg,
-          file: undefined,
-          filename: undefined,
-          quotedMessageId: null,
-          viewtype: 'Text',
-        }
-        const msgId = await BackendRemote.rpc.sendMsgWithSubject(
+        await BackendRemote.rpc.forwardMessages(
           accountId,
-          chat?.id || 0,
-          {
-            ...MESSAGE_DEFAULT,
-            ...message,
-          },
-          "{'privitty':'true', 'type':'new_peer_add'}"
+          [message.id],
+          chat.id
         )
+        //work around for privitty file forwarding create the temp
+        const tmpFile = await runtime.copyFileToInternalTmpDir(
+          message.fileName,
+          message.file
+        )
+        let filePathName1 = tmpFile
+        filePathName1 = tmpFile.replace(/\\/g, '/')
+
+        //we need to send a split key to the peer
+        const filePathName = message.file.replace(/\\/g, '/')
+
+        console.log('message ======📥📥📥📥📥', message)
+        console.log('filePathName', filePathName)
+        console.log('filePathName1', filePathName1)
+        console.log('dirname(filePathName1)', dirname(filePathName1))
+        console.log('dirname(filePathName)', dirname(filePathName))
+        console.log('basename(filePathName1)', basename(filePathName1))
+        console.log('basename(filePathName)', basename(filePathName))
+        // console.log('dirname(filePathName1)', dirname(filePathName1));
+        // console.log('basename(filePathName1)', basename(filePathName1));
+
+        const responseFwdPeerAdd = await runtime.PrivittySendMessage(
+          'sendEvent',
+          {
+            event_type: 'initForwardPeerAddRequest',
+            event_data: {
+              chat_id: String(message.chatId),
+              forwardee_chat_id: String(chat.id),
+              prv_file: filePathName1,
+            },
+            // sourceChatId: message.chatId,
+            // fwdToChatId: chat.id,
+            // fwdToName: chat.name,
+            // filePath: dirname(filePathName1),
+            // fileName: basename(filePathName1),
+            // outgoing: 1,
+          }
+        )
+        const parsedResponse = JSON.parse(responseFwdPeerAdd)
+        console.log('parsedResponse ======', parsedResponse)
+
+        if (parsedResponse.result?.data?.status === 'success') {
+          const pdu = parsedResponse.result?.data?.pdu
+          const MESSAGE_DEFAULT: T.MessageData = {
+            file: null,
+            filename: null,
+            viewtype: null,
+            html: null,
+            location: null,
+            overrideSenderName: null,
+            quotedMessageId: null,
+            quotedText: null,
+            text: null,
+          }
+          const message: Partial<T.MessageData> = {
+            text: pdu,
+            file: undefined,
+            filename: undefined,
+            quotedMessageId: null,
+            viewtype: 'Text',
+          }
+          const msgId = await BackendRemote.rpc.sendMsg(
+            accountId,
+            chat?.id || 0,
+            {
+              ...MESSAGE_DEFAULT,
+              ...message,
+            }
+          )
+        }
+      } catch (e) {
+        console.error('Error in Enabling Privitty Secure', e)
+        return
       }
     } else {
       await BackendRemote.rpc.forwardMessages(accountId, [message.id], chat.id)

@@ -12,11 +12,12 @@ const log = getLogger('Privitty')
 
 import { PRV_EVENT_CREATE_VAULT } from './privitty_type'
 
-export class PrivittyServer {
+export class PrivittyClient {
   // Get absolute path of the C++ binary
   _cmd_path = ''
 
   serverProcess: ChildProcessWithoutNullStreams | null
+  pendingRequests: any
   constructor(
     public on_data: (reponse: string) => void,
     public accounts_path: string,
@@ -24,6 +25,7 @@ export class PrivittyServer {
   ) {
     console.log('inside constructor')
     this.serverProcess = null
+    this.pendingRequests = new Map();
     // Compute default path now so error dialogs show a helpful location
     this.cmd_path = this.computeCmdPath()
   }
@@ -31,7 +33,7 @@ export class PrivittyServer {
   private computeCmdPath() {
     const binName = process.platform === 'win32'
       ? 'privitty_jsonrpc_server.exe'
-      : 'privitty_jsonrpc_server'
+      : 'privitty-server'
 
     // In packaged apps, extraResources are placed under process.resourcesPath
     if (app.isPackaged) {
@@ -40,11 +42,12 @@ export class PrivittyServer {
 
     // In dev, resolve from the repo's privitty/dll folder
     const appRoot = app.getAppPath()
+    console.log('computeCmdPath 0011 ⛔️', appRoot);
     return resolve(appRoot, 'privitty/dll', binName)
   }
 
   start() {
-    console.log('Privitty Start Invoked')
+    console.log('Privitty Start Invoked 0022⛔️')
     // Resolve path at start to reflect packaged vs dev
     this._cmd_path = this.computeCmdPath()
     this.serverProcess = spawn(this._cmd_path, {
@@ -64,7 +67,7 @@ export class PrivittyServer {
 
       if (err.message.endsWith('ENOENT')) {
         dialog.showErrorBox(
-          'Fatal Error: Privitty Library Missing',
+          'Fatal Error: Privitty Library Missing ⚠️⚠️⚠️⚠️⚠️⚠️',
           `The Privitty Module is missing! This could be due to your antivirus program. Please check the quarantine to restore it and notify the developers about this issue.
             You can reach us at 
             
@@ -77,7 +80,7 @@ export class PrivittyServer {
         )
       } else {
         dialog.showErrorBox(
-          'Fatal Error',
+          'Fatal Error  ⚠️⚠️⚠️⚠️⚠️⚠️',
           `Error with Privitty has been detected, please contact developers: You can reach us on  .
   
             ${err.name}: ${err.message}
@@ -90,38 +93,47 @@ export class PrivittyServer {
       app.exit(1)
     })
 
-    let buffer = ''
+    let buffer = '';
+
     this.serverProcess.stdout.on('data', data => {
-      // console.log(`stdout: ${data}`)
-      buffer += data.toString()
+      buffer += data.toString();
+
+      // Process full lines
       while (buffer.includes('\n')) {
-        const n = buffer.indexOf('\n')
-        const message = buffer.substring(0, n)
-        console.log('Privitty client message', message)
-        this.on_data(message)
-        buffer = buffer.substring(n + 1)
+        const n = buffer.indexOf('\n');
+        const line = buffer.substring(0, n).trim();
+        buffer = buffer.substring(n + 1);
+
+        if (!line.startsWith('{')) continue;
+
+        try {
+          console.log("📩 JSON Event:", line);
+          this.on_data(line);
+        } catch (e) {
+          console.error('⚠️ JSON parse error:', e, line);
+        }
       }
-    })
+    });
 
     // some kind of "buffer" that the text in the error dialog does not get too long
     let errorLog = ''
     const ERROR_LOG_LENGTH = 800
     this.serverProcess.stderr.on('data', data => {
-      console.log(`privitty client stderr: ${data}`.trimEnd())
+      console.log(`privitty client stderr: ⚠️⚠️⚠️⚠️⚠️⚠️ ${data}`.trimEnd())
       errorLog = (errorLog + data).slice(-ERROR_LOG_LENGTH)
     })
 
     this.serverProcess.on('close', (code, signal) => {
       if (code !== null) {
-        log.info(`child process close all stdio with code ${code}`)
+        log.info(`child process close all stdio with code ⚠️⚠️⚠️⚠️⚠️⚠️ ${code}`)
       } else {
-        log.info(`child process close all stdio with signal ${signal}`)
+        log.info(`child process close all stdio with signal ⚠️⚠️⚠️⚠️⚠️⚠️ ${signal}`)
       }
     })
 
     this.serverProcess.on('exit', (code, signal) => {
       if (code !== null) {
-        log.info(`child process exited with code ${code}`)
+        log.info(`child process exited with code ⚠️⚠️⚠️⚠️⚠️⚠️ ${code}`)
         if (code !== 0) {
           log.critical('Fatal: The Delta Chat Core exited unexpectedly', code)
           dialog.showErrorBox(
@@ -134,31 +146,48 @@ export class PrivittyServer {
           app.exit(1)
         }
       } else {
-        log.warn(`child process exited with signal ${signal}`)
+        log.warn(`child process exited with signal ⚠️⚠️⚠️⚠️⚠️⚠️ ${signal}`)
       }
     })
   }
 
   send(message: string) {
-    console.log('Privitty client Request send ', message)
+    console.log('Privitty client Request send 0044⛔️', message)
     this.serverProcess?.stdin.write(message + '\n')
   }
 
-  sendJsonRpcRequest(method: string, requestId: number, params: any) {
-    const request = JSON.stringify({
-      jsonrpc: '2.0',
-      method,
-      seqno: requestId,
-      params,
-    })
-    console.log('Privitty client JSON Request send ', request)
-    this.serverProcess?.stdin.write(request + '\n')
-  }
+  // sendJsonRpcRequest(method: string, requestId: number, params: any) {
+  //   const request = JSON.stringify({
+  //     jsonrpc: '2.0',
+  //     method,
+  //     seqno: requestId,
+  //     params,
+  //   })
+  //   console.log('Privitty client JSON Request send 0055⛔️', request)
+  //   this.serverProcess?.stdin.write(request + '\n')
+  // }
+
+  sendJsonRpcRequest(method: string, params: any = {}, requestId?: number,): Promise<any> {
+  const request = {
+    jsonrpc: "2.0",
+    method,
+    params,
+    id: requestId,
+  };
+
+  console.log('Privitty JSON Request →', request);
+
+  return new Promise((resolve) => {
+    this.pendingRequests.set(requestId, resolve);
+    this.serverProcess?.stdin.write(JSON.stringify(request) + '\n');
+  });
+}
+
 
   // Function to send JSON-RPC requests
   sendJsonRpcRequestWOP(method: string, requestId: number) {
-    const request = JSON.stringify({ jsonrpc: '2.0', method, seqNo: requestId })
-    console.log('Privitty client WOP Request send ', request)
+    const request = JSON.stringify({ jsonrpc: '2.0', method, id: requestId })
+    console.log('Privitty client WOP Request send 0066⛔️', request)
     this.serverProcess?.stdin.write(request + '\n')
   }
 
@@ -169,19 +198,14 @@ export class PrivittyServer {
     mail_pw: string,
     requestId: number
   ) {
-    this.sendJsonRpcRequest('produceEvent', requestId, {
-      eventType: PRV_EVENT_CREATE_VAULT,
-      mID: /*accountSettings.*/ addr, //"sender@privittytech.com",
-      mName: userName, //"Alice",
-      msgId: 0,
-      fromId: 0,
-      chatId: 0,
-      pCode: /*accountSettings.*/ mail_pw, //"Crossroad",
-      filePath: '',
-      fileName: '',
-      direction: 0,
-      pdu: [],
-    })
+    this.sendJsonRpcRequest('switchProfile',{
+      username: userName,
+      user_email: addr,
+      user_id: String(accountID)
+    },
+    requestId)
+    this.sendJsonRpcRequest('getSystemState');
+    this.sendJsonRpcRequest('getHealth');
   }
 }
 

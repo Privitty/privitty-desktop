@@ -2,7 +2,11 @@ import React from 'react'
 import classNames from 'classnames'
 import { filesize } from 'filesize'
 
-import { openAttachmentInShell, openSecureViewer } from '../message/messageFunctions'
+import {
+  confirmDialog,
+  openAttachmentInShell,
+  openSecureViewer,
+} from '../message/messageFunctions'
 import {
   isDisplayableByFullscreenMedia,
   isImage,
@@ -14,7 +18,7 @@ import {
 } from './Attachment'
 import { runtime } from '@deltachat-desktop/runtime-interface'
 import { getDirection } from '../../utils/getDirection'
-import { Type } from '../../backend-com'
+import { BackendRemote, Type } from '../../backend-com'
 import FullscreenMedia, {
   NeighboringMediaMode,
 } from '../dialogs/FullscreenMedia'
@@ -44,6 +48,9 @@ export default function Attachment({
   }
   const direction = getDirection(message)
   const onClickAttachment = async (ev: any) => {
+    console.log('onClickAttachment ⛔️📍')
+    console.log('onClickAttachment ⛔️📍', message)
+
     if (message.viewType === 'Sticker') return
     ev.stopPropagation()
     if (isDisplayableByFullscreenMedia(message.fileMime)) {
@@ -53,25 +60,86 @@ export default function Attachment({
       })
     } else {
       // Check if this is a supported media file (including .prv files that decrypt to supported formats)
-      const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v']
-      const isSupportedMedia = message.fileName?.toLowerCase().endsWith('.prv') || 
-                              supportedExtensions.some(ext => message.fileName?.toLowerCase().endsWith(ext))
-      
+      const supportedExtensions = [
+        '.pdf',
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.gif',
+        '.bmp',
+        '.webp',
+        '.svg',
+        '.mp4',
+        '.avi',
+        '.mov',
+        '.wmv',
+        '.flv',
+        '.webm',
+        '.mkv',
+        '.m4v',
+      ]
+      const isSupportedMedia =
+        message.fileName?.toLowerCase().endsWith('.prv') ||
+        supportedExtensions.some(ext =>
+          message.fileName?.toLowerCase().endsWith(ext)
+        )
+
       if (isSupportedMedia) {
         // Check if this is a supported media file that should be opened in secure viewer
-        const fileExtension:string = message.fileName?.toLowerCase().split('.').pop()||'';
-        const supportedImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg']
-        const supportedVideoExtensions = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', 'm4v']
-        
-        if (fileExtension === 'pdf' || supportedImageExtensions.includes(fileExtension) || supportedVideoExtensions.includes(fileExtension)) {
+        console.log(
+          'onClickAttachment ⛔️📍 Check if this is a supported media file that should be opened in secure viewer'
+        )
+        const fileName = message.fileName?.toLowerCase() || ''
+
+        const cleanedFileName = fileName.endsWith('.prv')
+          ? fileName.slice(0, -4)
+          : fileName
+
+        const fileExtension = cleanedFileName.split('.').pop() || ''
+
+        console.log('fileExtension:', fileExtension)
+
+        const supportedImageExtensions = [
+          'jpg',
+          'jpeg',
+          'png',
+          'gif',
+          'bmp',
+          'webp',
+          'svg',
+        ]
+        const supportedVideoExtensions = [
+          'mp4',
+          'avi',
+          'mov',
+          'wmv',
+          'flv',
+          'webm',
+          'mkv',
+          'm4v',
+        ]
+
+        if (
+          fileExtension === 'pdf' ||
+          supportedImageExtensions.includes(fileExtension) ||
+          supportedVideoExtensions.includes(fileExtension)
+        ) {
           try {
             // For supported media files, we need to get the file path and open in secure viewer
             let tmpFile: string
             try {
-              tmpFile = await runtime.copyFileToInternalTmpDir(message.fileName||"", message.file||"")
+              console.log('copyFileToInternalTmpDir')
+
+              tmpFile = await runtime.copyFileToInternalTmpDir(
+                message.fileName || '',
+                message.file || ''
+              )
             } catch (copyError) {
-              const errorMessage = copyError instanceof Error ? copyError.message : 'Unknown error'
-              
+              console.log('Media File Error ⛔️⛔️⛔️⛔️⛔️⛔️⛔️')
+
+              const errorMessage =
+                copyError instanceof Error ? copyError.message : 'Unknown error'
+
               // Show user-friendly error message
               runtime.showNotification({
                 title: 'Media File Error',
@@ -82,54 +150,197 @@ export default function Attachment({
                 accountId: selectedAccountId(),
                 notificationType: 0,
               })
-              
+
               // Fall back to regular opening
               openAttachmentInShell(message)
               return
             }
-            
+
             let filePathName = tmpFile
-            
+            filePathName = tmpFile.replace(/\\/g, '/')
+
             // Handle .prv files (encrypted files)
-            if (message.fileName?.toLowerCase().endsWith('.prv')) {
-              filePathName = tmpFile.replace(/\\/g, '/')
-              const response = await runtime.PrivittySendMessage('decryptFile', {
-                chatId: message.chatId,
-                filePath: dirname(filePathName),
-                fileName: message.fileName,
-                direction: message.fromId === C.DC_CONTACT_ID_SELF ? 1 : 0,
+            console.log(
+              'onClickAttachment ⛔️📍 Handle .prv files (encrypted files)'
+            )
+            console.log('MESSAGE ==== 📥📥📥📥📥📥', message)
+
+            const isForwarded =
+              Boolean(message.isForwarded) && message.viewType === 'File'
+
+            if (isForwarded) {
+              const response = await runtime.PrivittySendMessage('sendEvent', {
+                event_type: 'getFileAccessStatus',
+                event_data: {
+                  chat_id: String(message.chatId),
+                  file_path: message.file,
+                },
               })
-              filePathName = JSON.parse(JSON.parse(response).result).decryptedFile
-              
-              if (filePathName === 'SPLITKEYS_EXPIRED' || filePathName === 'SPLITKEYS_REQUESTED') {
-                // Fall back to regular opening
-                openAttachmentInShell(message)
+              const fileAccessStatus = JSON.parse(response).result?.data?.status
+              console.log('fileAccessStatus', fileAccessStatus)
+              if (fileAccessStatus == 'expired') {
+                const yes = await confirmDialog(
+                  openDialog,
+                  'This file is no longer accessible. You can request access from the owner to view it again.',
+                  'SEND REQUEST'
+                )
+                if (yes) {
+                  console.log(
+                    '🔐 Forwarded file detected, requesting access...'
+                  )
+                  const forwardAccessResp = await runtime.PrivittySendMessage(
+                    'sendEvent',
+                    {
+                      event_type: 'initForwardAccessRequest',
+                      event_data: {
+                        chat_id: String(message.chatId),
+                        file_path: message.file,
+                      },
+                    }
+                  )
+                  const parsed = JSON.parse(forwardAccessResp)
+                  const pdu: string | undefined = parsed?.result?.data?.pdu
+
+                  if (!pdu) {
+                    throw new Error(
+                      'PDU not returned from initAccessRevokeRequest'
+                    )
+                  }
+                  const MESSAGE_DEFAULT: T.MessageData = {
+                    file: null,
+                    filename: null,
+                    viewtype: null,
+                    html: null,
+                    location: null,
+                    overrideSenderName: null,
+                    quotedMessageId: null,
+                    quotedText: null,
+                    text: null,
+                  }
+                  const messageR: Partial<T.MessageData> = {
+                    text: pdu,
+                    file: undefined,
+                    filename: undefined,
+                    quotedMessageId: null,
+                    viewtype: 'Text',
+                  }
+
+                  const msgId = await BackendRemote.rpc.sendMsg(
+                    selectedAccountId(),
+                    message.chatId,
+                    {
+                      ...MESSAGE_DEFAULT,
+                      ...messageR,
+                    }
+                  )
+                  console.log('Access revoke message sent, msgId:', msgId)
+                }
                 return
               }
+              if (fileAccessStatus == 'active'){
+                const response = await runtime.PrivittySendMessage(
+                    'sendEvent',
+                    {
+                      event_type: 'forwardedFileDecryptRequest',
+                      event_data: {
+                        chat_id: String(message.chatId),
+                        prv_file: filePathName,
+                      },
+                    }
+                  )
+                  const newResponse = JSON.parse(response)
+                  console.log(
+                    'response from messageAttachment ⚠️⚠️⚠️⚠️⚠️',
+                    String(newResponse)
+                  )
+                  filePathName = String(newResponse.result?.data?.file_path)
+              }
+            } else if (message.fileName?.toLowerCase().endsWith('.prv')) {
+              console.log('filePathName from messageAttachment')
+              console.log(
+                'filePathName from messageAttachment',
+                dirname(filePathName)
+              )
+              const response = await runtime.PrivittySendMessage('sendEvent', {
+                event_type: 'fileDecryptRequest',
+                event_data: {
+                  chat_id: String(message.chatId),
+                  prv_file: filePathName,
+                },
+                // chatId: message.chatId,
+                // filePath: dirname(filePathName),
+                // fileName: message.fileName,
+                // direction: message.fromId === C.DC_CONTACT_ID_SELF ? 1 : 0,
+              })
+
+              console.log('response from messageAttachment', response)
+              const newResponse = JSON.parse(response)
+              console.log(
+                'response from messageAttachment',
+                String(newResponse.result?.data?.file_path)
+              )
+              filePathName = String(newResponse.result?.data?.file_path)
+
+              // if (filePathName === 'SPLITKEYS_EXPIRED' || filePathName === 'SPLITKEYS_REQUESTED') {
+              //   // Fall back to regular opening
+              //   openAttachmentInShell(message)
+              //   return
+              // }
             }
-            
+
             // Determine the correct viewer type based on file extension
             let viewerType: 'pdf' | 'image' | 'video' = 'pdf'
             const finalFileExtension = extname(filePathName).toLowerCase()
 
+            console.log('Determining viewer type')
             console.log('Determining viewer type', {
               filePathName,
               finalFileExtension,
-              fileName: message.fileName
+              fileName: message.fileName,
             })
-            
+
             if (finalFileExtension === '.pdf') {
               viewerType = 'pdf'
-            } else if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'].includes(finalFileExtension)) {
+            } else if (
+              [
+                '.jpg',
+                '.jpeg',
+                '.png',
+                '.gif',
+                '.bmp',
+                '.webp',
+                '.svg',
+              ].includes(finalFileExtension)
+            ) {
               viewerType = 'image'
-            } else if (['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v'].includes(finalFileExtension)) {
+            } else if (
+              [
+                '.mp4',
+                '.avi',
+                '.mov',
+                '.wmv',
+                '.flv',
+                '.webm',
+                '.mkv',
+                '.m4v',
+              ].includes(finalFileExtension)
+            ) {
               viewerType = 'video'
             }
-            
-            console.log('Opening secure viewer', { viewerType, filePathName, fileName: message.fileName })
+
+            console.log('Opening secure viewer', {
+              viewerType,
+              filePathName,
+              fileName: message.fileName,
+            })
 
             // Open in appropriate secure viewer
-            openSecureViewer(openDialog, filePathName, message.fileName||"", viewerType)
+            openSecureViewer(
+              openDialog,
+              filePathName,
+              message.fileName || '',
+              viewerType
+            )
           } catch (error) {
             console.error('Error opening media in secure viewer:', error)
             // Fallback to regular opening
@@ -139,13 +350,23 @@ export default function Attachment({
           // For non-PDF files, use the regular opening method
           const result = await openAttachmentInShell(message)
           if (result?.useSecureViewer) {
-            openSecureViewer(openDialog, result.filePath!, result.fileName!, result.viewerType as 'pdf' | 'image' | 'video')
+            openSecureViewer(
+              openDialog,
+              result.filePath!,
+              result.fileName!,
+              result.viewerType as 'pdf' | 'image' | 'video'
+            )
           }
         }
       } else {
         const result = await openAttachmentInShell(message)
         if (result?.useSecureViewer) {
-          openSecureViewer(openDialog, result.filePath!, result.fileName!, result.viewerType as 'pdf' | 'image' | 'video')
+          openSecureViewer(
+            openDialog,
+            result.filePath!,
+            result.fileName!,
+            result.viewerType as 'pdf' | 'image' | 'video'
+          )
         }
       }
     }
@@ -294,8 +515,9 @@ export default function Attachment({
       </div>
     )
   } else {
-    const { fileName, fileBytes, fileMime }: MessageTypeAttachmentSubset  = message
-  
+    const { fileName, fileBytes, fileMime }: MessageTypeAttachmentSubset =
+      message
+
     const extension = getExtension(message)
     return (
       <button
