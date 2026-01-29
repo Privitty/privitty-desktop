@@ -14,20 +14,29 @@ $tab-height: 46px;
   .tab-list {
     display: flex;
     justify-content: space-between;
-    gap: 30px;
+    gap: 4px;
     margin-left: 10px;
-
+    height: 52px;
+    padding: 4px;
     overflow-x: auto;
 
     .tab-item {
-      @include mixins.button-reset;
+      height: 44px;
+      border-radius: 50px;
+      background: none;
+      color: inherit;
+      border: none;
+      padding: 10px 20px;
+      font: inherit;
 
       font-size: 1.1rem;
-      padding-bottom: 6px;
       &.selected,
       &:hover {
-        color: var(--globalLinkColor);
-        border-bottom: 3px solid var(--globalLinkColor);
+        // color: var(--globalLinkColor);
+        color: #fff;
+        background-color: #7F66C5;
+        border-radius: 50px;
+        // border-bottom: 3px solid var(--globalLinkColor);
         cursor: pointer;
       }
       &.big-date {

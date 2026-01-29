@@ -15,18 +15,22 @@ import { mouseEventToPosition } from '../utils/mouseEventToPosition'
 
 type ContextMenuItemActionable = {
   icon?: IconName
+  rightIcon?: IconName
   action: (event: React.MouseEvent<Element, MouseEvent>) => void
   subitems?: never
+  danger?: boolean
 }
 
 type ContextMenuItemExpandable = {
   icon?: IconName
+  rightIcon?: IconName
   action?: never
   subitems: (ContextMenuItem | undefined)[]
+  danger?: boolean
 }
 
 export type ContextMenuItem =
-  | ({ type?: 'item'; label: string; dataTestid?: string } & (
+ | ({ type?: 'item'; label: string;  dataTestid?: string } & (
       | ContextMenuItemActionable
       | ContextMenuItemExpandable
     ))
@@ -378,6 +382,7 @@ export function ContextMenu(props: {
                 className={classNames({
                   item: true,
                   selected: index === openSublevels[levelIdx],
+                  danger: item.danger,
                 })}
                 onClick={(ev: React.MouseEvent) => {
                   if (item.subitems) {
@@ -405,9 +410,12 @@ export function ContextMenu(props: {
                 key={index}
                 {...(item.subitems && { 'data-expandable-index': index })}
               >
+                
                 {item.icon && <Icon className='left-icon' icon={item.icon} />}
                 {item.label}
-                {item.subitems && <div className='right-icon' />}
+                {/* Right icon (custom OR submenu arrow) */}
+                {item.rightIcon && <Icon className='right-icon' icon={item.rightIcon} />}
+                {item.subitems && !item.rightIcon && <div className='right-icon' />}
               </button>
             )
           })}

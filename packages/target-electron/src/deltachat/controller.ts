@@ -12,7 +12,7 @@ import { StdioServer } from './stdio_server.js'
 import rc_config from '../rc.js'
 import { migrateAccountsIfNeeded } from './migration.js'
 
-import { PrivittyServer } from '../privitty/client.js'
+import { PrivittyClient } from '../privitty/client.js'
 import {
   PRV_APP_STATUS_FORWARD_PDU,
   PRV_APP_STATUS_FORWARD_SPLITKEYS_REQUEST,
@@ -68,7 +68,7 @@ export default class DeltaChatController extends EventEmitter {
    */
 
   _inner_account_manager: StdioServer | null = null
-  _inner_privitty_account_manager: PrivittyServer | null = null
+  _inner_privitty_account_manager: PrivittyClient | null = null
   //_inner_is_privitty_vault_open: boolean = false
   _inner_globalPrivittyCounter: number = 0
   callbackMap = new Map<number, (response: any) => void>()
@@ -80,7 +80,7 @@ export default class DeltaChatController extends EventEmitter {
     return this._inner_account_manager
   }
 
-  get privitty_account_manager(): Readonly<PrivittyServer> {
+  get privitty_account_manager(): Readonly<PrivittyClient> {
     if (!this._inner_privitty_account_manager) {
       throw new Error('account manager is not defined (yet?)')
     }
@@ -137,8 +137,8 @@ export default class DeltaChatController extends EventEmitter {
       )
       this._inner_privitty_account_manager?.sendJsonRpcRequest(
         method,
+        params,
         sequenceNumber,
-        params
       )
     })
   }
@@ -191,9 +191,12 @@ export default class DeltaChatController extends EventEmitter {
   //   }
   // }
 
-  async sendMessageToPeer(subject: string, pdu: number[], chatId: number) {
+  async sendMessageToPeer(pdu: string, chatId: number) {
+    console.log('sendMessageToPeer  ⚠️⚠️⚠️')
+
+    console.log('PDU⚠️⛔️⛔️⚠️', pdu)
+
     try {
-      const base64Msg = btoa(String.fromCharCode.apply(null, pdu))
       const MESSAGE_DEFAULT: T.MessageData = {
         file: null,
         filename: null,
@@ -206,17 +209,16 @@ export default class DeltaChatController extends EventEmitter {
         text: null,
       }
       const message: Partial<T.MessageData> = {
-        text: base64Msg,
+        text: pdu,
         file: undefined,
         filename: undefined,
         quotedMessageId: null,
         viewtype: 'Text',
       }
-      this.jsonrpcRemote.rpc.sendMsgWithSubject(
+      this.jsonrpcRemote.rpc.sendMsg(
         (await this.jsonrpcRemote.rpc.getSelectedAccountId()) || 0,
         chatId,
-        { ...MESSAGE_DEFAULT, ...message },
-        subject
+        { ...MESSAGE_DEFAULT, ...message }
       )
     } catch (e) {
       console.log('sendMessageToPeer error', e)
@@ -238,46 +240,26 @@ export default class DeltaChatController extends EventEmitter {
           'JAVA-Privitty',
           'Send add new peer request to chatId:' + chatId
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'new_peer_add'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_FORWARD_PDU) {
         console.log(
           'JAVA-Privitty',
           'Forward pdu to forwardToChatId:' + forwardToChatId
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'forward_add_request'}",
-          pdu,
-          forwardToChatId
-        )
+        this.sendMessageToPeer(pdu, forwardToChatId)
       } else if (statusCode == PRV_APP_STATUS_PEER_ADD_COMPLETE) {
         console.log(
           'JAVA-Privitty',
           'Congratulations! Add new peer handshake is complete with chatID:' +
             chatId
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'new_peer_complete'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_PEER_ADD_CONCLUDED) {
         console.log('JAVA-Privitty', 'Congratulations! New peer concluded.')
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'new_peer_concluded'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_PEER_OTSP_SPLITKEYS) {
         console.log('JAVA-Privitty', 'Peer OTSP sent')
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'OTSP_SENT'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
         // int fromId = msg.getFromId();
         // String msgText = "OTSP_SENT";
         // String msgType = "system";
@@ -295,65 +277,37 @@ export default class DeltaChatController extends EventEmitter {
         //   numPeerSssRequest, forwardedTo, sentPrivittyProtected);
       } else if (statusCode == PRV_APP_STATUS_PEER_SPLITKEYS_REQUEST) {
         console.log('JAVA-Privitty', 'Peer SPLITKEYS request')
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'SPLITKEYS_REQUEST'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_PEER_SPLITKEYS_RESPONSE) {
         console.log('JAVA-Privitty', 'Peer SPLITKEYS response')
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'SPLITKEYS_RESPONSE'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_PEER_SPLITKEYS_REVOKED) {
         console.log('JAVA-Privitty', 'Peer SPLITKEYS revoked')
         // new Handler(Looper.getMainLooper()).post(() -> {
         //   Toast.makeText(getApplicationContext(), "You undo revoke", Toast.LENGTH_SHORT).show();
         // });
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'SPLITKEYS_REVOKED'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_PEER_SPLITKEYS_UNDO_REVOKED) {
         console.log('JAVA-Privitty', 'Peer SPLITKEYS undo revoked')
         // new Handler(Looper.getMainLooper()).post(() -> {
         //   Toast.makeText(getApplicationContext(), "You revoked access", Toast.LENGTH_SHORT).show();
         // });
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'SPLITKEYS_UNDO_REVOKED'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_FORWARD_SPLITKEYS_REVOKED) {
         console.log('JAVA-Privitty', 'Peer SPLITKEYS undo revoked')
         // new Handler(Looper.getMainLooper()).post(() -> {
         //   Toast.makeText(getApplicationContext(), "You revoked access", Toast.LENGTH_SHORT).show();
         // });
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'SPLITKEYS_UNDO_REVOKED'}",
-          pdu,
-          forwardToChatId
-        )
-       }else if (statusCode == PRV_APP_STATUS_PEER_SPLITKEYS_DELETED) {
+        this.sendMessageToPeer(pdu, forwardToChatId)
+      } else if (statusCode == PRV_APP_STATUS_PEER_SPLITKEYS_DELETED) {
         console.log('JAVA-Privitty', 'Peer SPLITKEYS deleted')
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'SPLITKEYS_DELETED'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_GROUP_ADD_ACCEPTED) {
         console.log(
           'JAVA-Privitty',
           'Congratulations! New chat group is ready.'
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'new_group_concluded'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (
         statusCode == PRV_APP_STATUS_FORWARD_SPLITKEYS_REQUEST ||
         statusCode == PRV_APP_STATUS_REVERT_FORWARD_SPLITKEYS_REQUEST
@@ -367,11 +321,7 @@ export default class DeltaChatController extends EventEmitter {
             ' ForwardToChatId: ' +
             forwardToChatId
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'relay_message'}",
-          pdu,
-          chatId
-        )
+        this.sendMessageToPeer(pdu, chatId)
       } else if (statusCode == PRV_APP_STATUS_RELAY_FORWARD_SPLITKEYS_REQUEST) {
         console.log(
           'JAVA-Privitty',
@@ -382,11 +332,7 @@ export default class DeltaChatController extends EventEmitter {
             ' ForwardToChatId: ' +
             forwardToChatId
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'relay_request'}",
-          pdu,
-          forwardToChatId
-        )
+        this.sendMessageToPeer(pdu, forwardToChatId)
       } else if (
         statusCode == PRV_APP_STATUS_RELAY_BACKWARD_SPLITKEYS_RESPONSE
       ) {
@@ -399,11 +345,7 @@ export default class DeltaChatController extends EventEmitter {
             ' ForwardToChatId: ' +
             forwardToChatId
         )
-        this.sendMessageToPeer(
-          "{'privitty':'true', 'type':'relay_response'}",
-          pdu,
-          forwardToChatId
-        )
+        this.sendMessageToPeer(pdu, forwardToChatId)
       } else {
         console.error('JAVA-Privitty', 'StatusCode: ' + statusCode)
       }
@@ -413,9 +355,14 @@ export default class DeltaChatController extends EventEmitter {
   }
 
   async privittyHandleIncomingMsg(response: string) {
+    let sequenceNumber = this.getGlobalSequence()
+
+    console.log('Hello privittyHandleIn comingMsg')
+
     console.log('privittyHandleIn comingMsg', response)
     const responseObj = JSON.parse(response)
     //{"jsonrpc":"2.0","id":302,"result":{"contextId":8,"event":{"chatId":13,"kind":"IncomingMsg","msgId":40}}}
+    // {"jsonrpc":"2.0","id":494,"result":{"contextId":5,"event":{"chatId":104,"kind":"IncomingMsg","msgId":2014}}}
     const Msg = await this.jsonrpcRemote.rpc.getMessage(
       responseObj.result.contextId,
       responseObj.result.event.msgId
@@ -424,60 +371,145 @@ export default class DeltaChatController extends EventEmitter {
       responseObj.result.contextId,
       responseObj.result.event.chatId
     )
+    // let isPrivittyMessage = true;
+    // const isPrivittyMessage = await this.privitty_account_manager.sendJsonRpcRequest(
+    //   'isPrivittyMessage',
+    //   sequenceNumber,
+    //   {
+    //     base64_data: Msg.text
+    //   }
+    // )
+
+    console.log('--- DBG: entering privittyHandleIncomingMsg check ---')
+    console.log('DBG: Msg is', typeof Msg, Msg)
+    console.log('DBG: chatInfo is', typeof chatInfo, chatInfo)
+
     if (Msg.showPadlock && !chatInfo.isContactRequest) {
-      const subject = Msg.subject
+      console.log(
+        'Msg.showPadlock && !chatInfo.isContactRequest⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️⛔️'
+      )
 
-      if (Msg.isPrivittyMessage) {
-        console.log('privittyHandleIncomingMsg subject =', subject)
-        if (subject.indexOf('new_peer_conclude') !== -1) {
-          this.jsonrpcRemote.rpc.deleteMessages(responseObj.result.contextId, [
-            responseObj.result.event.msgId,
-          ])
-        } else if (subject.indexOf('new_group_concluded') !== -1) {
-          this.jsonrpcRemote.rpc.deleteMessages(responseObj.result.contextId, [
-            responseObj.result.event.msgId,
-          ])
-        } else if (subject.indexOf('privfile') !== -1) {
-          console.log('privittyHandleIncomingMsg privfile')
-          return
-        } else {
-          // Dec  de Base64 to binary string
-          const binaryString = atob(Msg.text)
+      this.callbackMap.set(sequenceNumber, (response: string) => {
+        this.handlePrivittyValidation(
+          response,
+          Msg,
+          responseObj.result.event.chatId,
+          responseObj.result.contextId
+        )
+      })
 
-          // Create byte array
-          const byteArray = new Uint8Array(binaryString.length)
 
-          for (let i = 0; i < binaryString.length; i++) {
-            byteArray[i] = binaryString.charCodeAt(i)
-          }
-          //const arrayString = `[${byteArray.join(',')}]`;
-          let sequenceNumber = this.getGlobalSequence()
-          this.callbackMap.set(sequenceNumber, response =>
-            this.privittyHandleServerResponse(response as string)
-          )
-          this.privitty_account_manager.sendJsonRpcRequest(
-            'produceEvent',
-            sequenceNumber,
-            {
-              eventType: PRV_EVENT_RECEIVED_PEER_PDU,
-              mID: /*accountSettings.*/ '', //"sender@privittytech.com",
-              mName: '', //"Alice",
-              msgId: responseObj.result.event.msgId,
-              fromId: Msg.fromId,
-              chatId: responseObj.result.event.chatId,
-              pCode: /*accountSettings.*/ '', //"Crossroad",
-              filePath: '',
-              fileName: '',
-              direction: 0,
-              pdu: Array.from(byteArray),
-            }
-          )
-          // this.jsonrpcRemote.rpc.deleteMessages(responseObj.result.contextId, [
-          //   responseObj.result.event.msgId,
-          // ])
-        }
+      if (!Msg.text || Msg.text.trim() === '') {
+        console.log(
+          '⛔️ Privitty check skipped — empty Msg.text (likely file or system message)',
+          Msg
+        )
+        return
       }
+
+      console.log('✅ base64_data:', Msg.text)
+
+      this.privitty_account_manager.sendJsonRpcRequest(
+        'isPrivittyMessage',
+        { base64_data: Msg.text },
+        sequenceNumber,
+      )
+
+      // if (isPrivittyMessage) {
+      //   console.log('privittyHandleIncomingMsg subject =', subject)
+      //   if (subject.indexOf('new_peer_conclude') !== -1) {
+      //     this.jsonrpcRemote.rpc.deleteMessages(responseObj.result.contextId, [
+      //       responseObj.result.event.msgId,
+      //     ])
+      //   } else if (subject.indexOf('new_group_concluded') !== -1) {
+      //     this.jsonrpcRemote.rpc.deleteMessages(responseObj.result.contextId, [
+      //       responseObj.result.event.msgId,
+      //     ])
+      //   } else if (subject.indexOf('privfile') !== -1) {
+      //     console.log('privittyHandleIncomingMsg privfile')
+      //     return
+      //   } else {
+      //     // Dec  de Base64 to binary string
+      //     const binaryString = atob(Msg.text)
+
+      //     // Create byte array
+      //     const byteArray = new Uint8Array(binaryString.length)
+
+      //     for (let i = 0; i < binaryString.length; i++) {
+      //       byteArray[i] = binaryString.charCodeAt(i)
+      //     }
+      //     //const arrayString = `[${byteArray.join(',')}]`;
+      //     this.callbackMap.set(sequenceNumber, response =>
+      //       this.privittyHandleServerResponse(response as string)
+      //     )
+      // this.privitty_account_manager.sendJsonRpcRequest(
+      //   'sendEvent',
+      //   sequenceNumber,
+      //   {
+      //     event_type: "peerAddResponse",
+      //     event_data: {
+      //       chat_id: String(responseObj.result.event.chatId),
+      //       peer_id: String(Msg.fromId),
+      //       accepted: true
+      //     }
+      //   }
+      // )
+      //     // this.jsonrpcRemote.rpc.deleteMessages(responseObj.result.contextId, [
+      //     //   responseObj.result.event.msgId,
+      //     // ])
+      //   }
+      // }
     }
+  }
+
+  async handlePrivittyValidation(
+    response: string,
+    msg: any,
+    chatId: number,
+    ctx: number
+  ) {
+    let sequenceNumber = this.getGlobalSequence()
+
+    const parsed = JSON.parse(response)
+    console.log('handlePrivittyValidation ⛔️', parsed)
+
+    if (!parsed?.result?.is_valid) return
+
+    this.callbackMap.set(sequenceNumber, (resp: string) => {
+      try {
+        const json = JSON.parse(resp)
+
+        const pdu = json?.result?.data?.pdu
+        const targetChatId = Number(json?.result?.data?.chat_id)
+
+        if (!pdu || !targetChatId) {
+          console.error('Invalid processMessage response', json)
+          return
+        }
+
+        console.log('✅ Sending PDU to chat:', targetChatId)
+        this.sendMessageToPeer(pdu, targetChatId)
+      } catch (err) {
+        console.error('Failed to handle processMessage response', err)
+      }
+    })
+
+    console.log('sequenceNumber ======== #️⃣#️⃣#️⃣#️⃣#️⃣',sequenceNumber);
+
+    console.log('Message Data 📥📥📥📥', msg);
+    
+    
+    await this.privitty_account_manager.sendJsonRpcRequest(
+      'processMessage',
+      {
+        event_data: {
+          chat_id: String(chatId),
+          pdu: msg.text,
+          direction: String(0),
+        },
+      },
+      sequenceNumber,
+    )
   }
 
   async init() {
@@ -570,34 +602,35 @@ export default class DeltaChatController extends EventEmitter {
       serverPath
     )
 
-    log.info('Before Creating PrivittyServer')
-    this._inner_privitty_account_manager = new PrivittyServer(
+    log.info('Before Creating PrivittyClient')
+    this._inner_privitty_account_manager = new PrivittyClient(
       response => {
-        //console.log('Privitty Controller', response)
+        console.log('Privitty Controller', response)
         try {
           const resp = JSON.parse(response.trim())
+          console.log('resp', resp)
 
-          if (resp.seqNo !== undefined && this.callbackMap.has(resp.seqNo)) {
-            console.log('we have sequence number', resp.seqNo)
-            const resolve = this.callbackMap.get(resp.seqNo)
+          if (resp.id !== undefined && this.callbackMap.has(resp.id)) {
+            console.log('we have sequence number 0077⛔️⛔️', resp.id)
+            const resolve = this.callbackMap.get(resp.id)
 
             if (resolve) {
-              console.log('just before calling response')
+              console.log('just before calling response 0088⛔️⛔️')
               resolve(response)
             } else {
               console.warn('no resolve')
             }
 
-            this.callbackMap.delete(resp.seqNo)
+            this.callbackMap.delete(resp.id)
           } else {
             console.warn('Unhandled response:', response)
-            if (resp.seqNo === 0) {
-              console.warn('PrivittyController: seqNo is 0')
+            if (resp.id === 0) {
+              console.warn('PrivittyController: id is 0 ⛔️⛔️')
               this.privittyHandleServerResponse(response)
             }
           }
         } catch (error) {
-          console.error('Failed to parse response:', error)
+          console.error('Failed to parse response: ⛔️⛔️', error)
         }
         //logCoreEvent.debug('Privitty Controller response', response)
       },
@@ -606,15 +639,13 @@ export default class DeltaChatController extends EventEmitter {
     )
     log.info('HI')
     this.account_manager.start()
+    console.log('this.account_manager.start() ⛔️')
+
     this.privitty_account_manager.start()
-    this.privitty_account_manager.sendJsonRpcRequestWOP(
-      'version',
-      this.getGlobalSequence()
-    )
-    this.privitty_account_manager.sendJsonRpcRequestWOP(
-      'startEventLoop',
-      this.getGlobalSequence()
-    )
+    console.log('this.privitty_account_manager.start() ⛔️')
+
+    const version =
+      this.privitty_account_manager.sendJsonRpcRequestWOP('getVersion')
 
     //todo? multiple instances, accounts is always writable
 

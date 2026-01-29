@@ -38,7 +38,7 @@
 }
 
 .accountListSidebar {
-  --accountSidebarBg: #2c2c2c;
+  --accountSidebarBg: #6750A4;
 
   background-color: var(--accountSidebarBg);
   display: flex;
@@ -168,7 +168,7 @@
   }
 
   .addButton {
-    --add-button-color: #808080;
+    --add-button-color: lightgray;
 
     background: none;
     border-radius: 10%;
@@ -210,13 +210,13 @@
 
   &:hover {
     .settingsButtonIcon {
-      background-color: lightgray;
+      background-color: white;
     }
   }
 }
 
 .settingsButtonIcon {
-  background-color: gray;
+  background-color: lightgray;
 }
 
 .accountBadge {

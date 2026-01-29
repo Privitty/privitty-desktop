@@ -13,14 +13,15 @@
   margin-bottom: 30px;
 
   .welcomeScreenImage {
-    width: 100%;
+    width: 50%;
+    margin-top: 20px;
   }
 
   .welcomeScreenTitle {
     color: var(--colorNone);
     font-size: x-large;
     margin-bottom: 0px;
-    margin-top: 10px;
+    margin-top: 16px;
   }
 
   @media (max-height: 720px) {
@@ -28,9 +29,6 @@
 
     .welcomeScreenImage {
       width: 30vh;
-    }
-    .welcomeScreenTitle {
-      margin-top: 8px;
     }
   }
 }

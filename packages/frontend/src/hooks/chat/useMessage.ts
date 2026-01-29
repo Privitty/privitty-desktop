@@ -143,58 +143,60 @@ export default function useMessage() {
       chatId: number,
       message: Partial<T.MessageData>
     ) => {
-      console.log('filePathName:', message.file)
+      console.log('filePathName:', message)
       let msgId = 0
       if (message.file && message.filename) {
-        msgId = await BackendRemote.rpc.sendMsgWithSubject(
+        msgId = await BackendRemote.rpc.sendMsg(
           accountId,
           chatId,
           {
             ...MESSAGE_DEFAULT,
             ...message,
-          },
-          ''
+          }
         )
 
         // Set file attributes (if available) for the just-sent file
-        try {
-          if (sharedData?.FileDirectory) {
-            await runtime.PrivittySendMessage('setFileAttributes', {
-              chatId: chatId,
-              prvFilename: sharedData.FileDirectory,
-              outgoing: 1,
-              allowDownload: sharedData.allowDownload ? 1 : 0,
-              allowForward: sharedData.allowForward ? 1 : 0,
-              accessTime: sharedData.allowedTime ? Number(sharedData.allowedTime) : 0,
-            })
-          }
-        } catch (error) {
-          console.error('Failed to set file attributes:', error)
-        }
+        // try {
+        //   if (sharedData?.FileDirectory) {
+        //     await runtime.PrivittySendMessage('setFileAttributes', {
+        //       chatId: chatId,
+        //       prvFilename: sharedData.FileDirectory,
+        //       outgoing: 1,
+        //       allowDownload: sharedData.allowDownload ? 1 : 0,
+        //       allowForward: sharedData.allowForward ? 1 : 0,
+        //       accessTime: sharedData.allowedTime ? Number(sharedData.allowedTime) : 0,
+        //     })
+        //   }
+        // } catch (error) {
+        //   console.error('Failed to set file attributes:', error)
+        // }
 
         // Now that the message has been sent successfully, we can safely delete the encrypted file
-        if (message.file && sharedData?.FileDirectory) {
-          try {
-            await runtime.PrivittySendMessage('deleteFile', {
-              filePath: dirname(sharedData.FileDirectory),
-              fileName: basename(sharedData.FileDirectory),
-            })
-            console.log('Encrypted file deleted after successful sending:', sharedData.FileDirectory)
-          } catch (error) {
-            console.error('Failed to delete encrypted file after sending:', error)
-          }
-        }
+        // if (message.file && sharedData?.FileDirectory) {
+        //   try {
+        //     await runtime.PrivittySendMessage('deleteFile', {
+        //       filePath: dirname(sharedData.FileDirectory),
+        //       fileName: basename(sharedData.FileDirectory),
+        //     })
+        //     console.log('Encrypted file deleted after successful sending:', sharedData.FileDirectory)
+        //   } catch (error) {
+        //     console.error('Failed to delete encrypted file after sending:', error)
+        //   }
+        // }
 
-        const response = await runtime.PrivittySendMessage('freshOtsp', {
-          chatId: chatId,
-          filePath: sharedData?.FileDirectory,
-        })
-        const jsonresp = JSON.parse(response)
-        if (jsonresp?.message_type === PRV_APP_STATUS_PEER_OTSP_SPLITKEYS) {
-          log.info('need to send otsp message:')
-          const subject = "{'privitty':'true', 'type':'OTSP_SENT'}"
+
+        console.log('shared Data', sharedData);
+
         
-          const base64Msg = btoa(String.fromCharCode.apply(null, jsonresp.pdu))
+        // const response = await runtime.PrivittySendMessage('freshOtsp', {
+        //   chatId: chatId,
+        //   filePath: sharedData?.FileDirectory,
+        // })
+        if (sharedData.oneTimeKey) {
+          console.log('need to send otsp message:');
+          log.info('need to send otsp message:')
+        
+          const pdu = sharedData.oneTimeKey
           const MESSAGE_DEFAULT: T.MessageData = {
             file: null,
             filename: null,
@@ -207,17 +209,16 @@ export default function useMessage() {
             text: null,
           }
           const message: Partial<T.MessageData> = {
-            text: base64Msg,
+            text: pdu,
             file: undefined,
             filename: undefined,
             quotedMessageId: null,
             viewtype: 'Text',
           }
-          BackendRemote.rpc.sendMsgWithSubject(
+          BackendRemote.rpc.sendMsg(
             accountId,
             chatId,
-            { ...MESSAGE_DEFAULT, ...message },
-            subject
+            { ...MESSAGE_DEFAULT, ...message }
           )
         }
       } else {
@@ -242,6 +243,7 @@ export default function useMessage() {
         allowForward: false,
         allowedTime: '',
         FileDirectory: '',
+        oneTimeKey: '',
       })
     },
     [jumpToMessage, sharedData, setSharedData]

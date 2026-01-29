@@ -103,19 +103,23 @@ export default function MenuAttachment({
       setLastPath(dirname(files[0]))
       let filePathName = files[0].replace(/\\/g, '/')
       let encryptedFile: string = await runtime.PrivittySendMessage(
-        'encryptFile',
+        'sendEvent',
         {
-          chatId: selectedChat?.id || 0,
-          filePath: dirname(filePathName),
-          fileName: basename(filePathName),
-          deleteInputFile: false,
+          event_type: "fileEncryptRequest",
+          event_data: {
+              chat_id: String(selectedChat?.id || 0),
+              file_path: filePathName,
+              allow_download: fileAttribute.allowDownload,
+              allow_forward: fileAttribute.allowForward,
+              access_time: Number(fileAttribute.allowedTime)
+        }
         }
       )
-      console.log('encryptedFile:', encryptedFile)
       let data = JSON.parse(encryptedFile)
-      console.log('result[0]:', data.result)
-      let fileName = JSON.parse(data.result).encryptedFile
-      console.log('parsed filename:', fileName)
+      const fileName = data.result?.data?.prv_file_name;
+      const oneTimeKey = data.result?.data?.one_time_key
+      console.log('FileName 📇📇📇📇', fileName);
+      
       //check if file exists
       if (!fileName || fileName === '') {
         console.error('Encrypted file name is empty or undefined:', fileName)
@@ -148,7 +152,8 @@ export default function MenuAttachment({
         allowDownload: fileAttribute.allowDownload,
         allowForward: fileAttribute.allowForward,
         allowedTime: fileAttribute.allowedTime,
-        FileDirectory: fileName,
+        FileDirectory: filePathName,
+        oneTimeKey: oneTimeKey
       })
 
       // Don't delete the file immediately - it will be deleted after the message is sent
@@ -377,88 +382,110 @@ export default function MenuAttachment({
     event: React.MouseEvent<any, MouseEvent>
   ) => {
     const result = await runtime.PrivittySendMessage(
-      'isChatPrivittyProtected',
+      'isChatProtected',
       {
-        chatId: selectedChat?.id,
+        chat_id: String(selectedChat?.id),
       }
     )
-    console.log('isChatPrivittyProtected response MenuAttachment', result)
-    if (result) {
-      try {
-        const resp = JSON.parse(result)
-        if (resp.result === 'false') {
-          const accountid: number =
+
+    console.log(result);
+    const accountid: number =
             (await BackendRemote.rpc.getSelectedAccountId()) || 0
-          const basicChat = await BackendRemote.rpc.getBasicChatInfo(
+     const basicChat = await BackendRemote.rpc.getBasicChatInfo(
             accountid,
             selectedChat?.id || 0
           )
-          console.log('accountid =', accountid, 'BasicChat =', basicChat)
-          const addpeerResponse = await runtime.PrivittySendMessage(
-            'produceEvent',
+          console.log('accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️', accountid, 'BasicChat =', basicChat)
+
+    const resp = JSON.parse(result)
+    try {
+      if (resp.result.is_protected == false) {
+        console.log(
+          'accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
+          accountid,
+          'BasicChat =',
+          basicChat, "selectedChat?.id", selectedChat?.id, "basicChat.id", basicChat.id
+        )
+        
+        // Get contact email dynamically
+        let peerEmail; // fallback
+        let peerId;
+        try {
+          const fullChat = await BackendRemote.rpc.getFullChatById(
+            accountid,
+            selectedChat?.id || 0
+          )
+          console.log("fullChat",fullChat);
+          
+          if (fullChat && fullChat.contactIds && fullChat.contactIds.length > 0) {
+            const contact = await BackendRemote.rpc.getContact(
+              accountid,
+              fullChat.contactIds[0]
+            )
+
+            console.log('contact', contact);
+            
+
+            if (contact && contact.address) {
+              peerId = contact.id
+              peerEmail = contact.address
+            }
+          }
+        } catch (error) {
+          console.error('Error getting contact email:', error)
+          // Use fallback email if there's an error
+        }
+        
+
+        console.log('peerEmail ====== 📧📧', peerEmail);
+        
+        const addpeerResponse = await runtime.PrivittySendMessage('sendEvent', {
+          event_type: 'initPeerAddRequest',
+          event_data: {
+            chat_id: String(selectedChat?.id),
+            peer_name: basicChat.name,
+            peer_email: peerEmail,
+            peer_id: String(peerId),
+          },
+        })
+        console.log('addpeerResponse =', addpeerResponse)
+        const parsedResponse = JSON.parse(addpeerResponse)
+
+        if (parsedResponse.result.success == true) {
+          // Extract the PDU base64 string directly
+          const pdu = parsedResponse?.result?.data?.pdu
+          const MESSAGE_DEFAULT: T.MessageData = {
+            file: null,
+            filename: null,
+            viewtype: null,
+            html: null,
+            location: null,
+            overrideSenderName: null,
+            quotedMessageId: null,
+            quotedText: null,
+            text: null,
+          }
+          const message: Partial<T.MessageData> = {
+            text: pdu,
+            file: undefined,
+            filename: undefined,
+            quotedMessageId: null,
+            viewtype: 'Text',
+          }
+
+          const msgId = await BackendRemote.rpc.sendMsg(
+            accountId,
+            selectedChat?.id || 0,
             {
-              eventType: PRV_EVENT_ADD_NEW_PEER,
-              mID: '',
-              mName: basicChat.name,
-              msgId: basicChat.id,
-              fromId: 0,
-              chatId: selectedChat?.id,
-              pCode: '',
-              filePath: '',
-              fileName: '',
-              direction: 0,
-              pdu: [],
+              ...MESSAGE_DEFAULT,
+              ...message,
             }
           )
-          console.log('addpeerResponse =', addpeerResponse)
-          const parsedResponse = JSON.parse(addpeerResponse)
-          if (parsedResponse.message_type === PRV_APP_STATUS_SEND_PEER_PDU) {
-            const base64Msg = btoa(
-              String.fromCharCode.apply(null, parsedResponse.pdu)
-            )
-            const MESSAGE_DEFAULT: T.MessageData = {
-              file: null,
-              filename: null,
-              viewtype: null,
-              html: null,
-              location: null,
-              overrideSenderName: null,
-              quotedMessageId: null,
-              quotedText: null,
-              text: null,
-            }
-            const message: Partial<T.MessageData> = {
-              text: base64Msg,
-              file: undefined,
-              filename: undefined,
-              quotedMessageId: null,
-              viewtype: 'Text',
-            }
-
-            const msgId = await BackendRemote.rpc.sendMsgWithSubject(
-              accountId,
-              selectedChat?.id || 0,
-              {
-                ...MESSAGE_DEFAULT,
-                ...message,
-              },
-              "{'privitty':'true', 'type':'new_peer_add'}"
-            )
-          } else {
-            runtime.showNotification({
-              title: 'Privitty',
-              body: 'Privitty ADD peer state =' + parsedResponse.message_type,
-              icon: null,
-              chatId: 0,
-              messageId: 0,
-              accountId,
-              notificationType: 0,
-            })
-            return
-          }
+          console.log('✅ Message sent successfully with ID:', msgId)
+        } else {
           runtime.showNotification({
             title: 'Privitty',
-            body: 'Enabling Privitty security',
+            body: 'Privitty ADD peer state =' + parsedResponse.message_type,
             icon: null,
             chatId: 0,
             messageId: 0,
@@ -467,10 +494,20 @@ export default function MenuAttachment({
           })
           return
         }
-      } catch (e) {
-        console.error('Error in MenuAttachment', e)
+        runtime.showNotification({
+          title: 'Privitty',
+          body: 'Enabling Privitty security',
+          icon: null,
+          chatId: 0,
+          messageId: 0,
+          accountId,
+          notificationType: 0,
+        })
         return
       }
+    } catch (e) {
+      console.error('Error in MenuAttachment', e)
+      return
     }
 
     const attachmentMenuButtonElement = document.querySelector(

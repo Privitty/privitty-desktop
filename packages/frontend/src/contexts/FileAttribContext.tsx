@@ -6,6 +6,7 @@ export interface FileAttribute {
   allowForward: boolean
   allowedTime: string
   FileDirectory: string
+  oneTimeKey: string
 }
 
 interface FileAttributeContextType {
@@ -33,6 +34,7 @@ export const SharedDataProvider: React.FC<SharedDataProviderProps> = ({
     allowForward: false,
     allowedTime: '',
     FileDirectory: '',
+    oneTimeKey: '',
   })
 
   return (
