@@ -30,6 +30,11 @@
     right: 5px;
   }
 
+  // For incoming messages, use normal row direction to put timestamp on the left
+  &.incomingFooter {
+    flex-direction: row;
+  }
+
   // &.withReactionsNoText {
   //   margin-bottom: 10px;
   // }

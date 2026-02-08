@@ -10,6 +10,7 @@ import useDialog from '../../hooks/dialog/useDialog'
 import { selectedAccountId } from '../../ScreenController'
 import { BackendRemote } from '../../backend-com'
 import { T } from '@deltachat/jsonrpc-client'
+import { Contact } from '@deltachat/jsonrpc-client/dist/generated/types'
 
 interface FileAccessUser {
   email: string
@@ -61,15 +62,23 @@ export default function FileAccessStatusDialog({
 
         const parsed =
           typeof response === 'string' ? JSON.parse(response) : response
-        const result = parsed?.result
-        console.log('getFileAccessStatusList ==== 📂📂📂📂📂', result)
+        let result = parsed?.result
 
-        if (!result || !result.data) {
-          throw new Error('Invalid response from getFileAccessStatusList')
+        // Handle double-encoded result (result may be a JSON string)
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result)
+          } catch {
+            // fallback to original
+          }
         }
 
-        const data = result.data
-        const fileData = data.file
+        const data = result?.data
+        const fileData = data?.file
+
+        if (!data) {
+          throw new Error('Invalid response from getFileAccessStatusList')
+        }
 
         // Process Shared (Relay) users - shared_info is a single object
         const shared: FileAccessUser[] = []
@@ -86,17 +95,19 @@ export default function FileAccessStatusDialog({
           })
         }
 
-        // Process Forwarded users - forwarded_list is an array
+        // Process Forwarded users - forwarded_list is an array (in file or at data level)
         const forwarded: FileAccessUser[] = []
-        if (Array.isArray(fileData?.forwarded_list)) {
-          fileData.forwarded_list.forEach((user: any) => {
+        const forwardedList =
+          fileData?.forwarded_list ?? data?.forwarded_list ?? []
+        if (Array.isArray(forwardedList)) {
+          forwardedList.forEach((user: any) => {
             forwarded.push({
               email: user.contact_id || '',
               name: user.contact_name,
               role: 'Forwardee',
               status: user.status || 'active',
-              expiry: user.expiry_time || null,
-              timestamp: user.timestamp || null,
+              expiry: user.expiry_time ?? null,
+              timestamp: user.timestamp ?? null,
               permissions: [],
             })
           })
@@ -169,7 +180,7 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDenied} >Denied</button>
+              <button onClick={onDenied}>Denied</button>
               <button onClick={onAccept}>Accept</button>
             </div>
           </DialogContent>
@@ -239,19 +250,6 @@ export default function FileAccessStatusDialog({
         </DialogBody>
       </DialogWithHeader>
     )
-  }
-
-  const openPrivittyProcess = async () => {
-    const dialogId = await openDialog(PrivittyProcessDialog, {
-      onSave: value => {
-        console.log('Privitty Config:', value)
-        closeDialog(dialogId)
-
-        // 🔥 Call backend / runtime here
-        // runtime.PrivittySendMessage(...)
-      },
-      onClose: () => closeDialog(dialogId),
-    })
   }
 
   const handleLockClick = async (contactId: string) => {
@@ -410,6 +408,68 @@ export default function FileAccessStatusDialog({
     })
   }
 
+  const handleBlockClick = async (contactId: string) => {
+    const response = await runtime.PrivittySendMessage('sendEvent', {
+      event_type: 'initAccessRevokeRequest',
+      event_data: {
+        chat_id: String(chatId),
+        file_path: filePath,
+        contact_id: contactId,
+      },
+    })
+
+    const parsed = JSON.parse(response).result?.data?.pdu
+
+    if (parsed) {
+      // Extract the PDU base64 string directly
+      const pdu = parsed
+      const MESSAGE_DEFAULT: T.MessageData = {
+        file: null,
+        filename: null,
+        viewtype: null,
+        html: null,
+        location: null,
+        overrideSenderName: null,
+        quotedMessageId: null,
+        quotedText: null,
+        text: null,
+      }
+      const message: Partial<T.MessageData> = {
+        text: pdu,
+        file: undefined,
+        filename: undefined,
+        quotedMessageId: null,
+        viewtype: 'Text',
+      }
+
+      const msgId = await BackendRemote.rpc.sendMsg(accountId, chatId || 0, {
+        ...MESSAGE_DEFAULT,
+        ...message,
+      })
+      console.log('✅ Message sent successfully with ID:', msgId)
+    } else {
+      runtime.showNotification({
+        title: 'Privitty',
+        body: 'Privitty ADD peer state =' + parsed,
+        icon: null,
+        chatId: 0,
+        messageId: 0,
+        accountId,
+        notificationType: 0,
+      })
+      return
+    }
+    runtime.showNotification({
+      title: 'Privitty',
+      body: 'Enabling Privitty security',
+      icon: null,
+      chatId: 0,
+      messageId: 0,
+      accountId,
+      notificationType: 0,
+    })
+  }
+
   const formatTimestamp = (
     timestamp: string | number | null | undefined
   ): string => {
@@ -449,11 +509,15 @@ export default function FileAccessStatusDialog({
   const UserCard = ({
     user,
     showPadlock = false,
+    showLockButton = false,
     onLockClick,
+    onBlockClick,
   }: {
     user: FileAccessUser
     showPadlock?: boolean
+    showLockButton?: boolean
     onLockClick?: (contactId: string) => void
+    onBlockClick?: (contactId: string) => void
   }) => {
     const displayName = user.name || user.email || 'Unknown'
     const initial = avatarInitial(displayName, user.email)
@@ -521,24 +585,54 @@ export default function FileAccessStatusDialog({
           )}
         </div>
 
-        {/* Padlock Icon for Forwarded */}
-        {showPadlock && isOwner && (
-          <button
-            onClick={() => onLockClick && onLockClick(user.email)}
+        {/* Action buttons: Block (shared + forwarded), Lock (forwarded only) */}
+        {showPadlock && isOwner && (onBlockClick || (showLockButton && onLockClick)) && (
+          <div
             style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '4px',
-              backgroundColor: '#7b2cbf',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              gap: '8px',
               flexShrink: 0,
             }}
           >
-            {/* <span style={{ color: '#fff', fontSize: '14px' }}>🔒</span> */}
-            <Icon icon='lock' size={20} coloring={'#fff'} />
-          </button>
+            {onBlockClick && (
+              <button
+                onClick={() => onBlockClick(user.email)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  backgroundColor: '#6750A4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon icon='blocked' size={20} coloring={'#fff'} />
+              </button>
+            )}
+            {showLockButton && onLockClick && (
+              <button
+                onClick={() => onLockClick(user.email)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  backgroundColor: '#6750A4',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon icon='lock' size={20} coloring={'#fff'} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     )
@@ -612,7 +706,13 @@ export default function FileAccessStatusDialog({
                   </div>
                   <div style={{ backgroundColor: '#fff' }}>
                     {sharedUsers.map((user, index) => (
-                      <UserCard key={`shared-${index}`} user={user} />
+                      <UserCard
+                        key={`shared-${index}`}
+                        user={user}
+                        showPadlock={true}
+                        showLockButton={false}
+                        onBlockClick={handleBlockClick}
+                      />
                     ))}
                   </div>
                 </div>
@@ -643,6 +743,8 @@ export default function FileAccessStatusDialog({
                         key={`forwarded-${index}`}
                         user={user}
                         showPadlock={true}
+                        showLockButton={true}
+                        onBlockClick={handleBlockClick}
                         onLockClick={handleLockClick}
                       />
                     ))}

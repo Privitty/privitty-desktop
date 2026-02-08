@@ -40,6 +40,7 @@ export type IconName =
   | 'list'
   | 'link'
   | 'lock'
+  | 'loading'
   | 'map'
   | 'minus'
   | 'more'

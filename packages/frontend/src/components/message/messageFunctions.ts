@@ -17,10 +17,6 @@ import { C, type T } from '@deltachat/jsonrpc-client'
 import ConfirmDeleteMessageDialog from '../dialogs/ConfirmDeleteMessage'
 import { basename, dirname, extname } from 'path'
 import { json } from 'stream/consumers'
-import {
-  PRV_APP_STATUS_SEND_PEER_PDU,
-  PRV_EVENT_ADD_NEW_PEER,
-} from '../../../../target-electron/src/privitty/privitty_type'
 
 const log = getLogger('render/msgFunctions')
 
@@ -90,40 +86,7 @@ export async function openAttachmentInShell(
         chat_id: String(msg.chatId),
         prv_file: filePathName,
       },
-      // chatId: msg.chatId,
-      // filePath: dirname(filePathName),
-      // fileName: msg.fileName,
-      // direction: msg.fromId === C.DC_CONTACT_ID_SELF ? 1 : 0,
     })
-
-    console.log('messagefuntions 🛣️🛣️🛣️', response)
-
-    // filePathName = JSON.parse(JSON.parse(response).result).decryptedFile
-    // if (filePathName === 'SPLITKEYS_EXPIRED') {
-    //   runtime.showNotification({
-    //     title: 'Privitty',
-    //     body: 'OTSP expired',
-    //     icon: null,
-    //     chatId: msg.chatId,
-    //     messageId: msg.id,
-    //     accountId: selectedAccountId(),
-    //     notificationType: 0,
-    //   })
-
-    //   return
-    // } else if (filePathName === 'SPLITKEYS_REQUESTED') {
-    //   runtime.showNotification({
-    //     title: 'Privitty',
-    //     body: 'OTSP already requested',
-    //     icon: null,
-    //     chatId: msg.chatId,
-    //     messageId: msg.id,
-    //     accountId: selectedAccountId(),
-    //     notificationType: 0,
-    //   })
-    //   return
-    // }
-    console.log('msg ⚠️⚠️⚠️⚠️⚠️⚠️', msg)
 
     if (msg.fromId === C.DC_CONTACT_ID_SELF) {
       // we will open the viewer if the file is not downloadable
@@ -331,7 +294,6 @@ const privittyForwardable = async (message: T.Message): Promise<boolean> => {
     isforwardable = false
     if (message.fromId === C.DC_CONTACT_ID_SELF) {
       // check if the file is forwardable
-      // console.log('Message Functions 3 ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️', filePathName);
       const response = await runtime.PrivittySendMessage('sendEvent', {
         event_type: 'getFileAccessStatus',
         event_data: {
@@ -355,7 +317,6 @@ const privittyForwardable = async (message: T.Message): Promise<boolean> => {
         },
       })
       const result = JSON.parse(response)
-      console.log('isforwardable ↪️↪️↪️↪️', result.result?.data?.is_forward)
 
       //"result":"{"fileAccessState":"active"}
       if (result) {
@@ -371,7 +332,6 @@ export async function openForwardDialog(
   message: Type.Message
 ) {
   const forwardable = await privittyForwardable(message)
-  console.log('forwardable ⏭️⏭️⏭️⏭️⏭️⏭️ =====>>>', forwardable)
 
   try {
     if (!forwardable) {
@@ -537,15 +497,6 @@ export async function confirmForwardMessage(
         //we need to send a split key to the peer
         const filePathName = message.file.replace(/\\/g, '/')
 
-        console.log('message ======📥📥📥📥📥', message)
-        console.log('filePathName', filePathName)
-        console.log('filePathName1', filePathName1)
-        console.log('dirname(filePathName1)', dirname(filePathName1))
-        console.log('dirname(filePathName)', dirname(filePathName))
-        console.log('basename(filePathName1)', basename(filePathName1))
-        console.log('basename(filePathName)', basename(filePathName))
-        // console.log('dirname(filePathName1)', dirname(filePathName1));
-        // console.log('basename(filePathName1)', basename(filePathName1));
 
         const responseFwdPeerAdd = await runtime.PrivittySendMessage(
           'sendEvent',
@@ -556,12 +507,6 @@ export async function confirmForwardMessage(
               forwardee_chat_id: String(chat.id),
               prv_file: filePathName1,
             },
-            // sourceChatId: message.chatId,
-            // fwdToChatId: chat.id,
-            // fwdToName: chat.name,
-            // filePath: dirname(filePathName1),
-            // fileName: basename(filePathName1),
-            // outgoing: 1,
           }
         )
         const parsedResponse = JSON.parse(responseFwdPeerAdd)

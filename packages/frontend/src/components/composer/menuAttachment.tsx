@@ -17,16 +17,11 @@ import Icon from '../Icon'
 import { ContextMenuItem } from '../ContextMenu'
 import { ContextMenuContext } from '../../contexts/ContextMenuContext'
 
-import type { T } from '@deltachat/jsonrpc-client'
+import { C, type T } from '@deltachat/jsonrpc-client'
 import { BackendRemote } from '../../backend-com'
 import ConfirmSendingFiles from '../dialogs/ConfirmSendingFiles'
 import useMessage from '../../hooks/chat/useMessage'
 import SmallSelectDialogPrivitty from '../SmallSelectDialogPrivitty'
-
-import {
-  PRV_APP_STATUS_SEND_PEER_PDU,
-  PRV_EVENT_ADD_NEW_PEER,
-} from '../../../../target-electron/src/privitty/privitty_type'
 import { useSharedData } from '../../contexts/FileAttribContext'
 //import { set } from 'immutable'
 
@@ -69,15 +64,11 @@ export default function MenuAttachment({
         }
 
         for (const filePath of filePaths) {
-          await sendMessage(
-            accountId,
-            selectedChat.id,
-            {
-              file: filePath,
-              filename: basename(filePath),
-              viewtype: msgViewType,
-            }
-          )
+          await sendMessage(accountId, selectedChat.id, {
+            file: filePath,
+            filename: basename(filePath),
+            viewtype: msgViewType,
+          })
           // start sending other files, don't wait until last file is sent
           if (runtime.getRuntimeInfo().target === 'browser') {
             // browser created temp files during upload that can now be cleaned up
@@ -88,6 +79,7 @@ export default function MenuAttachment({
     })
   }
 
+  let encryptedFile: string
   const addFilenameFileMod = async () => {
     // function for files
     const { defaultPath, setLastPath } = await rememberLastUsedPath(
@@ -99,27 +91,57 @@ export default function MenuAttachment({
       defaultPath,
     })
 
+ 
     if (files.length === 1) {
       setLastPath(dirname(files[0]))
       let filePathName = files[0].replace(/\\/g, '/')
-      let encryptedFile: string = await runtime.PrivittySendMessage(
-        'sendEvent',
-        {
-          event_type: "fileEncryptRequest",
-          event_data: {
-              chat_id: String(selectedChat?.id || 0),
-              file_path: filePathName,
-              allow_download: fileAttribute.allowDownload,
-              allow_forward: fileAttribute.allowForward,
-              access_time: Number(fileAttribute.allowedTime)
-        }
-        }
-      )
-      let data = JSON.parse(encryptedFile)
-      const fileName = data.result?.data?.prv_file_name;
-      const oneTimeKey = data.result?.data?.one_time_key
-      console.log('FileName 📇📇📇📇', fileName);
       
+      try {
+        if (selectedChat?.id) {
+
+          const basicChat = await BackendRemote.rpc.getBasicChatInfo(
+            accountId,
+            selectedChat.id
+          )
+          if (basicChat.chatType === C.DC_CHAT_TYPE_GROUP) {
+            encryptedFile = await runtime.PrivittySendMessage(
+              'sendEvent',
+              {
+                event_type: 'groupFileEncryptRequest',
+                event_data: {
+                  group_chat_id: String(selectedChat?.id || 0),
+                  file_path: filePathName,
+                },
+              }
+            )
+          } else {
+            encryptedFile = await runtime.PrivittySendMessage(
+              'sendEvent',
+              {
+                event_type: 'fileEncryptRequest',
+                event_data: {
+                  chat_id: String(selectedChat?.id || 0),
+                  file_path: filePathName,
+                  allow_download: fileAttribute.allowDownload,
+                  allow_forward: fileAttribute.allowForward,
+                  access_duration: Number(fileAttribute.allowedTime), // duration in seconds (string)
+                },
+              }
+            )
+          }
+        }
+      } catch (e) {
+        console.error(
+          'Failed to determine chat type, falling back to fileEncryptRequest',
+          e
+        )
+      }
+
+      let data = JSON.parse(encryptedFile)
+      const fileName = data.result?.data?.prv_file_name
+      const oneTimeKey = data.result?.data?.one_time_key
+      console.log('FileName 📇📇📇📇', fileName)
+
       //check if file exists
       if (!fileName || fileName === '') {
         console.error('Encrypted file name is empty or undefined:', fileName)
@@ -153,7 +175,7 @@ export default function MenuAttachment({
         allowForward: fileAttribute.allowForward,
         allowedTime: fileAttribute.allowedTime,
         FileDirectory: filePathName,
-        oneTimeKey: oneTimeKey
+        oneTimeKey: oneTimeKey,
       })
 
       // Don't delete the file immediately - it will be deleted after the message is sent
@@ -275,23 +297,6 @@ export default function MenuAttachment({
     ]
 
     await openPrivittyProcess()
-    // const files = await runtime.showOpenFileDialog({
-    //   filters: [
-    //     {
-    //       name: tx('image'),
-    //       extensions: IMAGE_EXTENSIONS,
-    //     },
-    //   ],
-    //   properties: ['openFile', 'multiSelections'],
-    //   defaultPath,
-    // })
-
-    // if (files.length === 1) {
-    //   setLastPath(dirname(files[0]))
-    //   addFileToDraft(files[0], basename(files[0]), 'Image')
-    // } else if (files.length > 1) {
-    //   confirmSendMultipleFiles(files, 'Image')
-    // }
   }
 
   const onVideoChat = useCallback(async () => {
@@ -381,21 +386,23 @@ export default function MenuAttachment({
   const onClickAttachmentMenu = async (
     event: React.MouseEvent<any, MouseEvent>
   ) => {
-    const result = await runtime.PrivittySendMessage(
-      'isChatProtected',
-      {
-        chat_id: String(selectedChat?.id),
-      }
-    )
+    const result = await runtime.PrivittySendMessage('isChatProtected', {
+      chat_id: String(selectedChat?.id),
+    })
 
-    console.log(result);
+    console.log(result)
     const accountid: number =
-            (await BackendRemote.rpc.getSelectedAccountId()) || 0
-     const basicChat = await BackendRemote.rpc.getBasicChatInfo(
-            accountid,
-            selectedChat?.id || 0
-          )
-          console.log('accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️', accountid, 'BasicChat =', basicChat)
+      (await BackendRemote.rpc.getSelectedAccountId()) || 0
+    const basicChat = await BackendRemote.rpc.getBasicChatInfo(
+      accountid,
+      selectedChat?.id || 0
+    )
+    console.log(
+      'accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
+      accountid,
+      'BasicChat =',
+      basicChat
+    )
 
     const resp = JSON.parse(result)
     try {
@@ -404,27 +411,34 @@ export default function MenuAttachment({
           'accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
           accountid,
           'BasicChat =',
-          basicChat, "selectedChat?.id", selectedChat?.id, "basicChat.id", basicChat.id
+          basicChat,
+          'selectedChat?.id',
+          selectedChat?.id,
+          'basicChat.id',
+          basicChat.id
         )
-        
+
         // Get contact email dynamically
-        let peerEmail; // fallback
-        let peerId;
+        let peerEmail // fallback
+        let peerId
         try {
           const fullChat = await BackendRemote.rpc.getFullChatById(
             accountid,
             selectedChat?.id || 0
           )
-          console.log("fullChat",fullChat);
-          
-          if (fullChat && fullChat.contactIds && fullChat.contactIds.length > 0) {
+          console.log('fullChat', fullChat)
+
+          if (
+            fullChat &&
+            fullChat.contactIds &&
+            fullChat.contactIds.length > 0
+          ) {
             const contact = await BackendRemote.rpc.getContact(
               accountid,
               fullChat.contactIds[0]
             )
 
-            console.log('contact', contact);
-            
+            console.log('contact', contact)
 
             if (contact && contact.address) {
               peerId = contact.id
@@ -435,10 +449,9 @@ export default function MenuAttachment({
           console.error('Error getting contact email:', error)
           // Use fallback email if there's an error
         }
-        
 
-        console.log('peerEmail ====== 📧📧', peerEmail);
-        
+        console.log('peerEmail ====== 📧📧', peerEmail)
+
         const addpeerResponse = await runtime.PrivittySendMessage('sendEvent', {
           event_type: 'initPeerAddRequest',
           event_data: {

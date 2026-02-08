@@ -30,16 +30,66 @@ import { selectedAccountId } from '../../ScreenController'
 import { dirname, extname } from 'path'
 import { file } from 'jszip'
 
+type PrivittyStatus =
+  | 'active'
+  | 'requested'
+  | 'expired'
+  | 'revoked'
+  | 'deleted'
+  | 'waiting_owner_action'
+  | 'denied'
+  | 'not_found'
+  | 'none'
+  | 'error'
+  | undefined
+
 type AttachmentProps = {
   text?: string
   message: Type.Message
   tabindexForInteractiveContents: -1 | 0
+  privittyStatus?: PrivittyStatus
+}
+
+/**
+ * Gets the background color and text color for the file attachment based on the Privitty status.
+ * Returns an object with backgroundColor and textColor, or null for default styling.
+ */
+function getPrivittyFileColors(
+  status: PrivittyStatus | null | undefined,
+  direction: 'incoming' | 'outgoing'
+): { backgroundColor: string; textColor: string } | null {
+  // For outgoing messages, default is white with black text
+  if (direction === 'outgoing') {
+    switch (status) {
+      case 'revoked':
+        return { backgroundColor: '#C4891B', textColor: '#FFFFFF' } // Yellow with white text
+      case 'expired':
+        return { backgroundColor: '#808080', textColor: '#FFFFFF' } // Grey with white text
+      case 'denied':
+        return { backgroundColor: '#D93229', textColor: '#FFFFFF' } // Red with white text
+      default:
+        return null // Keep default white with black text
+    }
+  } else {
+    // For incoming messages, default is purple (#7F66C5) with white text
+    switch (status) {
+      case 'revoked':
+        return { backgroundColor: '#C4891B', textColor: '#FFFFFF' } // Yellow with white text
+      case 'expired':
+        return { backgroundColor: '#808080', textColor: '#FFFFFF' } // Grey with white text
+      case 'denied':
+        return { backgroundColor: '#D93229', textColor: '#FFFFFF' } // Red with white text
+      default:
+        return null // Keep default purple with white text
+    }
+  }
 }
 
 export default function Attachment({
   text,
   message,
   tabindexForInteractiveContents,
+  privittyStatus,
 }: AttachmentProps) {
   const tx = useTranslationFunction()
   const { openDialog } = useDialog()
@@ -47,10 +97,8 @@ export default function Attachment({
     return null
   }
   const direction = getDirection(message)
+  const fileColors = getPrivittyFileColors(privittyStatus, direction)
   const onClickAttachment = async (ev: any) => {
-    console.log('onClickAttachment ⛔️📍')
-    console.log('onClickAttachment ⛔️📍', message)
-
     if (message.viewType === 'Sticker') return
     ev.stopPropagation()
     if (isDisplayableByFullscreenMedia(message.fileMime)) {
@@ -86,18 +134,11 @@ export default function Attachment({
 
       if (isSupportedMedia) {
         // Check if this is a supported media file that should be opened in secure viewer
-        console.log(
-          'onClickAttachment ⛔️📍 Check if this is a supported media file that should be opened in secure viewer'
-        )
         const fileName = message.fileName?.toLowerCase() || ''
-
         const cleanedFileName = fileName.endsWith('.prv')
           ? fileName.slice(0, -4)
           : fileName
-
         const fileExtension = cleanedFileName.split('.').pop() || ''
-
-        console.log('fileExtension:', fileExtension)
 
         const supportedImageExtensions = [
           'jpg',
@@ -128,15 +169,11 @@ export default function Attachment({
             // For supported media files, we need to get the file path and open in secure viewer
             let tmpFile: string
             try {
-              console.log('copyFileToInternalTmpDir')
-
               tmpFile = await runtime.copyFileToInternalTmpDir(
                 message.fileName || '',
                 message.file || ''
               )
             } catch (copyError) {
-              console.log('Media File Error ⛔️⛔️⛔️⛔️⛔️⛔️⛔️')
-
               const errorMessage =
                 copyError instanceof Error ? copyError.message : 'Unknown error'
 
@@ -160,11 +197,6 @@ export default function Attachment({
             filePathName = tmpFile.replace(/\\/g, '/')
 
             // Handle .prv files (encrypted files)
-            console.log(
-              'onClickAttachment ⛔️📍 Handle .prv files (encrypted files)'
-            )
-            console.log('MESSAGE ==== 📥📥📥📥📥📥', message)
-
             const isForwarded =
               Boolean(message.isForwarded) && message.viewType === 'File'
 
@@ -177,7 +209,6 @@ export default function Attachment({
                 },
               })
               const fileAccessStatus = JSON.parse(response).result?.data?.status
-              console.log('fileAccessStatus', fileAccessStatus)
               if (fileAccessStatus == 'expired') {
                 const yes = await confirmDialog(
                   openDialog,
@@ -185,9 +216,6 @@ export default function Attachment({
                   'SEND REQUEST'
                 )
                 if (yes) {
-                  console.log(
-                    '🔐 Forwarded file detected, requesting access...'
-                  )
                   const forwardAccessResp = await runtime.PrivittySendMessage(
                     'sendEvent',
                     {
@@ -233,71 +261,62 @@ export default function Attachment({
                       ...messageR,
                     }
                   )
-                  console.log('Access revoke message sent, msgId:', msgId)
                 }
                 return
               }
-              if (fileAccessStatus == 'active'){
+              if (fileAccessStatus == 'active') {
                 const response = await runtime.PrivittySendMessage(
-                    'sendEvent',
-                    {
-                      event_type: 'forwardedFileDecryptRequest',
-                      event_data: {
-                        chat_id: String(message.chatId),
-                        prv_file: filePathName,
-                      },
-                    }
-                  )
-                  const newResponse = JSON.parse(response)
-                  console.log(
-                    'response from messageAttachment ⚠️⚠️⚠️⚠️⚠️',
-                    String(newResponse)
-                  )
-                  filePathName = String(newResponse.result?.data?.file_path)
+                  'sendEvent',
+                  {
+                    event_type: 'forwardedFileDecryptRequest',
+                    event_data: {
+                      chat_id: String(message.chatId),
+                      prv_file: filePathName,
+                    },
+                  }
+                )
+                const newResponse = JSON.parse(response)
+                filePathName = String(newResponse.result?.data?.file_path)
               }
             } else if (message.fileName?.toLowerCase().endsWith('.prv')) {
-              console.log('filePathName from messageAttachment')
-              console.log(
-                'filePathName from messageAttachment',
-                dirname(filePathName)
+              const basicChat = await BackendRemote.rpc.getBasicChatInfo(
+                selectedAccountId(),
+                message.chatId
               )
-              const response = await runtime.PrivittySendMessage('sendEvent', {
-                event_type: 'fileDecryptRequest',
-                event_data: {
-                  chat_id: String(message.chatId),
-                  prv_file: filePathName,
-                },
-                // chatId: message.chatId,
-                // filePath: dirname(filePathName),
-                // fileName: message.fileName,
-                // direction: message.fromId === C.DC_CONTACT_ID_SELF ? 1 : 0,
-              })
 
-              console.log('response from messageAttachment', response)
-              const newResponse = JSON.parse(response)
-              console.log(
-                'response from messageAttachment',
-                String(newResponse.result?.data?.file_path)
-              )
+              let decryptRequest
+
+              if (basicChat.chatType === C.DC_CHAT_TYPE_GROUP) {
+                decryptRequest = await runtime.PrivittySendMessage(
+                  'sendEvent',
+                  {
+                    event_type: 'groupFileDecryptRequest',
+                    event_data: {
+                      group_chat_id: String(message.chatId),
+                      prv_file: filePathName,
+                    },
+                  }
+                )
+              } else {
+                decryptRequest = await runtime.PrivittySendMessage(
+                  'sendEvent',
+                  {
+                    event_type: 'fileDecryptRequest',
+                    event_data: {
+                      chat_id: String(message.chatId),
+                      prv_file: filePathName,
+                    },
+                  }
+                )
+              }
+
+              const newResponse = JSON.parse(decryptRequest)
               filePathName = String(newResponse.result?.data?.file_path)
-
-              // if (filePathName === 'SPLITKEYS_EXPIRED' || filePathName === 'SPLITKEYS_REQUESTED') {
-              //   // Fall back to regular opening
-              //   openAttachmentInShell(message)
-              //   return
-              // }
             }
 
             // Determine the correct viewer type based on file extension
             let viewerType: 'pdf' | 'image' | 'video' = 'pdf'
             const finalFileExtension = extname(filePathName).toLowerCase()
-
-            console.log('Determining viewer type')
-            console.log('Determining viewer type', {
-              filePathName,
-              finalFileExtension,
-              fileName: message.fileName,
-            })
 
             if (finalFileExtension === '.pdf') {
               viewerType = 'pdf'
@@ -327,13 +346,6 @@ export default function Attachment({
             ) {
               viewerType = 'video'
             }
-
-            console.log('Opening secure viewer', {
-              viewerType,
-              filePathName,
-              fileName: message.fileName,
-            })
-
             // Open in appropriate secure viewer
             openSecureViewer(
               openDialog,
@@ -525,6 +537,11 @@ export default function Attachment({
           'message-attachment-generic',
           withContentBelow ? 'content-below' : null
         )}
+        style={
+          fileColors
+            ? { backgroundColor: fileColors.backgroundColor }
+            : undefined
+        }
         onClick={onClickAttachment}
         tabIndex={tabindexForInteractiveContents}
       >
@@ -540,9 +557,22 @@ export default function Attachment({
             </div>
           ) : null}
         </div>
-        <div className='text-part'>
-          <div className='name'>{fileName}</div>
-          <div className='size'>{fileBytes ? filesize(fileBytes) : '?'}</div>
+        <div
+          className='text-part'
+          style={fileColors ? { color: fileColors.textColor } : undefined}
+        >
+          <div
+            className='name'
+            style={fileColors ? { color: fileColors.textColor } : undefined}
+          >
+            {fileName}
+          </div>
+          <div
+            className='size'
+            style={fileColors ? { color: fileColors.textColor } : undefined}
+          >
+            {fileBytes ? filesize(fileBytes) : '?'}
+          </div>
         </div>
       </button>
     )
