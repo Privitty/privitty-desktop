@@ -10,8 +10,6 @@ import * as T from '@deltachat/jsonrpc-client/dist/generated/types.js'
 // import { BackendRemote } from '../../../frontend/src/backend-com'
 const log = getLogger('Privitty')
 
-import { PRV_EVENT_CREATE_VAULT } from './privitty_type'
-
 export class PrivittyClient {
   // Get absolute path of the C++ binary
   _cmd_path = ''
@@ -156,17 +154,6 @@ export class PrivittyClient {
     this.serverProcess?.stdin.write(message + '\n')
   }
 
-  // sendJsonRpcRequest(method: string, requestId: number, params: any) {
-  //   const request = JSON.stringify({
-  //     jsonrpc: '2.0',
-  //     method,
-  //     seqno: requestId,
-  //     params,
-  //   })
-  //   console.log('Privitty client JSON Request send 0055⛔️', request)
-  //   this.serverProcess?.stdin.write(request + '\n')
-  // }
-
   sendJsonRpcRequest(method: string, params: any = {}, requestId?: number,): Promise<any> {
   const request = {
     jsonrpc: "2.0",
@@ -208,70 +195,3 @@ export class PrivittyClient {
     this.sendJsonRpcRequest('getHealth');
   }
 }
-
-// const binaryPath = resolve("./dll/", "privitty_jsonrpc_server");
-// // Spawn the C++ JSON-RPC server
-// const serverProcess = spawn(binaryPath);
-
-// // Listen for responses from C++ server
-// serverProcess.stdout.on("data", (data) => {
-//     const messages: string[] = data.toString().trim().split("\n");
-
-//     messages.forEach((message: string) => {
-//         try {
-//             if (!message.startsWith("{")) {
-//                 console.warn("Skipping non-JSON message:", message);
-//                 return; // Ignore non-JSON output
-//             }
-
-//             const json = JSON.parse(message);
-
-//             if (json.method === "onEvent") {
-//                 console.log("🔔 Async Event:", json.params);
-//             } else {
-//                 console.log("✅ Response from C++:", json);
-//             }
-//         } catch (error) {
-//             console.error("❌ Error parsing JSON:", error);
-//         }
-//     });
-// });
-
-// // Handle errors
-// serverProcess.stderr.on("data", (data) => {
-//     console.error("Error:", data.toString());
-// });
-
-// function sendJsonRpcRequest(method: string, params: any) {
-//     const request = JSON.stringify({ jsonrpc: "2.0", method, params});
-//     serverProcess.stdin.write(request + "\n");
-// }
-
-// // Function to send JSON-RPC requests
-// function sendJsonRpcRequestWOP(method: string) {
-//     const request = JSON.stringify({ jsonrpc: "2.0", method});
-//     serverProcess.stdin.write(request + "\n");
-// }
-
-// // Send JSON-RPC requests
-// sendJsonRpcRequestWOP("version");
-// sendJsonRpcRequestWOP("startEventLoop");
-// sendJsonRpcRequest("produceEvent", {
-//     eventType: 1,
-//     mID: "sender@privittytech.com",
-//     mName: "Alice",
-//     msgId: 123,
-//     fromId: 7,
-//     chatId: 12,
-//     pCode: "Crossroad",
-//     filePath: "",
-//     fileName: "",
-//     direction: 0,
-//     pdu: ""
-// });
-// sendJsonRpcRequest("encryptFile", {
-//     chatId: 12,
-//     filePath: "/path/to/file",
-//     fileName: "abc.pdf"
-// });
-// sendJsonRpcRequestWOP("stopConsumer");

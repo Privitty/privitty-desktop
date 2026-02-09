@@ -83,8 +83,7 @@ type PrivittyStatus =
 async function getPrivittyMessageStatus(
   message: T.Message
 ): Promise<PrivittyStatus> {
-  let privittyStatus: PrivittyStatus = 'active'
-  // console.log('⛔️message 📨📨📨',message);
+  let privittyStatus: PrivittyStatus = 'none'
   
   if (!message.file && message.fileName) {
     if (message.isForwarded) {
@@ -116,7 +115,6 @@ async function getPrivittyMessageStatus(
       try {
         const jsonrespstr = JSON.parse(response)
         privittyStatus = JSON.parse(jsonrespstr?.result?.data?.status)
-        console.log('jsonrespstr ⛔️⛔️⛔️⛔️',jsonrespstr.result);
       } catch (e) {
         console.error('Error parsing response:', e)
       }
@@ -299,15 +297,12 @@ const ForwardedTitle = ({
 }
 
 async function showFileRecall(message: T.Message): Promise<boolean> {
-  console.log('showFileRecall. message 📥📥📥📥📥📥📥📥📥📥📥',message);
   if (
     message.file &&
     message.fileName &&
     message.fromId === C.DC_CONTACT_ID_SELF &&
     !message.isForwarded
   ) {
-    console.log('showFileRecall ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️',message.fileName);
-    
     const response = await runtime.PrivittySendMessage(
       'sendEvent',
         {
@@ -319,9 +314,7 @@ async function showFileRecall(message: T.Message): Promise<boolean> {
         }
     )
     const jsonresp = JSON.parse(response)
-    console.log('jsonresp ⏭️⏭️⏭️⏭️',jsonresp)
     if (jsonresp?.result?.data?.status === 'active') {
-      console.log('file can be recalled')
       return Promise.resolve(true)
     } else {
       console.log('file cannot be recalled:')
@@ -333,12 +326,8 @@ async function showFileRecall(message: T.Message): Promise<boolean> {
 }
 
 async function showFileForward(message: T.Message): Promise<boolean> {
-  console.log('showFileForward. message 📥📥📥📥📥📥📥📥📥📥📥',message);
-  
   if (message.file && message.fileName) {
     if (message.fromId === C.DC_CONTACT_ID_SELF) {
-      console.log('showFileForward ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️');
-      console.log('showFileForward ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️');
       const response = await runtime.PrivittySendMessage(
         'sendEvent',
         {
@@ -350,9 +339,7 @@ async function showFileForward(message: T.Message): Promise<boolean> {
         }
       )
       const jsonresp = JSON.parse(response)
-      console.log('jsonresp ⏭️⏭️⏭️⏭️',jsonresp)
       if (jsonresp?.result?.data?.status === 'active') {
-        console.log('file can be forwarded')
         return Promise.resolve(true)
       } else {
         console.log('file cannot be forwarded:')
@@ -371,9 +358,7 @@ async function showFileForward(message: T.Message): Promise<boolean> {
         }
       )
       const jsonresp = JSON.parse(response)
-      console.log('jsonresp ⏭️⏭️⏭️⏭️',jsonresp);
       if (jsonresp?.result?.data?.is_forward) {
-        console.log('file can be forwarded')
         return Promise.resolve(true)
       } else {
         console.log('file cannot be forwarded:')
@@ -510,7 +495,6 @@ async function buildContextMenu(
     showRecallMsg && {
       label: tx('recall_message'),
       action: async () => {
-        console.log('Message ============= 📥📥📥📥',message);
         const response = await runtime.PrivittySendMessage('sendEvent', {
           event_type: "initAccessRevokeRequest",
           event_data:
@@ -557,8 +541,6 @@ async function buildContextMenu(
             ...messageR,
           }
         )
-        console.log('Access revoke message sent, msgId:', msgId)
-
       },
     },
     // Send emoji reaction
@@ -733,7 +715,6 @@ async function isPduMessage(message: T.Message): Promise<boolean> {
   }
 
   const isPrivitty = await checkIsPrivittyMessage(message.text)
-  console.log();
   
   return isPrivitty
 }
@@ -755,7 +736,7 @@ function getPrivittyStatusLabel(
     case 'waiting_owner_action':
       return 'Waiting for owner action'
     case 'denied':
-      return 'Access denied'
+      return 'Request denied'
     case 'not_found':
       return 'File not found'
     case 'none':
@@ -764,6 +745,70 @@ function getPrivittyStatusLabel(
       return 'Status unavailable'
     default:
       return null
+  }
+}
+
+/**
+ * Gets the color for the Privitty status based on the status value.
+ * Returns yellow for revoked, grey for expired, red for denied.
+ */
+function getPrivittyStatusColor(
+  status: PrivittyStatus | null
+): string {
+  switch (status) {
+    case 'revoked':
+      return '#FFA500' // Yellow/Orange
+    case 'expired':
+      return '#808080' // Grey
+    case 'denied':
+      return '#FF0000' // Red
+    case 'active':
+      return '#4CAF50' // Green (for active status)
+    case 'requested':
+      return '#2196F3' // Blue (for requested status)
+    case 'waiting_owner_action':
+      return '#FF9800' // Orange (for waiting status)
+    case 'deleted':
+    case 'not_found':
+    case 'error':
+    case 'none':
+    default:
+      return '#666666' // Default grey
+  }
+}
+
+/**
+ * Gets the background color for the file attachment based on the Privitty status.
+ * Returns yellow for revoked, grey for expired, red for denied, or null for default.
+ */
+function getPrivittyFileBackgroundColor(
+  status: PrivittyStatus | null,
+  direction: 'incoming' | 'outgoing'
+): string | null {
+  // For outgoing messages, default is white, so we only change for specific statuses
+  if (direction === 'outgoing') {
+    switch (status) {
+      case 'revoked':
+        return '#FFD700' // Yellow
+      case 'expired':
+        return '#808080' // Grey
+      case 'denied':
+        return '#FF6B6B' // Red
+      default:
+        return null // Keep default white
+    }
+  } else {
+    // For incoming messages, default is purple (#7F66C5)
+    switch (status) {
+      case 'revoked':
+        return '#FFD700' // Yellow
+      case 'expired':
+        return '#808080' // Grey
+      case 'denied':
+        return '#FF6B6B' // Red
+      default:
+        return null // Keep default purple
+    }
   }
 }
 
@@ -921,6 +966,7 @@ export default function Message(props: {
   const [privittyReplacementText, setPrivittyReplacementText] = useState<string | null>(null)
   const accountId = selectedAccountId()
   const privittyStatusLabel = getPrivittyStatusLabel(privittyStatus)
+  const privittyStatusColor = getPrivittyStatusColor(privittyStatus)
 
   // Decide once per message whether it is a raw PDU message that should be hidden
   useEffect(() => {
@@ -953,7 +999,6 @@ export default function Message(props: {
           message,
           accountId
         )
-        console.log('Privitty replacement text for message', message.id, ':', replacementText)
         if (!cancelled) {
           setPrivittyReplacementText(replacementText)
         }
@@ -971,31 +1016,49 @@ export default function Message(props: {
   }, [message.id, message.text, message.chatId, accountId])
 
   useEffect(() => {
-  if (!message.file) return;
+    if (!message.file) return;
 
-  const fetchStatus = async () => {
-    try {
-      const response = await runtime.PrivittySendMessage("sendEvent", {
-        event_type: 'getFileAccessStatus',
-        event_data: {
-          chat_id: String(message.chatId),
-          file_path: message.file
-        }
-      });
+    let cancelled = false
+    let intervalId: NodeJS.Timeout | null = null
 
-      const parsed = JSON.parse(response);
-      console.log('parsed.   =============',parsed);
+    const fetchStatus = async () => {
+      if (cancelled) return
       
-      const status = parsed?.result?.data?.status;
-      setPrivittyFileStatus((status as PrivittyStatus) || 'active');
-    } catch (err) {
-      console.error("Privity status error", err);
-      setPrivittyFileStatus("error");
-    }
-  };
+      try {
+        const response = await runtime.PrivittySendMessage("sendEvent", {
+          event_type: 'getFileAccessStatus',
+          event_data: {
+            chat_id: String(message.chatId),
+            file_path: message.file
+          }
+        });
 
-  fetchStatus();
-}, [message.id]);
+        if (cancelled) return
+        const parsed = JSON.parse(response);
+        const status = parsed?.result?.data?.status;
+        setPrivittyFileStatus((status as PrivittyStatus));
+      } catch (err) {
+        if (cancelled) return
+        console.error("Privity status error", err);
+        setPrivittyFileStatus("error");
+      }
+    };
+
+    // Fetch immediately
+    fetchStatus();
+
+    // Set up polling every 3 seconds for real-time updates
+    intervalId = setInterval(() => {
+      fetchStatus();
+    }, 3000);
+
+    return () => {
+      cancelled = true
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [message.id, message.file, message.chatId]);
 
 
   const { id, viewType, text, hasLocation, hasHtml } = message
@@ -1513,6 +1576,7 @@ export default function Message(props: {
                 text={text || undefined}
                 message={message}
                 tabindexForInteractiveContents={tabindexForInteractiveContents}
+                privittyStatus={privittyStatus}
               />
             )}
             {message.viewType === 'Webxdc' && (
@@ -1539,8 +1603,8 @@ export default function Message(props: {
             )}
           </div>
           {showAttachment(message) && (
-            <p style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
-          Privitty status: {privittyStatusLabel || 'Loading...'}
+            <p style={{ marginTop: 6, fontSize: 12, color: privittyStatusColor }}>
+          Status: {privittyStatusLabel || 'Loading...'}
             </p>
           )}
         </div>
@@ -1548,6 +1612,7 @@ export default function Message(props: {
           className={classNames(styles.messageFooter, {
             [styles.onlyMedia]: isWithoutText,
             [styles.withReactionsNoText]: isWithoutText && message.reactions,
+            [styles.incomingFooter]: direction === 'incoming',
           })}
         >
           <MessageMetaData

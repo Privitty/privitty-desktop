@@ -13,7 +13,6 @@ import { runtime } from '@deltachat-desktop/runtime-interface'
 import { dirname, basename, normalize } from 'path'
 //import { ContextMenuContext } from '../../contexts/ContextMenuContext'
 import { useSharedDataOptional } from '../../contexts/FileAttribContext'
-import { PRV_APP_STATUS_PEER_OTSP_SPLITKEYS } from '../../../../target-electron/src/privitty/privitty_type'
 
 export type JumpToMessage = (params: {
   // "not from a different account" because apparently
@@ -155,43 +154,6 @@ export default function useMessage() {
           }
         )
 
-        // Set file attributes (if available) for the just-sent file
-        // try {
-        //   if (sharedData?.FileDirectory) {
-        //     await runtime.PrivittySendMessage('setFileAttributes', {
-        //       chatId: chatId,
-        //       prvFilename: sharedData.FileDirectory,
-        //       outgoing: 1,
-        //       allowDownload: sharedData.allowDownload ? 1 : 0,
-        //       allowForward: sharedData.allowForward ? 1 : 0,
-        //       accessTime: sharedData.allowedTime ? Number(sharedData.allowedTime) : 0,
-        //     })
-        //   }
-        // } catch (error) {
-        //   console.error('Failed to set file attributes:', error)
-        // }
-
-        // Now that the message has been sent successfully, we can safely delete the encrypted file
-        // if (message.file && sharedData?.FileDirectory) {
-        //   try {
-        //     await runtime.PrivittySendMessage('deleteFile', {
-        //       filePath: dirname(sharedData.FileDirectory),
-        //       fileName: basename(sharedData.FileDirectory),
-        //     })
-        //     console.log('Encrypted file deleted after successful sending:', sharedData.FileDirectory)
-        //   } catch (error) {
-        //     console.error('Failed to delete encrypted file after sending:', error)
-        //   }
-        // }
-
-
-        console.log('shared Data', sharedData);
-
-        
-        // const response = await runtime.PrivittySendMessage('freshOtsp', {
-        //   chatId: chatId,
-        //   filePath: sharedData?.FileDirectory,
-        // })
         if (sharedData.oneTimeKey) {
           console.log('need to send otsp message:');
           log.info('need to send otsp message:')

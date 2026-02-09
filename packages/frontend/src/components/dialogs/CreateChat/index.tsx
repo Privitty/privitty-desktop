@@ -808,6 +808,85 @@ export const ChatSettingsSetNameAndProfileImage = ({
   )
 }
 
+const callInitCreateGroup = async (
+  groupChatId: number,
+  groupChatName: string
+) => {
+  await runtime.PrivittySendMessage('sendEvent', {
+    event_type: 'initCreateGroup',
+    event_data: {
+      chat_id: String(groupChatId),
+      chat_name: groupChatName,
+    },
+  })
+}
+const callInitAddMemberToGroup = async (
+  accountId: number,
+  groupChatId: number,
+  memberEmail: string,
+  memberName: string
+) => {
+  const response = await runtime.PrivittySendMessage('sendEvent', {
+    event_type: 'initAddMemberToGroup',
+    event_data: {
+      chat_id: String(groupChatId),
+      memberEmail: memberEmail,
+      memberName: memberName,
+    },
+  })
+
+  const parsed = JSON.parse(response).result?.data?.pdu
+
+  if (parsed) {
+    // Extract the PDU base64 string directly
+    const pdu = parsed
+    const MESSAGE_DEFAULT: T.MessageData = {
+      file: null,
+      filename: null,
+      viewtype: null,
+      html: null,
+      location: null,
+      overrideSenderName: null,
+      quotedMessageId: null,
+      quotedText: null,
+      text: null,
+    }
+    const message: Partial<T.MessageData> = {
+      text: pdu,
+      file: undefined,
+      filename: undefined,
+      quotedMessageId: null,
+      viewtype: 'Text',
+    }
+
+    const msgId = await BackendRemote.rpc.sendMsg(accountId, groupChatId, {
+      ...MESSAGE_DEFAULT,
+      ...message,
+    })
+    console.log('✅ Message sent successfully with ID:', msgId)
+  } else {
+    runtime.showNotification({
+      title: 'Privitty',
+      body: 'Privitty ADD peer state =' + parsed,
+      icon: null,
+      chatId: 0,
+      messageId: 0,
+      accountId,
+      notificationType: 0,
+    })
+    return
+  }
+  runtime.showNotification({
+    title: 'Privitty',
+    body: 'Enabling Privitty security',
+    icon: null,
+    chatId: 0,
+    messageId: 0,
+    accountId,
+    notificationType: 0,
+  })
+}
+
 const useCreateGroup = (
   groupName: string,
   groupImage: string | null | undefined,
@@ -828,12 +907,40 @@ const useCreateGroup = (
       await BackendRemote.rpc.setChatProfileImage(accountId, chatId, groupImage)
     }
 
+    const contactsById = await BackendRemote.rpc.getContactsByIds(
+      accountId,
+      groupMembers
+    )
+
+    // First add all members to the Delta Chat group
     await Promise.all(
-      groupMembers.map(contactId => {
+      groupMembers.map(async contactId => {
         if (contactId === C.DC_CONTACT_ID_SELF) {
           return
         }
-        return BackendRemote.rpc.addContactToChat(accountId, chatId, contactId)
+
+        await BackendRemote.rpc.addContactToChat(accountId, chatId, contactId)
+      })
+    )
+
+    // Then initialize the group in Privitty
+    await callInitCreateGroup(chatId, groupName)
+
+    // Finally, notify Privitty about each added member
+    await Promise.all(
+      groupMembers.map(async contactId => {
+        if (contactId === C.DC_CONTACT_ID_SELF) {
+          return
+        }
+
+        const contact = contactsById[contactId]
+
+        await callInitAddMemberToGroup(
+          accountId,
+          chatId,
+          contact.address,
+          contact.displayName
+        )
       })
     )
 
