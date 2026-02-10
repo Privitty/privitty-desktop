@@ -84,7 +84,7 @@ async function getPrivittyMessageStatus(
   message: T.Message
 ): Promise<PrivittyStatus> {
   let privittyStatus: PrivittyStatus = 'none'
-  
+
   if (!message.file && message.fileName) {
     if (message.isForwarded) {
       const response = await runtime.PrivittySendMessage(
@@ -106,8 +106,8 @@ async function getPrivittyMessageStatus(
         event_type: 'initAccessGrantRequest',
         event_data: {
           chat_id: String(message.chatId),
-          file_path: String(`${message.file}/${message.fileName }`),
-        }
+          file_path: String(`${message.file}/${message.fileName}`),
+        },
         // chatId: message.chatId,
         // fileName: message.fileName,
         // outgoing: message.fromId === C.DC_CONTACT_ID_SELF
@@ -248,50 +248,46 @@ const ForwardedTitle = ({
 
   return (
     <div className='forwarded-indicator'>
-        {conversationType.hasMultipleParticipants && direction !== 'outgoing' ? (
-          reactStringReplace(
-            tx('forwarded_by', '$$$'),
-            '$$$',
-            () => (
-                <button
-                  className='forwarded-indicator-button'
-                  onClick={() => onContactClick(contact)}
-                  tabIndex={tabIndex}
-                  key='displayname'
-                  style={{ color: color }}
-                >
-                  {overrideSenderName ? `~${overrideSenderName}` : displayName}
-                </button>
-            )
-          )
-        ) : direction === 'outgoing' ? (
-            <button
-              onClick={() => onContactClick(contact)}
-              className='forwarded-indicator-button'
-              tabIndex={tabIndex}
-            >
-              {tx('forwarded_message')}
-            </button>
-        ) : null}
-        {message.file && (
+      {conversationType.hasMultipleParticipants && direction !== 'outgoing' ? (
+        reactStringReplace(tx('forwarded_by', '$$$'), '$$$', () => (
           <button
-            onClick={handleBellClick}
-            className='file-access-bell-button'
+            className='forwarded-indicator-button'
+            onClick={() => onContactClick(contact)}
             tabIndex={tabIndex}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            aria-label='File Access Status'
+            key='displayname'
+            style={{ color: color }}
           >
-            <Icon icon='bell' size={20} />
+            {overrideSenderName ? `~${overrideSenderName}` : displayName}
           </button>
-        )}
+        ))
+      ) : direction === 'outgoing' ? (
+        <button
+          onClick={() => onContactClick(contact)}
+          className='forwarded-indicator-button'
+          tabIndex={tabIndex}
+        >
+          {tx('forwarded_message')}
+        </button>
+      ) : null}
+      {message.file && (
+        <button
+          onClick={handleBellClick}
+          className='file-access-bell-button'
+          tabIndex={tabIndex}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          aria-label='File Access Status'
+        >
+          <Icon icon='bell' size={20} />
+        </button>
+      )}
     </div>
   )
 }
@@ -303,16 +299,13 @@ async function showFileRecall(message: T.Message): Promise<boolean> {
     message.fromId === C.DC_CONTACT_ID_SELF &&
     !message.isForwarded
   ) {
-    const response = await runtime.PrivittySendMessage(
-      'sendEvent',
-        {
-          event_type: 'getFileAccessStatus',
-          event_data: {
-            chat_id: String(message.chatId),
-            file_path: message.file,
-          }
-        }
-    )
+    const response = await runtime.PrivittySendMessage('sendEvent', {
+      event_type: 'getFileAccessStatus',
+      event_data: {
+        chat_id: String(message.chatId),
+        file_path: message.file,
+      },
+    })
     const jsonresp = JSON.parse(response)
     if (jsonresp?.result?.data?.status === 'active') {
       return Promise.resolve(true)
@@ -328,16 +321,13 @@ async function showFileRecall(message: T.Message): Promise<boolean> {
 async function showFileForward(message: T.Message): Promise<boolean> {
   if (message.file && message.fileName) {
     if (message.fromId === C.DC_CONTACT_ID_SELF) {
-      const response = await runtime.PrivittySendMessage(
-        'sendEvent',
-        {
-          event_type: 'getFileAccessStatus',
-          event_data: {
-            chat_id: String(message.chatId),
-            file_path: message.file
-          }
-        }
-      )
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'getFileAccessStatus',
+        event_data: {
+          chat_id: String(message.chatId),
+          file_path: message.file,
+        },
+      })
       const jsonresp = JSON.parse(response)
       if (jsonresp?.result?.data?.status === 'active') {
         return Promise.resolve(true)
@@ -345,18 +335,15 @@ async function showFileForward(message: T.Message): Promise<boolean> {
         console.log('file cannot be forwarded:')
       }
     } else {
-      console.log("file cannot be forwarded: ELSE");
-      
-      const response = await runtime.PrivittySendMessage(
-        'sendEvent',
-        {
-          event_type: 'getFileAccessStatus',
-          event_data: {
-            chat_id: String(message.chatId),
-            file_path: `${message.file}`
-          }
-        }
-      )
+      console.log('file cannot be forwarded: ELSE')
+
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'getFileAccessStatus',
+        event_data: {
+          chat_id: String(message.chatId),
+          file_path: `${message.file}`,
+        },
+      })
       const jsonresp = JSON.parse(response)
       if (jsonresp?.result?.data?.is_forward) {
         return Promise.resolve(true)
@@ -426,7 +413,6 @@ async function buildContextMenu(
     },
   }
 
-  
   if (textSelected) {
     copy_item = {
       label: tx('menu_copy_selection_to_clipboard'),
@@ -471,7 +457,7 @@ async function buildContextMenu(
       conversationType.chatType === C.DC_CHAT_TYPE_MAILINGLIST) &&
     message.fromId > C.DC_CONTACT_ID_LAST_SPECIAL
 
-    return Promise.resolve([
+  return Promise.resolve([
     // Reply
     showReply && {
       label: tx('notify_reply_button'),
@@ -489,19 +475,18 @@ async function buildContextMenu(
     showForward && {
       label: tx('forward'),
       action: openForwardDialog.bind(null, openDialog, message),
-       rightIcon: 'forward',
+      rightIcon: 'forward',
     },
     // Recall message
     showRecallMsg && {
       label: tx('recall_message'),
       action: async () => {
         const response = await runtime.PrivittySendMessage('sendEvent', {
-          event_type: "initAccessRevokeRequest",
-          event_data:
-          {
+          event_type: 'initAccessRevokeRequest',
+          event_data: {
             chat_id: String(chat?.id),
             file_path: message?.file,
-          }
+          },
         })
 
         // ✅ Parse ONLY ONCE
@@ -609,7 +594,7 @@ async function buildContextMenu(
       },
     // Open Attachment
     showAttachmentOptions &&
-    showRecallMsg &&
+      showRecallMsg &&
       message.viewType !== 'Webxdc' &&
       isGenericAttachment(message.fileMime) && {
         label: tx('open_attachment'),
@@ -628,11 +613,11 @@ async function buildContextMenu(
     // Resend Message
     showResend &&
       showRecallMsg && {
-      label: tx('resend'),
-      action: () => {
-        BackendRemote.rpc.resendMessages(selectedAccountId(), [message.id])
+        label: tx('resend'),
+        action: () => {
+          BackendRemote.rpc.resendMessages(selectedAccountId(), [message.id])
+        },
       },
-    },
     // Webxdc Info message: jump to app message
     Boolean(isWebxdcInfo && message.parentId) && {
       label: tx('show_app_in_chat'),
@@ -715,13 +700,11 @@ async function isPduMessage(message: T.Message): Promise<boolean> {
   }
 
   const isPrivitty = await checkIsPrivittyMessage(message.text)
-  
+
   return isPrivitty
 }
 
-function getPrivittyStatusLabel(
-  status: PrivittyStatus | null
-): string | null {
+function getPrivittyStatusLabel(status: PrivittyStatus | null): string | null {
   switch (status) {
     case 'active':
       return 'Access active'
@@ -752,9 +735,7 @@ function getPrivittyStatusLabel(
  * Gets the color for the Privitty status based on the status value.
  * Returns yellow for revoked, grey for expired, red for denied.
  */
-function getPrivittyStatusColor(
-  status: PrivittyStatus | null
-): string {
+function getPrivittyStatusColor(status: PrivittyStatus | null): string {
   switch (status) {
     case 'revoked':
       return '#FFA500' // Yellow/Orange
@@ -960,10 +941,13 @@ export default function Message(props: {
   conversationType: ConversationType
 }) {
   const { message, conversationType } = props
+  const [waitingCount, setWaitingCount] = useState(0)
   const [hidePduMessage, setHidePduMessage] = useState(false)
   const [privittyStatus, setPrivittyFileStatus] =
     useState<PrivittyStatus>('none')
-  const [privittyReplacementText, setPrivittyReplacementText] = useState<string | null>(null)
+  const [privittyReplacementText, setPrivittyReplacementText] = useState<
+    string | null
+  >(null)
   const accountId = selectedAccountId()
   const privittyStatusLabel = getPrivittyStatusLabel(privittyStatus)
   const privittyStatusColor = getPrivittyStatusColor(privittyStatus)
@@ -989,6 +973,58 @@ export default function Message(props: {
       cancelled = true
     }
   }, [message.id, message.text])
+
+  // 🔴 Fetch red-dot "requested access" status
+  useEffect(() => {
+    const filePath = message.file
+
+    if (!filePath || filePath === '' || !message.chatId) {
+      return
+    }
+
+    let cancelled = false
+
+    //  {"id":168,"jsonrpc":"2.0","result":{"data":{"chat_id":"12","file":{"forwarded_list":[{"contact_id":"tqvic6i96@chat.privittytech.com","contact_name":"Android","download_allowed":false,"expiry_time":0,"status":"waiting_owner_action"}],"owner_info":{"contact_id":"ht1e63qv8@chat.privittytech.com","contact_name":"asdf"},"shared_info":{"contact_id":"tjk125epg@chat.privittytech.com","contact_name":"Souravvvvvv Hhhh","download_allowed":false,"expiry_time":1770738370255,"forward_allowed":true,"status":"waiting_owner_action"}},"file_name":"98409b9c31331eff4af874b9e1c57a0.prv"},"message":"File access status retrieved successfully","state":"ReadyForAction","status":2,"success":true}}
+
+    const fetchRedDotStatus = async () => {
+      try {
+        const response = await runtime.PrivittySendMessage('sendEvent', {
+          event_type: 'getFileAccessStatusList',
+          event_data: {
+            chat_id: String(message.chatId),
+            file_path: message.file,
+          },
+        })
+
+        const parsed =
+          typeof response === 'string' ? JSON.parse(response) : response
+        const file = parsed?.result?.data?.file
+        const normalize = (s?: string) => s?.trim().toLowerCase()
+        let count = 0
+
+        // ✅ shared_info
+        if (normalize(file?.shared_info?.status) === 'waiting_owner_action') {
+          count++
+        }
+
+        // ✅ forwarded_list
+        if (Array.isArray(file?.forwarded_list)) {
+          count += file.forwarded_list.filter(
+            (f: any) => normalize(f?.status) === 'waiting_owner_action'
+          ).length
+        }
+        setWaitingCount(count)
+      } catch (err) {
+        console.error('Red dot count error:', err)
+      }
+    }
+
+    fetchRedDotStatus()
+
+    return () => {
+      cancelled = true
+    }
+  }, [message.id, message.file, message.chatId])
 
   // Get replacement text for first two Privitty messages
   useEffect(() => {
@@ -1016,41 +1052,41 @@ export default function Message(props: {
   }, [message.id, message.text, message.chatId, accountId])
 
   useEffect(() => {
-    if (!message.file) return;
+    if (!message.file) return
 
     let cancelled = false
     let intervalId: NodeJS.Timeout | null = null
 
     const fetchStatus = async () => {
       if (cancelled) return
-      
+
       try {
-        const response = await runtime.PrivittySendMessage("sendEvent", {
+        const response = await runtime.PrivittySendMessage('sendEvent', {
           event_type: 'getFileAccessStatus',
           event_data: {
             chat_id: String(message.chatId),
-            file_path: message.file
-          }
-        });
+            file_path: message.file,
+          },
+        })
 
         if (cancelled) return
-        const parsed = JSON.parse(response);
-        const status = parsed?.result?.data?.status;
-        setPrivittyFileStatus((status as PrivittyStatus));
+        const parsed = JSON.parse(response)
+        const status = parsed?.result?.data?.status
+        setPrivittyFileStatus(status as PrivittyStatus)
       } catch (err) {
         if (cancelled) return
-        console.error("Privity status error", err);
-        setPrivittyFileStatus("error");
+        console.error('Privity status error', err)
+        setPrivittyFileStatus('error')
       }
-    };
+    }
 
     // Fetch immediately
-    fetchStatus();
+    fetchStatus()
 
     // Set up polling every 3 seconds for real-time updates
     intervalId = setInterval(() => {
-      fetchStatus();
-    }, 3000);
+      fetchStatus()
+    }, 20000)
 
     return () => {
       cancelled = true
@@ -1058,8 +1094,7 @@ export default function Message(props: {
         clearInterval(intervalId)
       }
     }
-  }, [message.id, message.file, message.chatId]);
-
+  }, [message.id, message.file, message.chatId])
 
   const { id, viewType, text, hasLocation, hasHtml } = message
   const direction = getDirection(message)
@@ -1317,8 +1352,8 @@ export default function Message(props: {
               )}
             />
           )}
-          {privittyReplacementText !== null 
-            ? privittyReplacementText 
+          {privittyReplacementText !== null
+            ? privittyReplacementText
             : getPrivittyReplacementText(message) || text}
           {direction === 'outgoing' &&
             (status === 'sending' || status === 'error') && (
@@ -1498,7 +1533,7 @@ export default function Message(props: {
           tabIndex={-1}
         />
       )}
-      <div style={{ display: "flex", flexDirection: "column"}}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div
           className='msg-container'
           style={{ borderColor: message.sender.color }}
@@ -1516,29 +1551,62 @@ export default function Message(props: {
               openDialog={openDialog}
             />
           ) : message.file && direction === 'outgoing' ? (
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <div style={{color: '#FFF'}}>
-               {message.viewType}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ color: '#FFF' }}>{message.viewType}</div>
+
+              {/* Bell wrapper */}
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                {/* 🔴 Red notification dot */}
+                {waitingCount > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      minWidth: 16,
+                      height: 16,
+                      background: 'red',
+                      borderRadius: '50%',
+                      color: '#fff',
+                      fontSize: 10,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 4px',
+                      fontWeight: 600,
+                      zIndex: 10,
+                    }}
+                  >
+                    {waitingCount}
+                  </div>
+                )}
+                {/* Bell button */}
+                <button
+                  onClick={handleBellClick}
+                  className='file-access-bell-button'
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  aria-label='File Access Status'
+                >
+                  <Icon icon='bell' size={20} />
+                </button>
               </div>
-              <button
-                onClick={handleBellClick}
-                className='file-access-bell-button'
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                aria-label='File Access Status'
-              >
-                <Icon icon='bell' size={20} />
-              </button>
             </div>
           ) : null}
-           {!message.isForwarded && (
+          {!message.isForwarded && (
             <div
               className={classNames('author-wrapper', {
                 'can-hide':
@@ -1546,7 +1614,7 @@ export default function Message(props: {
                   !showAuthor,
               })}
             >
-               <AuthorName
+              <AuthorName
                 contact={message.sender}
                 onContactClick={onContactClick}
                 overrideSenderName={message.overrideSenderName}
@@ -1603,8 +1671,10 @@ export default function Message(props: {
             )}
           </div>
           {showAttachment(message) && (
-            <p style={{ marginTop: 6, fontSize: 12, color: privittyStatusColor }}>
-          Status: {privittyStatusLabel || 'Loading...'}
+            <p
+              style={{ marginTop: 6, fontSize: 12, color: privittyStatusColor }}
+            >
+              Status: {privittyStatusLabel || 'Loading...'}
             </p>
           )}
         </div>
@@ -1640,9 +1710,7 @@ export default function Message(props: {
             {message.reactions && (
               <Reactions
                 reactions={message.reactions}
-                tabindexForInteractiveContents={
-                  tabindexForInteractiveContents
-                }
+                tabindexForInteractiveContents={tabindexForInteractiveContents}
                 messageWidth={messageWidth}
               />
             )}

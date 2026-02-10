@@ -44,119 +44,121 @@ export default function FileAccessStatusDialog({
   const [isOwner, setIsOwner] = useState<boolean>(false)
   const accountId = selectedAccountId()
 
-  useEffect(() => {
-    const fetchFileAccessStatus = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+  const isAccessRequested = (status?: string) => {
+    if (!status) return false
+    return ['requested', 'relay_to_owner', 'waiting_owner_action'].includes(
+      status.toLowerCase()
+    )
+  }
 
-        console.log('filePath ==== 📂📂📂📂📂', filePath)
+  const fetchFileAccessStatus = async () => {
+    try {
+      setLoading(true)
+      setError(null)
 
-        const response = await runtime.PrivittySendMessage('sendEvent', {
-          event_type: 'getFileAccessStatusList',
-          event_data: {
-            chat_id: String(chatId),
-            file_path: filePath,
-          },
+      console.log('filePath ==== 📂📂📂📂📂', filePath)
+
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'getFileAccessStatusList',
+        event_data: {
+          chat_id: String(chatId),
+          file_path: filePath,
+        },
+      })
+
+      const parsed = typeof response === 'string' ? JSON.parse(response) : response
+      let result = parsed?.result
+
+      // Handle double-encoded result (result may be a JSON string)
+      if (typeof result === 'string') {
+        try {
+          result = JSON.parse(result)
+        } catch {
+          // fallback to original
+        }
+      }
+
+      const data = result?.data
+      const fileData = data?.file
+
+      if (!data) {
+        throw new Error('Invalid response from getFileAccessStatusList')
+      }
+
+      // Process Shared (Relay) users - shared_info is a single object
+      const shared: FileAccessUser[] = []
+      if (fileData?.shared_info) {
+        const sharedInfo = fileData.shared_info
+        shared.push({
+          email: sharedInfo.contact_id || '',
+          name: sharedInfo.contact_name,
+          role: 'Relay',
+          status: sharedInfo.status || 'active',
+          expiry: sharedInfo.expiry_time || null,
+          timestamp: sharedInfo.timestamp || null,
+          permissions: [],
         })
+      }
 
-        const parsed =
-          typeof response === 'string' ? JSON.parse(response) : response
-        let result = parsed?.result
-
-        // Handle double-encoded result (result may be a JSON string)
-        if (typeof result === 'string') {
-          try {
-            result = JSON.parse(result)
-          } catch {
-            // fallback to original
-          }
-        }
-
-        const data = result?.data
-        const fileData = data?.file
-
-        if (!data) {
-          throw new Error('Invalid response from getFileAccessStatusList')
-        }
-
-        // Process Shared (Relay) users - shared_info is a single object
-        const shared: FileAccessUser[] = []
-        if (fileData?.shared_info) {
-          const sharedInfo = fileData.shared_info
-          shared.push({
-            email: sharedInfo.contact_id || '',
-            name: sharedInfo.contact_name,
-            role: 'Relay',
-            status: sharedInfo.status || 'active',
-            expiry: sharedInfo.expiry_time || null,
-            timestamp: sharedInfo.timestamp || null,
+      // Process Forwarded users - forwarded_list is an array (in file or at data level)
+      const forwarded: FileAccessUser[] = []
+      const forwardedList = fileData?.forwarded_list ?? data?.forwarded_list ?? []
+      if (Array.isArray(forwardedList)) {
+        forwardedList.forEach((user: any) => {
+          forwarded.push({
+            email: user.contact_id || '',
+            name: user.contact_name,
+            role: 'Forwardee',
+            status: user.status || 'active',
+            expiry: user.expiry_time ?? null,
+            timestamp: user.timestamp ?? null,
             permissions: [],
           })
-        }
+        })
+      }
 
-        // Process Forwarded users - forwarded_list is an array (in file or at data level)
-        const forwarded: FileAccessUser[] = []
-        const forwardedList =
-          fileData?.forwarded_list ?? data?.forwarded_list ?? []
-        if (Array.isArray(forwardedList)) {
-          forwardedList.forEach((user: any) => {
-            forwarded.push({
-              email: user.contact_id || '',
-              name: user.contact_name,
-              role: 'Forwardee',
-              status: user.status || 'active',
-              expiry: user.expiry_time ?? null,
-              timestamp: user.timestamp ?? null,
-              permissions: [],
-            })
-          })
-        }
+      setSharedUsers(shared)
+      setForwardedUsers(forwarded)
 
-        setSharedUsers(shared)
-        setForwardedUsers(forwarded)
+      // Set file name from API response or fallback to prop
+      if (data.file_name) {
+        setDisplayFileName(data.file_name)
+      } else if (fileName) {
+        setDisplayFileName(fileName)
+      } else if (filePath) {
+        setDisplayFileName(basename(filePath))
+      }
 
-        // Set file name from API response or fallback to prop
-        if (data.file_name) {
-          setDisplayFileName(data.file_name)
-        } else if (fileName) {
-          setDisplayFileName(fileName)
-        } else if (filePath) {
-          setDisplayFileName(basename(filePath))
-        }
+      // Determine if current app user is the owner of the file
+      try {
+        const accountInfo = await BackendRemote.rpc.getAccountInfo(accountId)
+        const currentEmail = accountInfo.kind === 'Configured' ? accountInfo.addr : null
+        const ownerEmail = fileData?.owner_info?.contact_id || null
 
-        // Determine if current app user is the owner of the file
-        try {
-          const accountInfo = await BackendRemote.rpc.getAccountInfo(accountId)
-          const currentEmail =
-            accountInfo.kind === 'Configured' ? accountInfo.addr : null
-          const ownerEmail = fileData?.owner_info?.contact_id || null
-
-          if (
-            currentEmail &&
-            ownerEmail &&
-            currentEmail.toLowerCase() === ownerEmail.toLowerCase()
-          ) {
-            setIsOwner(true)
-          } else {
-            setIsOwner(false)
-          }
-        } catch (e) {
-          console.error('Error determining file owner for lock button:', e)
+        if (
+          currentEmail &&
+          ownerEmail &&
+          currentEmail.toLowerCase() === ownerEmail.toLowerCase()
+        ) {
+          setIsOwner(true)
+        } else {
           setIsOwner(false)
         }
-      } catch (err) {
-        console.error('Error fetching file access status:', err)
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Failed to fetch file access status'
-        )
-      } finally {
-        setLoading(false)
+      } catch (e) {
+        console.error('Error determining file owner for lock button:', e)
+        setIsOwner(false)
       }
+    } catch (err) {
+      console.error('Error fetching file access status:', err)
+      setError(
+        err instanceof Error ? err.message : 'Failed to fetch file access status'
+      )
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchFileAccessStatus()
   }, [chatId, filePath])
 
@@ -325,6 +327,9 @@ export default function FileAccessStatusDialog({
           console.log('Access accepted successfully')
         } catch (err) {
           console.error('Failed to accept access:', err)
+        } finally {
+          // refresh list so shared/forwarded status updates after accept
+          await fetchFileAccessStatus()
         }
         // await openPrivittyProcess()
       },
@@ -399,6 +404,9 @@ export default function FileAccessStatusDialog({
           console.log('Access accepted successfully')
         } catch (err) {
           console.error('Failed to accept access:', err)
+        } finally {
+          // refresh list so shared/forwarded status updates after denied
+          await fetchFileAccessStatus()
         }
         console.log('Access denied')
       },
@@ -409,65 +417,70 @@ export default function FileAccessStatusDialog({
   }
 
   const handleBlockClick = async (contactId: string) => {
-    const response = await runtime.PrivittySendMessage('sendEvent', {
-      event_type: 'initAccessRevokeRequest',
-      event_data: {
-        chat_id: String(chatId),
-        file_path: filePath,
-        contact_id: contactId,
-      },
-    })
-
-    const parsed = JSON.parse(response).result?.data?.pdu
-
-    if (parsed) {
-      // Extract the PDU base64 string directly
-      const pdu = parsed
-      const MESSAGE_DEFAULT: T.MessageData = {
-        file: null,
-        filename: null,
-        viewtype: null,
-        html: null,
-        location: null,
-        overrideSenderName: null,
-        quotedMessageId: null,
-        quotedText: null,
-        text: null,
-      }
-      const message: Partial<T.MessageData> = {
-        text: pdu,
-        file: undefined,
-        filename: undefined,
-        quotedMessageId: null,
-        viewtype: 'Text',
-      }
-
-      const msgId = await BackendRemote.rpc.sendMsg(accountId, chatId || 0, {
-        ...MESSAGE_DEFAULT,
-        ...message,
+    try {
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'initAccessRevokeRequest',
+        event_data: {
+          chat_id: String(chatId),
+          file_path: filePath,
+          contact_id: contactId,
+        },
       })
-      console.log('✅ Message sent successfully with ID:', msgId)
-    } else {
+
+      const parsed = JSON.parse(response).result?.data?.pdu
+
+      if (parsed) {
+        // Extract the PDU base64 string directly
+        const pdu = parsed
+        const MESSAGE_DEFAULT: T.MessageData = {
+          file: null,
+          filename: null,
+          viewtype: null,
+          html: null,
+          location: null,
+          overrideSenderName: null,
+          quotedMessageId: null,
+          quotedText: null,
+          text: null,
+        }
+        const message: Partial<T.MessageData> = {
+          text: pdu,
+          file: undefined,
+          filename: undefined,
+          quotedMessageId: null,
+          viewtype: 'Text',
+        }
+
+        const msgId = await BackendRemote.rpc.sendMsg(accountId, chatId || 0, {
+          ...MESSAGE_DEFAULT,
+          ...message,
+        })
+        console.log('✅ Message sent successfully with ID:', msgId)
+      } else {
+        runtime.showNotification({
+          title: 'Privitty',
+          body: 'Privitty ADD peer state =' + parsed,
+          icon: null,
+          chatId: 0,
+          messageId: 0,
+          accountId,
+          notificationType: 0,
+        })
+        return
+      }
       runtime.showNotification({
         title: 'Privitty',
-        body: 'Privitty ADD peer state =' + parsed,
+        body: 'Enabling Privitty security',
         icon: null,
         chatId: 0,
         messageId: 0,
         accountId,
         notificationType: 0,
       })
-      return
+    } finally {
+      // refresh list so revoked user updates immediately
+      await fetchFileAccessStatus()
     }
-    runtime.showNotification({
-      title: 'Privitty',
-      body: 'Enabling Privitty security',
-      icon: null,
-      chatId: 0,
-      messageId: 0,
-      accountId,
-      notificationType: 0,
-    })
   }
 
   const formatTimestamp = (
@@ -522,10 +535,7 @@ export default function FileAccessStatusDialog({
     const displayName = user.name || user.email || 'Unknown'
     const initial = avatarInitial(displayName, user.email)
     const timestamp = user.timestamp ? formatTimestamp(user.timestamp) : null
-    const status =
-      user.status === 'requested' || user.status === 'relay_to_owner'
-        ? formatStatus(user.status)
-        : null
+    const status = isAccessRequested(user.status) ? formatStatus(user.status) : null
 
     return (
       <div
@@ -585,8 +595,10 @@ export default function FileAccessStatusDialog({
           )}
         </div>
 
-        {/* Action buttons: Block (shared + forwarded), Lock (forwarded only) */}
-        {showPadlock && isOwner && (onBlockClick || (showLockButton && onLockClick)) && (
+        {/* Action buttons: Block (shared + forwarded), Lock (accept/deny request) */}
+        {showPadlock &&
+          isOwner &&
+          (onBlockClick || (showLockButton && onLockClick)) && (
           <div
             style={{
               display: 'flex',
@@ -710,8 +722,9 @@ export default function FileAccessStatusDialog({
                         key={`shared-${index}`}
                         user={user}
                         showPadlock={true}
-                        showLockButton={false}
+                        showLockButton={isAccessRequested(user.status)}
                         onBlockClick={handleBlockClick}
+                        onLockClick={handleLockClick}
                       />
                     ))}
                   </div>
@@ -743,7 +756,7 @@ export default function FileAccessStatusDialog({
                         key={`forwarded-${index}`}
                         user={user}
                         showPadlock={true}
-                        showLockButton={true}
+                        showLockButton={isAccessRequested(user.status)}
                         onBlockClick={handleBlockClick}
                         onLockClick={handleLockClick}
                       />
