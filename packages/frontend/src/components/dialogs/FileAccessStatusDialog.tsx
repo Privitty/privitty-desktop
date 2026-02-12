@@ -254,13 +254,17 @@ export default function FileAccessStatusDialog({
     )
   }
 
-  const handleLockClick = async (contactId: string) => {
+  const handleLockClick = async (contactId: string, role: 'Relay' | 'Forwardee') => {
     const dialogId = await openDialog(PrivittyConfirmDialog, {
       onAccept: async () => {
         closeAllDialogs()
         try {
+          const eventType =
+            role === 'Forwardee'
+              ? 'initRevertRelayForwardAccessAccept'
+              : 'initAccessGrantAccept'
           const response = await runtime.PrivittySendMessage('sendEvent', {
-            event_type: 'initRevertRelayForwardAccessAccept',
+            event_type: eventType,
             event_data: {
               chat_id: String(chatId),
               file_path: filePath,
@@ -336,8 +340,12 @@ export default function FileAccessStatusDialog({
       onDenied: async () => {
         closeAllDialogs()
         try {
+          const eventType =
+            role === 'Forwardee'
+              ? 'initRevertRelayForwardAccessDenied'
+              : 'initAccessDenied'
           const response = await runtime.PrivittySendMessage('sendEvent', {
-            event_type: 'initRevertRelayForwardAccessDenied',
+            event_type: eventType,
             event_data: {
               chat_id: String(chatId),
               file_path: filePath,
@@ -529,7 +537,7 @@ export default function FileAccessStatusDialog({
     user: FileAccessUser
     showPadlock?: boolean
     showLockButton?: boolean
-    onLockClick?: (contactId: string) => void
+    onLockClick?: (contactId: string, role?: string) => void
     onBlockClick?: (contactId: string) => void
   }) => {
     const displayName = user.name || user.email || 'Unknown'
@@ -697,6 +705,8 @@ export default function FileAccessStatusDialog({
             </div>
           )}
 
+          {/* {"id":6762,"jsonrpc":"2.0","result":{"data":{"chat_id":"12","file":{"forwarded_list":[{"contact_id":"nbwm3c2c1@chat.privittytech.com","contact_name":"C","download_allowed":false,"expiry_time":0,"status":"waiting_owner_action"}],"owner_info":{"contact_id":"klqj8jwq6@chat.privittytech.com","contact_name":"souarv PPPP"},"shared_info":{"contact_id":"9nqog1sne@chat.privittytech.com","contact_name":"A","download_allowed":false,"expiry_time":1770967027846,"forward_allowed":true,"status":"active"}},"file_name":"b4a3bdf0cb39334211a4340c26dc008.prv"},"message":"File access status retrieved successfully","state":"ReadyForAction","status":2,"success":true}} */}
+
           {!loading && !error && (
             <div style={{ backgroundColor: '#fafafa' }}>
               {/* Shared Section */}
@@ -724,7 +734,7 @@ export default function FileAccessStatusDialog({
                         showPadlock={true}
                         showLockButton={isAccessRequested(user.status)}
                         onBlockClick={handleBlockClick}
-                        onLockClick={handleLockClick}
+                        onLockClick={(contactId) => handleLockClick(contactId, 'Relay')}
                       />
                     ))}
                   </div>
@@ -758,7 +768,9 @@ export default function FileAccessStatusDialog({
                         showPadlock={true}
                         showLockButton={isAccessRequested(user.status)}
                         onBlockClick={handleBlockClick}
-                        onLockClick={handleLockClick}
+                        onLockClick={(contactId) =>
+                          handleLockClick(contactId, 'Forwardee')
+                        }
                       />
                     ))}
                   </div>

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import classNames from 'classnames'
 import { T, C } from '@deltachat/jsonrpc-client'
 
@@ -102,13 +102,54 @@ const Message = React.memo<
     summaryStatus === C.DC_STATE_IN_NOTICED
 
   const status = isIncoming ? '' : mapCoreMsgStatus2String(summaryStatus)
+  const [isPrivitty, setIsPrivitty] = useState(false)
+
+    useEffect(() => {
+    let cancelled = false
+
+    async function check() {
+      if (!summaryText2) {
+        setIsPrivitty(false)
+        return
+      }
+
+      try {
+        const response = await runtime.PrivittySendMessage(
+          'isPrivittyMessage',
+          { base64_data: summaryText2 }
+        )
+
+        const parsed = JSON.parse(response)
+        const valid = parsed?.result?.is_valid === true
+
+        if (!cancelled) {
+          setIsPrivitty(valid)
+        }
+      } catch (e) {
+        console.error('Privitty check failed', e)
+        if (!cancelled) setIsPrivitty(false)
+      }
+    }
+
+    check()
+
+    return () => {
+      cancelled = true
+    }
+  }, [summaryText2])
+
+
+
+  console.log("Last Chat list Message", message2React(summaryText2 || '', true, -1));
+  
+  
 
   const iswebxdc = summaryPreviewImage === 'webxdc-icon://last-msg-id'
 
   return (
     <div className='chat-list-item-message'>
       <div className='text'>
-        {summaryText1 && (
+        {!isPrivitty && summaryText1 && (
           <div
             className={classNames('summary', {
               draft: summaryStatus === C.DC_STATE_OUT_DRAFT,
@@ -138,7 +179,11 @@ const Message = React.memo<
             }}
           />
         )}
-        {message2React(summaryText2 || '', true, -1)}
+        {
+          !isPrivitty
+            ? message2React(summaryText2 || '', true, -1)
+            : <span className="protected-label">🔒 Privitty Message</span>
+        }
       </div>
       {isContactRequest && (
         <div className='label'>
