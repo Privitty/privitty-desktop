@@ -107,8 +107,14 @@ module.exports = async context => {
   const asar = env['NO_ASAR'] ? false : true
   await copyMapXdc(resources_dir, source_dir, asar)
 
-  // Copy privitty DLL bundle if present (acts as a fallback to extraResources)
-  await copyPrivittyDll(resources_dir, source_dir)
+  // Clean up unused platform-specific @privitty/privitty-core binaries
+  // ---------------------------------------------------------------------------------
+  await cleanupPrivittyBinaries(
+    resources_dir,
+    context,
+    isMacBuild,
+    env['NO_ASAR'] ? false : true
+  )
 }
 
 async function packageMSVCRedist(context) {
@@ -153,19 +159,68 @@ async function copyMapXdc(resources_dir, source_dir, asar) {
   await cp(join(source_dir, 'html-dist/xdcs'), destination, { recursive: true })
 }
 
-async function copyPrivittyDll(resources_dir, source_dir) {
+async function cleanupPrivittyBinaries(
+  resources_dir,
+  context,
+  isMacBuild,
+  asar
+) {
+  const privitty_dir = join(
+    resources_dir,
+    asar ? 'app.asar.unpacked' : 'app',
+    'node_modules',
+    '.pnpm'
+  )
+
+  if (!existsSync(privitty_dir)) {
+    console.log('privitty pnpm dir does not exist, skip cleanup:', privitty_dir)
+    return
+  }
+
   try {
-    const src = join(source_dir, '../../privitty/dll')
-    if (!existsSync(src)) {
-      console.log('privitty dll source not found, skip:', src)
-      return
+    const entries = await readdir(privitty_dir)
+    const privittyPackages = entries.filter(name =>
+      name.startsWith('@privitty+privitty-core-')
+    )
+
+    const targetPlatform = context.electronPlatformName
+    const targetArch = convertArch(context.arch)
+
+    const toDelete = privittyPackages.filter(name => {
+      // Extract platform and arch from package name: @privitty+privitty-core-darwin-arm64@version
+      const parts = name.split('-')
+      if (parts.length < 4) return false
+
+      const pkgPlatform = parts[2] // darwin, linux, win32
+      const pkgArchWithVersion = parts[3] // arm64@0.3.3 or x64@0.3.3
+      const pkgArch = pkgArchWithVersion.split('@')[0] // arm64 or x64
+
+      // Keep packages that match target platform and architecture
+      if (pkgPlatform === targetPlatform && pkgArch === targetArch) {
+        return false
+      }
+
+      // For mac universal builds, keep both arm64 and x64
+      if (isMacBuild && (pkgArch === 'arm64' || pkgArch === 'x64')) {
+        return false
+      }
+
+      return true
+    })
+
+    console.log('Privitty packages found:', privittyPackages)
+    console.log('Privitty packages to delete:', toDelete)
+
+    for (const targetOfDeletion of toDelete) {
+      const fullPath = join(privitty_dir, targetOfDeletion)
+      await rm(fullPath, { recursive: true, force: true })
+      console.log('Deleted:', fullPath)
     }
-    const dest = join(resources_dir, 'privitty', 'dll')
-    await mkdir(dest, { recursive: true })
-    await cp(src, dest, { recursive: true })
-    console.log('copied privitty dlls to:', dest)
-  } catch (err) {
-    console.log('failed to copy privitty dlls:', err)
+
+    const remaining = privittyPackages.filter(p => !toDelete.includes(p))
+    console.log('Remaining privitty packages:', remaining)
+  } catch (error) {
+    console.log('Failed to cleanup privitty binaries:', error)
   }
 }
 

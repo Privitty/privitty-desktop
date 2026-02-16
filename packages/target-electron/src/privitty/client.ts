@@ -1,9 +1,11 @@
-import { resolve, join } from 'path'
+import { resolve, join, dirname } from 'path'
 import { getLogger } from '@deltachat-desktop/shared/logger'
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process'
 import { getLogsPath } from '../application-constants'
 import { arch, platform } from 'os'
 import { app, dialog } from 'electron/main'
+import { existsSync, readdirSync } from 'fs'
+import { fileURLToPath } from 'url'
 
 import * as T from '@deltachat/jsonrpc-client/dist/generated/types.js'
 // import { Credentials } from '../../../frontend/src/types-app'
@@ -21,36 +23,109 @@ export class PrivittyClient {
     public accounts_path: string,
     private cmd_path: string
   ) {
-    console.log('inside constructor')
     this.serverProcess = null
     this.pendingRequests = new Map();
-    // Compute default path now so error dialogs show a helpful location
     this.cmd_path = this.computeCmdPath()
   }
 
   private computeCmdPath() {
-    const binName = process.platform === 'win32'
-      ? 'privitty_jsonrpc_server.exe'
-      : 'privitty-server'
+    try {
+      const binaryPath = this.findPrivittyBinaryInPnpm()
+      return binaryPath
+    } catch (error) {
+      // Fallback to local binaries for development
+      const binName = process.platform === 'win32'
+        ? 'privitty_jsonrpc_server.exe'
+        : 'privitty-server'
 
-    // In packaged apps, extraResources are placed under process.resourcesPath
-    if (app.isPackaged) {
-      return join(process.resourcesPath, 'privitty', 'dll', binName)
+      if (app.isPackaged) {
+        return join(process.resourcesPath, 'privitty', 'dll', binName)
+      }
+
+      const appRoot = app.getAppPath()
+      return resolve(appRoot, 'privitty/dll', binName)
     }
+  }
 
-    // In dev, resolve from the repo's privitty/dll folder
-    const appRoot = app.getAppPath()
-    console.log('computeCmdPath 0011 ⛔️', appRoot);
-    return resolve(appRoot, 'privitty/dll', binName)
+  private findPrivittyBinaryInPnpm(): string {
+    const platformName = platform()
+    const archName = arch()
+    
+    let packageName: string
+    let binaryName: string
+    
+    if (platformName === 'darwin') {
+      if (archName === 'arm64' || archName === 'x64') {
+        packageName = `@privitty/privitty-core-darwin-${archName}`
+        binaryName = 'privitty-server'
+      } else {
+        throw new Error(`Unsupported macOS architecture: ${archName}`)
+      }
+    } else if (platformName === 'linux') {
+      if (archName === 'x64') {
+        packageName = '@privitty/privitty-core-linux-x64'
+        binaryName = 'privitty-server'
+      } else {
+        throw new Error(`Unsupported Linux architecture: ${archName}`)
+      }
+    } else if (platformName === 'win32') {
+      if (archName === 'x64') {
+        packageName = '@privitty/privitty-core-win32-x64'
+        binaryName = 'privitty-server.exe'
+      } else {
+        throw new Error(`Unsupported Windows architecture: ${archName}`)
+      }
+    } else {
+      throw new Error(`Unsupported platform: ${platformName}`)
+    }
+    
+    // Get current file location
+    const __dirname = dirname(fileURLToPath(import.meta.url))
+    
+    // Search in pnpm store
+    const pnpmStorePaths = [
+      join(__dirname, '../../../node_modules/.pnpm'),
+      join(__dirname, '../../../../node_modules/.pnpm'),
+      join(__dirname, '../../../../../node_modules/.pnpm'),
+    ]
+    
+    for (const pnpmStore of pnpmStorePaths) {
+      if (!existsSync(pnpmStore)) continue
+      
+      try {
+        const entries = readdirSync(pnpmStore)
+        const packageEntry = entries.find(entry => 
+          entry.startsWith(packageName.replace('@', '@').replace('/', '+'))
+        )
+        
+        if (packageEntry) {
+          const binaryPath = join(
+            pnpmStore,
+            packageEntry,
+            'node_modules',
+            packageName,
+            binaryName
+          )
+          
+          if (existsSync(binaryPath)) {
+            return binaryPath
+          }
+        }
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+    
+    throw new Error(
+      `Platform-specific package not found: ${packageName}. ` +
+      `Platform: ${platformName}, Architecture: ${archName}`
+    )
   }
 
   start() {
-    console.log('Privitty Start Invoked 0022⛔️')
-    // Resolve path at start to reflect packaged vs dev
     this._cmd_path = this.computeCmdPath()
     this.serverProcess = spawn(this._cmd_path, {
       env: {
-        // DC_ACCOUNTS_PATH: this.accounts_path,
         RUST_LOG: process.env.RUST_LOG,
       },
     })
@@ -65,7 +140,7 @@ export class PrivittyClient {
 
       if (err.message.endsWith('ENOENT')) {
         dialog.showErrorBox(
-          'Fatal Error: Privitty Library Missing ⚠️⚠️⚠️⚠️⚠️⚠️',
+          'Fatal Error: Privitty Library Missing',
           `The Privitty Module is missing! This could be due to your antivirus program. Please check the quarantine to restore it and notify the developers about this issue.
             You can reach us at 
             
@@ -78,7 +153,7 @@ export class PrivittyClient {
         )
       } else {
         dialog.showErrorBox(
-          'Fatal Error  ⚠️⚠️⚠️⚠️⚠️⚠️',
+          'Fatal Error',
           `Error with Privitty has been detected, please contact developers: You can reach us on  .
   
             ${err.name}: ${err.message}
@@ -105,10 +180,9 @@ export class PrivittyClient {
         if (!line.startsWith('{')) continue;
 
         try {
-          console.log("📩 JSON Event:", line);
           this.on_data(line);
         } catch (e) {
-          console.error('⚠️ JSON parse error:', e, line);
+          console.error('JSON parse error:', e, line);
         }
       }
     });
@@ -117,21 +191,21 @@ export class PrivittyClient {
     let errorLog = ''
     const ERROR_LOG_LENGTH = 800
     this.serverProcess.stderr.on('data', data => {
-      console.log(`privitty client stderr: ⚠️⚠️⚠️⚠️⚠️⚠️ ${data}`.trimEnd())
+      log.error(`privitty client stderr: ${data}`.trimEnd())
       errorLog = (errorLog + data).slice(-ERROR_LOG_LENGTH)
     })
 
     this.serverProcess.on('close', (code, signal) => {
       if (code !== null) {
-        log.info(`child process close all stdio with code ⚠️⚠️⚠️⚠️⚠️⚠️ ${code}`)
+        log.info(`child process close all stdio with code ${code}`)
       } else {
-        log.info(`child process close all stdio with signal ⚠️⚠️⚠️⚠️⚠️⚠️ ${signal}`)
+        log.info(`child process close all stdio with signal ${signal}`)
       }
     })
 
     this.serverProcess.on('exit', (code, signal) => {
       if (code !== null) {
-        log.info(`child process exited with code ⚠️⚠️⚠️⚠️⚠️⚠️ ${code}`)
+        log.info(`child process exited with code ${code}`)
         if (code !== 0) {
           log.critical('Fatal: The Delta Chat Core exited unexpectedly', code)
           dialog.showErrorBox(
@@ -144,13 +218,12 @@ export class PrivittyClient {
           app.exit(1)
         }
       } else {
-        log.warn(`child process exited with signal ⚠️⚠️⚠️⚠️⚠️⚠️ ${signal}`)
+        log.warn(`child process exited with signal ${signal}`)
       }
     })
   }
 
   send(message: string) {
-    console.log('Privitty client Request send 0044⛔️', message)
     this.serverProcess?.stdin.write(message + '\n')
   }
 
@@ -162,8 +235,6 @@ export class PrivittyClient {
     id: requestId,
   };
 
-  console.log('Privitty JSON Request →', request);
-
   return new Promise((resolve) => {
     this.pendingRequests.set(requestId, resolve);
     this.serverProcess?.stdin.write(JSON.stringify(request) + '\n');
@@ -174,7 +245,6 @@ export class PrivittyClient {
   // Function to send JSON-RPC requests
   sendJsonRpcRequestWOP(method: string, requestId: number) {
     const request = JSON.stringify({ jsonrpc: '2.0', method, id: requestId })
-    console.log('Privitty client WOP Request send 0066⛔️', request)
     this.serverProcess?.stdin.write(request + '\n')
   }
 

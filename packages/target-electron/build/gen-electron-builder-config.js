@@ -23,7 +23,6 @@ const files = [
   '**/*',
   ...exclude_list,
   { from: '../../_locales', to: '_locales', filter: '*.json' },
-  { from: 'privitty/dll', to: 'privitty/dll' },
 ]
 const env = process.env
 
@@ -75,8 +74,8 @@ build['fileAssociations'] = [
 ]
 
 build['files'] = files
-build['extraResources'] = [{ from: 'privitty/dll', to: 'privitty/dll' }]
-build['asarUnpack'] = [] // ['./node_modules/@deltachat/stdio-rpc-server']
+build['extraResources'] = []
+build['asarUnpack'] = ['./node_modules/@privitty/privitty-core*/**']
 // 'html-dist/xdcs/' should be in 'asarUnpack', but that had "file already exists" errors in the ci
 // see https://github.com/deltachat/deltachat-desktop/pull/3876, so we now do it "manually" in the afterPackHook
 
