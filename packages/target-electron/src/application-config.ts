@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
   }
 }
 
-const appConfig = applicationConfig('DeltaChat')
+const appConfig = applicationConfig('Privitty')
 
 import { join } from 'path'
 
@@ -21,7 +21,7 @@ if (process.env.DC_TEST_DIR) {
   console.log('Running in Portable Mode', process.env.PORTABLE_EXECUTABLE_DIR)
   appConfig.filePath = join(
     process.env.PORTABLE_EXECUTABLE_DIR,
-    'DeltaChatData',
+    'PrivittyData',
     'config.json'
   )
 }
