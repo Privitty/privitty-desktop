@@ -63,8 +63,19 @@ export async function init(cwd: string, logHandler: LogHandler) {
   const main = mainWindow
   dcController = new DeltaChatController(cwd, onPrivittyMessage)
 
-  function onPrivittyMessage(Response: String) {
-    console.log('Privitty message IPC', Response)
+  function onPrivittyMessage(response: string) {
+    log.info('Privitty message received in IPC')
+    
+    // Forward all privitty messages to the frontend
+    try {
+      const parsed = JSON.parse(response)
+      log.debug('Sending privitty event to frontend')
+      
+      // Send to all windows
+      main.window?.webContents.send('privitty-message', parsed)
+    } catch (error) {
+      log.error('Error forwarding privitty message to frontend:', error)
+    }
   }
 
   try {
@@ -279,8 +290,32 @@ export async function init(cwd: string, logHandler: LogHandler) {
     return false
   })
 
-  ipcMain.handle('privittyHandleMessage', (_ev, response) => {
-    console.log('Privitty message IPC', response)
+  // Privitty IPC handlers
+  ipcMain.handle('privittyHandleMessage', async (_ev, response) => {
+    log.info('privittyHandleMessage IPC called')
+    return response
+  })
+
+  ipcMain.handle('privittyOpenVault', async () => {
+    log.info('Opening Privitty vault')
+    try {
+      await dcController.openPrivittyVault()
+      return { success: true }
+    } catch (error) {
+      log.error('Error opening Privitty vault:', error)
+      return { success: false, error: String(error) }
+    }
+  })
+
+  ipcMain.handle('privittySendMessage', async (_ev, method: string, params: any) => {
+    log.info('Sending Privitty message:', method, params)
+    try {
+      const response = await dcController.sendMessage(method, params)
+      return { success: true, response }
+    } catch (error) {
+      log.error('Error sending Privitty message:', error)
+      return { success: false, error: String(error) }
+    }
   })
 
   ipcMain.handle('privitty_Send_Message', async (_ev, message, params) => {
@@ -408,6 +443,13 @@ export async function init(cwd: string, logHandler: LogHandler) {
   return () => {
     // the shutdown function
     dcController.jsonrpcRemote.rpc.stopIoForAllAccounts()
+    
+    // Stop privitty server process
+    try {
+      dcController._inner_privitty_account_manager?.stop()
+    } catch (error) {
+      log.error('Error stopping privitty server:', error)
+    }
   }
 }
 

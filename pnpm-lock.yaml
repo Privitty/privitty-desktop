@@ -350,9 +350,9 @@ importers:
       '@deltachat/jsonrpc-client':
         specifier: 'catalog:'
         version: 1.159.5(ws@7.5.10)
-      '@deltachat/stdio-rpc-server':
-        specifier: 'catalog:'
-        version: 1.159.5(@deltachat/jsonrpc-client@1.159.5(ws@7.5.10))
+      '@privitty/deltachat-rpc-server':
+        specifier: ^1.60.0
+        version: 1.160.0(@deltachat/jsonrpc-client@1.159.5(ws@7.5.10))
       '@privitty/privitty-core':
         specifier: ^0.3.3
         version: 0.3.3
@@ -1594,6 +1594,51 @@ packages:
     resolution: {integrity: sha512-A+znathYxPf+72riFd1r1ovOLqsIIB0jKIoPjyK2kqEIe30/6jF6BC7QNluHuwUmsD2tv1XZVugN8GqfTMOxsA==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@privitty/deltachat-rpc-server-darwin-arm64@1.160.0':
+    resolution: {integrity: sha512-X8IQgXJj5ofDZBhaVYB1+7Pj+o57SxWSnwvKFZaKaT+RMXofmaSo32HM3YsSO+raRBsyhNxBacMaxrcl6lYaUg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@privitty/deltachat-rpc-server-darwin-x64@1.160.0':
+    resolution: {integrity: sha512-w6QHKkbGxlW3gLGrc7GUARhRFu6HSxE3qMfcOYIIvH61llSuiCSQuLTP/PDhvGymM97fX0VF28T7N6si7QIHbQ==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@privitty/deltachat-rpc-server-linux-arm64@1.160.0':
+    resolution: {integrity: sha512-9KlDEQEl1rw+b+vrCwdQ9W+yn2pZ6spQ8hc3G0/2lRvxE1ueuwoycUmgfHXXKXrYlfEP78olUTGkQ9OPP/rYIQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@privitty/deltachat-rpc-server-linux-arm@1.160.0':
+    resolution: {integrity: sha512-6MCTMVpjGbtJ4ksVft62g9xm21sjrYb04Bh5KCjPTJ9+oYi/DH3pHebEOMUZqtpP3UJ77YV+1zDnVaMSWZ9Biw==}
+    cpu: [arm]
+    os: [linux]
+
+  '@privitty/deltachat-rpc-server-linux-ia32@1.160.0':
+    resolution: {integrity: sha512-yg+ltCc5AXWZX38qVxHpBoRWO0cddgdtNxB9LPGFwPikRfoTMWYCvjcwa6bYnyAxXiLAlOg3JoMDUsp+6BvO/w==}
+    cpu: [ia32]
+    os: [linux]
+
+  '@privitty/deltachat-rpc-server-linux-x64@1.160.0':
+    resolution: {integrity: sha512-a2qg+AUCAXSFAgnI5gP8qRKIG3dpkJ9fkILp/79kTd3PrIDGkeIu2VdmjtOWu5ngohrzfjunWJ50F/kF1JzvDA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@privitty/deltachat-rpc-server-win32-ia32@1.160.0':
+    resolution: {integrity: sha512-8GCVffVUaphN0Yjpc81PdlwXcSmwmFqCZKyNb724mQ7IR3rSc7uFYWB3G59VMOCS34aU93yjo3rUp/wRVxHZoA==}
+    cpu: [ia32]
+    os: [win32]
+
+  '@privitty/deltachat-rpc-server-win32-x64@1.160.0':
+    resolution: {integrity: sha512-5qBRg7oJd9LNKY1i2RzbqBx2af1v+PJxtlOJ7/1NVyZ+bRwEK1qkvImaQFg9BEasj2Cq4kzC+WMAw5uY/2/1RQ==}
+    cpu: [x64]
+    os: [win32]
+
+  '@privitty/deltachat-rpc-server@1.160.0':
+    resolution: {integrity: sha512-Zgz2ZW7FVN8g79OObpOSDGi/zszuYwxUeMdkzNjM+gEYOo7tmyPA5U2W/tG2XxBCUbtYkTZPfLs8R3FyXzS/TQ==}
+    peerDependencies:
+      '@deltachat/jsonrpc-client': '*'
 
   '@privitty/privitty-core-darwin-arm64@0.3.2':
     resolution: {integrity: sha512-AZtmvUhZip+f5yd1rBb8KoO3Kv+Msn/b9DXfzRzVhySHDJxtzdk+pr/ZGIc+9G9/vQBUvMWWkc7wkzKx/264kw==}
@@ -4508,21 +4553,6 @@ snapshots:
   '@deltachat/stdio-rpc-server-win32-x64@1.159.5':
     optional: true
 
-  '@deltachat/stdio-rpc-server@1.159.5(@deltachat/jsonrpc-client@1.159.5(ws@7.5.10))':
-    dependencies:
-      '@deltachat/jsonrpc-client': 1.159.5(ws@7.5.10)
-    optionalDependencies:
-      '@deltachat/stdio-rpc-server-android-arm': 1.159.5
-      '@deltachat/stdio-rpc-server-android-arm64': 1.159.5
-      '@deltachat/stdio-rpc-server-darwin-arm64': 1.159.5
-      '@deltachat/stdio-rpc-server-darwin-x64': 1.159.5
-      '@deltachat/stdio-rpc-server-linux-arm': 1.159.5
-      '@deltachat/stdio-rpc-server-linux-arm64': 1.159.5
-      '@deltachat/stdio-rpc-server-linux-ia32': 1.159.5
-      '@deltachat/stdio-rpc-server-linux-x64': 1.159.5
-      '@deltachat/stdio-rpc-server-win32-ia32': 1.159.5
-      '@deltachat/stdio-rpc-server-win32-x64': 1.159.5
-
   '@deltachat/stdio-rpc-server@1.159.5(@deltachat/jsonrpc-client@1.159.5(ws@8.18.3))':
     dependencies:
       '@deltachat/jsonrpc-client': 1.159.5(ws@8.18.3)
@@ -5189,6 +5219,43 @@ snapshots:
   '@playwright/test@1.54.2':
     dependencies:
       playwright: 1.54.2
+
+  '@privitty/deltachat-rpc-server-darwin-arm64@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-darwin-x64@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-linux-arm64@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-linux-arm@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-linux-ia32@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-linux-x64@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-win32-ia32@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server-win32-x64@1.160.0':
+    optional: true
+
+  '@privitty/deltachat-rpc-server@1.160.0(@deltachat/jsonrpc-client@1.159.5(ws@7.5.10))':
+    dependencies:
+      '@deltachat/jsonrpc-client': 1.159.5(ws@7.5.10)
+    optionalDependencies:
+      '@privitty/deltachat-rpc-server-darwin-arm64': 1.160.0
+      '@privitty/deltachat-rpc-server-darwin-x64': 1.160.0
+      '@privitty/deltachat-rpc-server-linux-arm': 1.160.0
+      '@privitty/deltachat-rpc-server-linux-arm64': 1.160.0
+      '@privitty/deltachat-rpc-server-linux-ia32': 1.160.0
+      '@privitty/deltachat-rpc-server-linux-x64': 1.160.0
+      '@privitty/deltachat-rpc-server-win32-ia32': 1.160.0
+      '@privitty/deltachat-rpc-server-win32-x64': 1.160.0
 
   '@privitty/privitty-core-darwin-arm64@0.3.2':
     optional: true

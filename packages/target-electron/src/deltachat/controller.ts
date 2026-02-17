@@ -1,7 +1,10 @@
 import { app as rawApp, ipcMain } from 'electron'
 import { EventEmitter } from 'events'
 import { yerpc, BaseDeltaChat, T } from '@deltachat/jsonrpc-client'
-import { getRPCServerPath } from '@deltachat/stdio-rpc-server'
+import { getRPCServerPath } from '@privitty/deltachat-rpc-server'
+import { join } from 'path'
+import { existsSync } from 'fs'
+import { arch, platform } from 'os'
 
 import { getLogger } from '../../../shared/logger.js'
 import * as mainWindow from '../../../frontend/src/components/windows/main.js'
@@ -35,6 +38,99 @@ class ElectronMainTransport extends yerpc.BaseTransport {
 }
 
 export class JRPCDeltaChat extends BaseDeltaChat<ElectronMainTransport> {}
+
+/**
+ * Find DeltaChat RPC binary in packaged app
+ * Similar to Privitty's findPrivittyBinaryInPnpm() but for DeltaChat
+ */
+function findDeltaChatBinaryInPackagedApp(): string | null {
+  const currentPlatform = platform()
+  const currentArch = arch()
+  
+  // Determine package name and binary name
+  const packageName = `@privitty/deltachat-rpc-server-${currentPlatform}-${currentArch}`
+  const binaryName = currentPlatform === 'win32' 
+    ? 'deltachat-rpc-server.exe' 
+    : 'deltachat-rpc-server'
+  
+  if (rawApp.isPackaged) {
+    // In packaged app: binaries are in app.asar.unpacked
+    const unpackedPath = join(
+      process.resourcesPath,
+      'app.asar.unpacked',
+      'node_modules',
+      packageName,
+      binaryName
+    )
+    
+    if (existsSync(unpackedPath)) {
+      log.info('Found DeltaChat binary in packaged app:', unpackedPath)
+      return unpackedPath
+    } else {
+      log.error('DeltaChat binary not found in packaged app:', unpackedPath)
+      return null
+    }
+  } else {
+    // In development: search in pnpm store
+    // __dirname when running from bundle_out/ will be: packages/target-electron/bundle_out
+    // So we need to go up to the workspace root to find .pnpm store
+    const searchPaths = [
+      join(__dirname, '../../../node_modules/.pnpm'),    // workspace root from bundle_out
+      join(__dirname, '../../node_modules/.pnpm'),        // packages/target-electron from bundle_out
+      join(__dirname, '../../../../node_modules/.pnpm'),  // if there's deeper nesting
+    ]
+    
+    log.info('DeltaChat development mode - searching for binary:', {
+      packageName,
+      binaryName,
+      __dirname,
+      searchPaths
+    })
+    
+    for (const pnpmStore of searchPaths) {
+      if (!existsSync(pnpmStore)) {
+        log.debug('pnpm store does not exist:', pnpmStore)
+        continue
+      }
+      
+      try {
+        const fs = require('fs')
+        const entries = fs.readdirSync(pnpmStore)
+        
+        // Find the platform-specific package directory
+        const targetDir = entries.find((entry: string) => 
+          entry.startsWith(packageName.replace('@privitty/', '@privitty+'))
+        )
+        
+        if (targetDir) {
+          const binaryPath = join(
+            pnpmStore,
+            targetDir,
+            'node_modules',
+            packageName,
+            binaryName
+          )
+          
+          log.info('Checking binary path:', binaryPath)
+          
+          if (existsSync(binaryPath)) {
+            log.info('Found DeltaChat binary in pnpm store:', binaryPath)
+            return binaryPath
+          } else {
+            log.warn('Binary path exists in pnpm but file not found:', binaryPath)
+          }
+        } else {
+          log.debug('Target directory not found in pnpm store:', packageName)
+        }
+      } catch (error) {
+        log.debug('Error searching pnpm store:', pnpmStore, error)
+      }
+    }
+    
+    log.warn('DeltaChat binary not found in pnpm stores')
+    return null
+  }
+}
 
 /**
  * DeltaChatController
@@ -252,13 +348,26 @@ export default class DeltaChatController extends EventEmitter {
     }
 
     log.debug('Initiating DeltaChatNode')
-    let serverPath = await getRPCServerPath({
-      // Always allow environment override for local core usage
-      disableEnvPath: false,
-    })
-    if (serverPath.includes('app.asar')) {
-      // probably inside of electron build
-      serverPath = serverPath.replace('app.asar', 'app.asar.unpacked')
+    
+    // Try custom resolver first (works in packaged apps)
+    let serverPath = findDeltaChatBinaryInPackagedApp()
+    
+    // Fall back to the npm package's resolver if custom resolver failed
+    if (!serverPath) {
+      log.debug('Custom resolver failed, trying getRPCServerPath()')
+      try {
+        serverPath = await getRPCServerPath({
+          // Always allow environment override for local core usage
+          disableEnvPath: false,
+        })
+        if (serverPath.includes('app.asar')) {
+          // probably inside of electron build
+          serverPath = serverPath.replace('app.asar', 'app.asar.unpacked')
+        }
+      } catch (error) {
+        log.error('Failed to find deltachat-rpc-server:', error)
+        throw error
+      }
     }
 
     this.rpcServerPath = serverPath
@@ -333,26 +442,34 @@ export default class DeltaChatController extends EventEmitter {
     log.info('Before Creating PrivittyClient')
     this._inner_privitty_account_manager = new PrivittyClient(
       response => {
-        console.log('Privitty Controller', response)
+        log.info('Privitty Controller received message')
+        
+        // Always forward to the callback first
+        try {
+          this.onPrivittyData(response)
+        } catch (error) {
+          log.error('Error in onPrivittyData callback:', error)
+        }
+        
+        // Then handle RPC responses
         try {
           const resp = JSON.parse(response.trim())
-          console.log('resp', resp)
+          log.debug('Parsed privitty response')
 
           if (resp.id !== undefined && this.callbackMap.has(resp.id)) {
-            console.log('we have sequence number 0077⛔️⛔️', resp.id)
+            log.info('Handling RPC response with id:', resp.id)
             const resolve = this.callbackMap.get(resp.id)
 
             if (resolve) {
-              console.log('just before calling response 0088⛔️⛔️')
               resolve(response)
             } else {
-              console.warn('no resolve')
+              log.warn('No resolve function found for id:', resp.id)
             }
 
             this.callbackMap.delete(resp.id)
           }
         } catch (error) {
-          console.error('Failed to parse response: ⛔️⛔️', error)
+          log.error('Failed to parse privitty response:', error)
         }
       },
       this.cwd,
