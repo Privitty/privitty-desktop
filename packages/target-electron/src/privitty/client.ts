@@ -21,29 +21,35 @@ export class PrivittyClient {
   constructor(
     public on_data: (reponse: string) => void,
     public accounts_path: string,
-    private cmd_path: string
+    private _cmd_path?: string
   ) {
     this.serverProcess = null
     this.pendingRequests = new Map();
-    this.cmd_path = this.computeCmdPath()
+    this._cmd_path = this.computeCmdPath()
   }
 
   private computeCmdPath() {
     try {
       const binaryPath = this.findPrivittyBinaryInPnpm()
+      log.info('Found privitty binary at:', binaryPath)
       return binaryPath
     } catch (error) {
+      log.error('Failed to find privitty binary in pnpm store:', error)
       // Fallback to local binaries for development
       const binName = process.platform === 'win32'
         ? 'privitty_jsonrpc_server.exe'
         : 'privitty-server'
 
       if (app.isPackaged) {
-        return join(process.resourcesPath, 'privitty', 'dll', binName)
+        const fallbackPath = join(process.resourcesPath, 'privitty', 'dll', binName)
+        log.warn('Using fallback path for packaged app:', fallbackPath)
+        return fallbackPath
       }
 
       const appRoot = app.getAppPath()
-      return resolve(appRoot, 'privitty/dll', binName)
+      const devPath = resolve(appRoot, 'privitty/dll', binName)
+      log.warn('Using fallback path for development:', devPath)
+      return devPath
     }
   }
 
@@ -136,7 +142,8 @@ export class PrivittyClient {
   }
 
   start() {
-    this._cmd_path = this.computeCmdPath()
+    // cmd_path is already computed in constructor, no need to recompute
+    log.info('Starting privitty-server from:', this._cmd_path)
     this.serverProcess = spawn(this._cmd_path, {
       cwd: this.accounts_path, // Set working directory to writable accounts path
       env: {
@@ -159,7 +166,7 @@ export class PrivittyClient {
           `The Privitty Module is missing! This could be due to your antivirus program. Please check the quarantine to restore it and notify the developers about this issue.
             You can reach us at 
             
-            The missing module should be located at "${this.cmd_path}".
+            The missing module should be located at "${this._cmd_path}".
             
             The Log file is located in this folder: ${getLogsPath()}
             --------------------

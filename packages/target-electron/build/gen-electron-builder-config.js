@@ -155,6 +155,9 @@ build['mac'] = {
   identity: shouldSign ? undefined : null, // null = skip signing, undefined = auto-detect
   files: [...files, PREBUILD_FILTERS.NOT_LINUX, PREBUILD_FILTERS.NOT_WINDOWS],
   darkModeSupport: true,
+  // For universal builds: specify which files differ per architecture
+  x64ArchFiles: 'Contents/Resources/app.asar.unpacked/node_modules/**/*-darwin-x64/**',
+  mergeASARs: true,
 }
 
 build['mas'] = {

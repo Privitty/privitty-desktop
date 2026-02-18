@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- common strings without special context -->
-    <string name="app_name">Delta Chat</string>
+    <string name="app_name">Privitty</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
     <string name="clear_search">Clear Search</string>
@@ -262,7 +262,7 @@
     <string name="share_invite_link_explain">Anyone with this link can view your profile and start a chat with you. Only share it with people you trust.</string>
     <string name="invite_friends">Invite Friends</string>
     <!-- %1$s is replaced by the user's invitation link ("https://i.delta.chat/...") -->
-    <string name="invite_friends_text">Contact me on Delta Chat:\n%1$s</string>
+    <string name="invite_friends_text">Contact me on Privitty:\n%1$s</string>
     <string name="menu_copy_selection_to_clipboard">Copy Selection</string>
     <string name="menu_copy_link_to_clipboard">Copy Link</string>
     <string name="menu_copy_text_to_clipboard">Copy Text</string>
@@ -555,7 +555,7 @@
     <string name="multidevice_receiver_title">Add as Second Device</string>
     <string name="multidevice_open_settings_on_other_device">On the first device, go to “Settings / Add Second Device“ and scan the code shown there</string>
     <string name="multidevice_receiver_scanning_ask">Copy the profile from the other device to this device?</string>
-    <string name="multidevice_receiver_needs_update">The profile you want to import is from a newer Delta Chat version.\n\nTo continue setting up second device, please update this device to the latest version of Delta Chat.</string>
+    <string name="multidevice_receiver_needs_update">The profile you want to import is from a newer Privitty version.\n\nTo continue setting up second device, please update this device to the latest version of Privitty.</string>
     <string name="multidevice_abort">Abort setting up second device?</string>
     <string name="multidevice_abort_will_invalidate_copied_qr">This will invalidate the QR code copied to clipboard.</string>
     <string name="multidevice_transfer_done_devicemsg">ℹ️ Profile transferred to your second device.</string>
@@ -623,7 +623,7 @@
     <string name="login_header">Log into your E-Mail Account</string>
     <string name="login_explain">Log in with an existing e-mail account</string>
     <string name="login_subheader">For known e-mail providers additional settings are set up automatically. Sometimes IMAP needs to be enabled in the web settings. Consult your e-mail provider or friends for help.</string>
-    <string name="login_no_servers_hint">Delta Chat does not collect user data, everything stays on your device.</string>
+    <string name="login_no_servers_hint">Privitty does not collect user data, everything stays on your device.</string>
     <string name="login_inbox">Inbox</string>
     <string name="login_imap_login">IMAP Login Name</string>
     <string name="login_imap_server">IMAP Server</string>
@@ -651,7 +651,7 @@
     <string name="proxy_share_link">Share Link</string>
 
     <string name="login_info_oauth2_title">Continue with simplified setup?</string>
-    <string name="login_info_oauth2_text">The entered address supports a simplified setup (OAuth 2.0).\n\nIn the next step, please allow Delta Chat to send and receive messages.\n\nDelta Chat does not collect user data, everything stays on your device.</string>
+    <string name="login_info_oauth2_text">The entered address supports a simplified setup (OAuth 2.0).\n\nIn the next step, please allow Privitty to send and receive messages.\n\nPrivitty does not collect user data, everything stays on your device.</string>
     <string name="login_certificate_checks">Certificate Checks</string>
     <string name="login_error_mail">Please enter a valid e-mail address</string>
     <string name="login_error_server">Please enter a valid server / IP address</string>
@@ -745,7 +745,7 @@
     <string name="pref_encryption">Encryption</string>
     <string name="pref_manage_keys">Manage Keys</string>
     <string name="pref_use_system_emoji">Use System Emoji</string>
-    <string name="pref_use_system_emoji_explain">Turn off Delta Chat\'s built-in emoji support</string>
+    <string name="pref_use_system_emoji_explain">Turn off Privitty\'s built-in emoji support</string>
     <string name="pref_show_system_contacts">Read System Address Book</string>
     <string name="pref_show_system_contacts_explain">Offer to create chats with contacts from the address book.</string>
     <string name="pref_chats">Chats</string>
@@ -780,10 +780,10 @@
     <string name="pref_watch_sent_folder">Watch Sent Folder</string>
     <string name="pref_send_copy_to_self">Send Copy to Self</string>
     <string name="pref_send_copy_to_self_explain">Required when using this account on multiple devices.</string>
-    <string name="pref_auto_folder_moves">Move automatically to DeltaChat Folder</string>
+    <string name="pref_auto_folder_moves">Move automatically to Privitty Folder</string>
     <string name="pref_auto_folder_moves_explain">Chat conversations are moved to avoid cluttering the Inbox</string>
-    <string name="pref_only_fetch_mvbox_title">Only Fetch from DeltaChat Folder</string>
-    <string name="pref_only_fetch_mvbox_explain">Ignore other folders. Requires your server to move chat messages to the DeltaChat folder.</string>
+    <string name="pref_only_fetch_mvbox_title">Only Fetch from Privitty Folder</string>
+    <string name="pref_only_fetch_mvbox_explain">Ignore other folders. Requires your server to move chat messages to the Privitty folder.</string>
     <string name="pref_show_emails">Show Classic E-Mails</string>
     <string name="pref_show_emails_no">No, chats only</string>
     <string name="pref_show_emails_accepted_contacts">For accepted contacts</string>
@@ -814,7 +814,7 @@
     <string name="pref_edit_profile">Edit Profile</string>
     <string name="disable_imap_idle">Disable IMAP IDLE</string>
     <string name="disable_imap_idle_explain">Do not use IMAP IDLE extension even if the server supports it. Enabling this option will delay message retrieval, enable it only for testing.</string>
-    <string name="send_stats_to_devs">Send statistics to Delta Chat\'s developers</string>
+    <string name="send_stats_to_devs">Send statistics to Privitty\'s developers</string>
 
 
     <!-- Emoji picker and categories -->
@@ -866,13 +866,13 @@
 
     <!-- autocrypt -->
     <string name="autocrypt_send_asm_title">Send Autocrypt Setup Message</string>
-    <string name="autocrypt_send_asm_explain_before">An Autocrypt Setup Message securely shares your end-to-end setup with other Autocrypt-compliant apps.\n\nIf you use Delta Chat on the other device as well, use \"Settings / Add Second Device\" instead.</string>
+    <string name="autocrypt_send_asm_explain_before">An Autocrypt Setup Message securely shares your end-to-end setup with other Autocrypt-compliant apps.\n\nIf you use Privitty on the other device as well, use \"Settings / Add Second Device\" instead.</string>
     <string name="autocrypt_send_asm_button">Send Autocrypt Setup Message</string>
     <string name="autocrypt_send_asm_explain_after">Your setup has been sent to yourself. Switch to the other device and open the setup message. You should be asked for a setup code. Enter the following digits:</string>
     <string name="autocrypt_prefer_e2ee">Prefer End-To-End Encryption</string>
 
     <!-- system messages -->
-    <string name="systemmsg_cannot_decrypt">This message cannot be decrypted.\n\n• It might already help to simply reply to this message and ask the sender to send the message again.\n\n• If you just re-installed Delta Chat then it is best if you re-setup Delta Chat now and choose "Add as second device" or import a backup.</string>
+    <string name="systemmsg_cannot_decrypt">This message cannot be decrypted.\n\n• It might already help to simply reply to this message and ask the sender to send the message again.\n\n• If you just re-installed Privitty then it is best if you re-setup Privitty now and choose "Add as second device" or import a backup.</string>
     <string name="systemmsg_unknown_sender_for_chat">Unknown sender for this chat. See \'info\' for more details.</string>
     <string name="systemmsg_subject_for_new_contact">Message from %1$s</string>
     <string name="systemmsg_failed_sending_to">Failed to send message to %1$s.</string>
@@ -1058,9 +1058,9 @@
     <string name="encrypted_message">Encrypted message</string>
 
     <!-- strings introduced on desktop. we want to share strings between the os, in general, please do not add generic strings here -->
-    <string name="about_offical_app_desktop">This is the official Delta Chat Desktop app.</string>
+    <string name="about_offical_app_desktop">This is the official Privitty Desktop app.</string>
     <string name="about_licensed_under_desktop">This software is licensed under GNU GPL version 3 and the source code is available on GitHub.</string>
-    <string name="welcome_desktop">Welcome to Delta Chat</string>
+    <string name="welcome_desktop">Welcome to Privitty</string>
     <string name="global_menu_preferences_language_desktop">Language</string>
     <string name="global_menu_file_desktop">File</string>
     <string name="global_menu_file_quit_desktop">Quit</string>
@@ -1075,11 +1075,11 @@
     <string name="global_menu_view_developer_desktop">Developer</string>
     <string name="global_menu_view_developer_tools_desktop">Developer Tools</string>
     <string name="global_menu_help_desktop">Help</string>
-    <string name="delta_chat_homepage">Delta Chat Homepage</string>
+    <string name="delta_chat_homepage">Privitty Homepage</string>
     <string name="contribute">Contribute</string>
     <string name="global_menu_help_report_desktop">Report an Issue</string>
-    <string name="global_menu_help_about_desktop">About Delta Chat</string>
-    <string name="global_menu_file_open_desktop">Open Delta Chat</string>
+    <string name="global_menu_help_about_desktop">About Privitty</string>
+    <string name="global_menu_file_open_desktop">Open Privitty</string>
     <string name="global_menu_minimize_to_tray">Minimize</string>
     <string name="no_chat_selected_suggestion_desktop">Select a chat or create a new chat</string>
     <string name="write_message_desktop">Write a message</string>
@@ -1100,7 +1100,7 @@
     <string name="message_detail_received_desktop">received</string>
     <string name="menu.view.developer.open.log.folder">Open the Log Folder</string>
     <string name="menu.view.developer.open.current.log.file">Open Current Logfile</string>
-    <string name="explain_desktop_minimized_disabled_tray_pref" tools:ignore="TypographyDashes">Tray icon cannot be disabled as Delta Chat was started with the --minimized option.</string>
+    <string name="explain_desktop_minimized_disabled_tray_pref" tools:ignore="TypographyDashes">Tray icon cannot be disabled as Privitty was started with the --minimized option.</string>
     <string name="no_spellcheck_suggestions_found">No spelling suggestions found.</string>
     <string name="show_window">Show Window</string>
 

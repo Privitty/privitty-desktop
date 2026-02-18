@@ -210,3 +210,31 @@ Licensed under `GPL-3.0-or-later`, see [`LICENSE`](./LICENSE) file for details.
 
 > You should have received a copy of the GNU General Public License
 > along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# Build DMG for macOS
+
+```sh
+cd /Users/milinddeore/PROJECTS/delta/privitty-desktop/packages/target-electron
+export CSC_IDENTITY_AUTO_DISCOVERY=false
+pnpm pack:generate_config
+pnpm pack:patch-node-modules
+rm -rf dist
+# arm64
+electron-builder --config ./electron-builder.json5 --mac dmg --arm64 --publish never
+# OR x86_64
+electron-builder --config ./electron-builder.json5 --mac dmg --x64 --publish never
+# OR universal
+electron-builder --config ./electron-builder.json5 --mac dmg --universal --publish never
+```
+
+# For Production DMG
+
+```sh
+# Remove CSC_IDENTITY_AUTO_DISCOVERY=false (or set to true)
+# Set your Apple Developer credentials
+export APPLE_ID="your-apple-id@example.com"
+export APPLE_ID_PASSWORD="app-specific-password"
+export APPLE_TEAM_ID="your-team-id"
+
+electron-builder --config ./electron-builder.json5 --mac dmg --universal
+```
