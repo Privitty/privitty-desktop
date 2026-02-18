@@ -26,6 +26,9 @@ const files = [
 ]
 const env = process.env
 
+// Check if we should sign (production mode)
+const shouldSign = env.CSC_IDENTITY_AUTO_DISCOVERY !== 'false'
+
 /** @type {import('./types').DeepWriteable<import('electron-builder').Configuration>} */
 const build = {}
 build['appId'] = 'chat.privitty.desktop.electron'
@@ -74,13 +77,49 @@ build['fileAssociations'] = [
 ]
 
 build['files'] = files
-build['extraResources'] = []
-build['asarUnpack'] = ['./node_modules/@privitty/privitty-core*/**']
+build['extraResources'] = [
+  {
+    from: 'node_modules/@privitty/deltachat-rpc-server',
+    to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server',
+  },
+  {
+    from: 'node_modules/@privitty/deltachat-rpc-server-darwin-arm64',
+    to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-arm64',
+  },
+  {
+    from: 'node_modules/@privitty/deltachat-rpc-server-darwin-x64',
+    to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-x64',
+  },
+  {
+    from: 'node_modules/@privitty/privitty-core',
+    to: 'app.asar.unpacked/node_modules/@privitty/privitty-core',
+  },
+  {
+    from: 'node_modules/@privitty/privitty-core-darwin-arm64',
+    to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-arm64',
+  },
+  {
+    from: 'node_modules/@privitty/privitty-core-darwin-x64',
+    to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-x64',
+  },
+]
+build['asarUnpack'] = [
+  // Privitty packages
+  './node_modules/@privitty/privitty-core/**',
+  './node_modules/@privitty/privitty-core-*/**',
+  // Privitty DeltaChat RPC server packages (meta-package AND platform-specific)
+  './node_modules/@privitty/deltachat-rpc-server/**',
+  './node_modules/@privitty/deltachat-rpc-server-*/**'
+]
 // 'html-dist/xdcs/' should be in 'asarUnpack', but that had "file already exists" errors in the ci
 // see https://github.com/deltachat/deltachat-desktop/pull/3876, so we now do it "manually" in the afterPackHook
 
 build['afterPack'] = './build/afterPackHook.cjs'
-build['afterSign'] = './build/afterSignHook.cjs'
+
+// Only enable afterSign (notarization) if signing is enabled
+if (shouldSign) {
+  build['afterSign'] = './build/afterSignHook.cjs'
+}
 
 // With pnpm, let electron-builder skip native module rebuild to avoid invoking a global pnpm
 // which can fail on Windows ("%1 is not a valid Win32 application").
@@ -93,9 +132,9 @@ if (typeof env.NO_ASAR !== 'undefined' && env.NO_ASAR != 'false') {
 // platform specific
 
 const PREBUILD_FILTERS = {
-  NOT_LINUX: '!node_modules/@deltachat/stdio-rpc-server-linux-*${/*}',
-  NOT_MAC: '!node_modules/@deltachat/stdio-rpc-server-darwin-*${/*}',
-  NOT_WINDOWS: '!node_modules/@deltachat/stdio-rpc-server-win32-*${/*}',
+  NOT_LINUX: '!node_modules/@privitty/deltachat-rpc-server-linux-*${/*}',
+  NOT_MAC: '!node_modules/@privitty/deltachat-rpc-server-darwin-*${/*}',
+  NOT_WINDOWS: '!node_modules/@privitty/deltachat-rpc-server-win32-*${/*}',
 }
 
 build['mac'] = {
@@ -110,10 +149,10 @@ build['mac'] = {
     NSMicrophoneUsageDescription: 'For recording voice messages',
     ITSAppUsesNonExemptEncryption: false,
   },
-  gatekeeperAssess: true,
-  hardenedRuntime: true,
+  gatekeeperAssess: shouldSign,
+  hardenedRuntime: shouldSign,
   icon: 'build/icon-mac.icns',
-  provisioningProfile: '../../../embedded.provisionprofile',
+  identity: shouldSign ? undefined : null, // null = skip signing, undefined = auto-detect
   files: [...files, PREBUILD_FILTERS.NOT_LINUX, PREBUILD_FILTERS.NOT_WINDOWS],
   darkModeSupport: true,
 }
@@ -144,8 +183,10 @@ build['linux'] = {
   target: ['AppImage', 'deb'],
   category: 'Network;Chat;InstantMessaging;',
   desktop: {
-    Comment: 'privitty Chat email-based messenger',
-    Keywords: 'privitty;chat;privitty;messaging;messenger;email',
+    entry: {
+      Comment: 'privitty Chat email-based messenger',
+      Keywords: 'privitty;chat;privitty;messaging;messenger;email',
+    }
   },
   files: [...files, PREBUILD_FILTERS.NOT_MAC, PREBUILD_FILTERS.NOT_WINDOWS],
   icon: 'build/icon.icns', // electron builder gets the icon out of the mac icon archive

@@ -59,7 +59,7 @@ module.exports = async context => {
 
   // const stdioServerVersion = JSON.parse(
   //   await readFile(
-  //     join(source_dir, '/node_modules/@deltachat/stdio-rpc-server/package.json')
+  //     join(source_dir, '/node_modules/@privitty/deltachat-rpc-server/package.json')
   //   )
   // ).version
 
@@ -237,6 +237,12 @@ async function deleteNotNeededPrebuildsFromUnpackedASAR(
 
   const toDelete = prebuilds.filter(name => {
     const architecture = name.split('-')[4]
+    
+    // Keep meta-packages (they don't have architecture suffix)
+    if (!architecture) {
+      return false
+    }
+    
     if (architecture === convertArch(context.arch)) {
       return false
     } else if (

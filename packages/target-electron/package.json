@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "name": "@deltachat-desktop/target-electron",
-  "version": "1.59.1",
+  "version": "1.0.0",
   "description": "Desktop Application for delta.chat",
   "repository": {
     "type": "git",
@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@deltachat/jsonrpc-client": "catalog:",
-    "@deltachat/stdio-rpc-server": "catalog:",
+    "@privitty/deltachat-rpc-server": "^1.60.0",
     "@privitty/privitty-core": "^0.3.3",
     "mime-types": "catalog:",
     "sass": "catalog:",

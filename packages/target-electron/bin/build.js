@@ -16,7 +16,7 @@ await build({
     // all dependencies not listed here can go to dev dependencies because they get bundled
     'electron',
     '@deltachat/jsonrpc-client',
-    '@deltachat/stdio-rpc-server',
+    '@privitty/deltachat-rpc-server',
     'mime-db',
     'mime-types',
     'isomorphic-ws',

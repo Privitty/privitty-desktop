@@ -79,10 +79,23 @@ export class PrivittyClient {
       throw new Error(`Unsupported platform: ${platformName}`)
     }
     
-    // Get current file location
+    // In packaged apps, look in app.asar.unpacked
+    if (app.isPackaged) {
+      const unpackedPath = join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'node_modules',
+        packageName,
+        binaryName
+      )
+      if (existsSync(unpackedPath)) {
+        return unpackedPath
+      }
+    }
+    
+    // In development, search in pnpm store
     const __dirname = dirname(fileURLToPath(import.meta.url))
     
-    // Search in pnpm store
     const pnpmStorePaths = [
       join(__dirname, '../../../node_modules/.pnpm'),
       join(__dirname, '../../../../node_modules/.pnpm'),
@@ -125,8 +138,10 @@ export class PrivittyClient {
   start() {
     this._cmd_path = this.computeCmdPath()
     this.serverProcess = spawn(this._cmd_path, {
+      cwd: this.accounts_path, // Set working directory to writable accounts path
       env: {
         RUST_LOG: process.env.RUST_LOG,
+        PRIVITTY_ACCOUNTS_PATH: this.accounts_path, // Pass accounts path as env var
       },
     })
 
@@ -263,5 +278,21 @@ export class PrivittyClient {
     requestId)
     this.sendJsonRpcRequest('getSystemState');
     this.sendJsonRpcRequest('getHealth');
+  }
+
+  /**
+   * Stop the privitty-server process
+   * Called when the app is shutting down
+   */
+  stop() {
+    if (this.serverProcess) {
+      log.info('Stopping privitty-server process')
+      try {
+        this.serverProcess.kill()
+        this.serverProcess = null
+      } catch (error) {
+        log.error('Error killing privitty-server process:', error)
+      }
+    }
   }
 }
