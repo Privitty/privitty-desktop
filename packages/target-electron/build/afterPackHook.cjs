@@ -235,25 +235,32 @@ async function cleanupPrivittyBinaries(
 }
 
 /**
- * Remove arch-specific packages from app.asar.unpacked that do NOT match the
- * current build slice architecture.
+ * Remove arch-specific packages from app.asar.unpacked that should not be
+ * present in the current build slice.
  *
- * When pnpm installs with supportedArchitectures: { cpu: [x64, arm64] }, it
- * installs both @parcel/watcher-darwin-arm64 and @parcel/watcher-darwin-x64
- * (and similarly for any other package with optional arch sub-packages).
- * Both end up in every build slice, causing @electron/universal to error when
- * it finds the same arch-specific Mach-O binary in both x64 and arm64 builds.
+ * pnpm's supportedArchitectures installs packages for all declared OS/arch
+ * combinations (darwin/linux/win32 × x64/arm64). All of these end up in
+ * every build slice, causing two problems for @electron/universal:
  *
- * This function runs during each intermediate slice (arch=x64 or arch=arm64):
- *   x64 slice  → delete all *-darwin-arm64, *-linux-arm64, *-win32-arm64 packages
- *   arm64 slice → delete all *-darwin-x64,  *-linux-x64,  *-win32-x64  packages
- *   universal   → skip (merging already done)
+ *   1. Same Mach-O binary in both x64 and arm64 slices (e.g. watcher-darwin-arm64
+ *      found in both → "same in both builds, not covered by x64ArchFiles").
  *
- * Handles both scoped (@scope/pkg-darwin-arm64) and unscoped (pkg-darwin-arm64)
- * packages.
+ *   2. Asymmetric non-darwin packages (e.g. privitty-core publishes linux-x64
+ *      but NOT linux-arm64) → x64 has more Mach-O-adjacent files than arm64
+ *      → "number of mach-o files is not the same".
+ *
+ * Strategy per platform:
+ *
+ *   macOS x64  slice → keep ONLY *-darwin-x64 and *-darwin-universal packages
+ *   macOS arm64 slice → keep ONLY *-darwin-arm64 and *-darwin-universal packages
+ *   Windows/Linux     → remove wrong-arch packages (cross-platform cleanup)
+ *   universal         → skip (merge already happened)
+ *
+ * Handles both scoped (@scope/pkg-darwin-arm64) and unscoped (pkg-darwin-arm64).
  */
 async function cleanupWrongArchUnpackedModules(resources_dir, context) {
   const buildArch = convertArch(context.arch)
+  const platform = context.electronPlatformName
 
   if (buildArch === 'universal') {
     console.log('cleanupWrongArchUnpackedModules: universal build, skipping')
@@ -269,20 +276,40 @@ async function cleanupWrongArchUnpackedModules(resources_dir, context) {
     return
   }
 
-  const archToDelete = buildArch === 'x64' ? 'arm64' : 'x64'
-  const badSuffixes = [
-    `-darwin-${archToDelete}`,
-    `-linux-${archToDelete}`,
-    `-win32-${archToDelete}`,
-  ]
-  const isWrongArch = name => badSuffixes.some(s => name.endsWith(s))
+  // Pattern: package names like foo-darwin-x64, @scope/bar-linux-arm64
+  const osArchSuffix = /-(darwin|linux|win32)-(x64|arm64|ia32|arm|universal)$/
+
+  const shouldDelete = name => {
+    const m = name.match(osArchSuffix)
+    if (!m) return false // Not an arch-specific package — keep it
+
+    const [, pkgOs, pkgArch] = m
+
+    if (platform === 'darwin') {
+      // For macOS: keep only darwin-{buildArch} and darwin-universal.
+      // Remove everything else: wrong darwin arch, and all linux/win32 variants.
+      // Removing linux/win32 is essential because their binaries are absent from
+      // one of the two slices (e.g. privitty-core publishes linux-x64 but not
+      // linux-arm64), causing an asymmetric Mach-O count that @electron/universal
+      // rejects.
+      if (pkgOs !== 'darwin') return true
+      return pkgArch !== buildArch && pkgArch !== 'universal'
+    }
+
+    // Non-macOS builds: only remove wrong-arch packages
+    const archToDelete = buildArch === 'x64' ? 'arm64' : 'x64'
+    return (
+      name.endsWith(`-darwin-${archToDelete}`) ||
+      name.endsWith(`-linux-${archToDelete}`) ||
+      name.endsWith(`-win32-${archToDelete}`)
+    )
+  }
 
   const deleted = []
-
   const topLevel = await readdir(unpacked_nm)
+
   for (const entry of topLevel) {
     if (entry.startsWith('@')) {
-      // Scoped package directory — scan one level deeper
       const scopeDir = join(unpacked_nm, entry)
       let scoped
       try {
@@ -291,13 +318,12 @@ async function cleanupWrongArchUnpackedModules(resources_dir, context) {
         continue
       }
       for (const pkg of scoped) {
-        if (isWrongArch(pkg)) {
-          const fullPath = join(scopeDir, pkg)
-          await rm(fullPath, { recursive: true, force: true })
+        if (shouldDelete(pkg)) {
+          await rm(join(scopeDir, pkg), { recursive: true, force: true })
           deleted.push(`${entry}/${pkg}`)
         }
       }
-    } else if (isWrongArch(entry)) {
+    } else if (shouldDelete(entry)) {
       await rm(join(unpacked_nm, entry), { recursive: true, force: true })
       deleted.push(entry)
     }
@@ -305,12 +331,12 @@ async function cleanupWrongArchUnpackedModules(resources_dir, context) {
 
   if (deleted.length > 0) {
     console.log(
-      `cleanupWrongArchUnpackedModules [${buildArch} slice]: removed ${archToDelete} packages:`,
+      `cleanupWrongArchUnpackedModules [${platform}/${buildArch}]: removed:`,
       deleted
     )
   } else {
     console.log(
-      `cleanupWrongArchUnpackedModules [${buildArch} slice]: no ${archToDelete} packages found`
+      `cleanupWrongArchUnpackedModules [${platform}/${buildArch}]: nothing to remove`
     )
   }
 }
