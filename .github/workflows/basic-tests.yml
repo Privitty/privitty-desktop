@@ -1,15 +1,7 @@
 name: Basic Code Checks & Tests
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    paths-ignore:
-      - 'docs/**'  # only trigger build if a file outside of /docs was changed
-      - 'README_ASSETS/**'
-      - '.prettierrc.yml'
-      - '.vscode/**'
+  workflow_dispatch: # disabled – use privitty-release.yml
 
 jobs:
   check:

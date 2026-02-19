@@ -39,7 +39,11 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install dependencies
+      # Install ALL optional packages for both arm64 and x64 so lipo can
+      # combine them into a universal fat binary.  The root package.json already
+      # declares supportedArchitectures: { cpu: [x64, arm64] }, so pnpm will
+      # download both sets of optional deps automatically.
+      - name: Install dependencies (both architectures)
         run: pnpm install --frozen-lockfile
 
       - name: Override version
@@ -56,6 +60,12 @@ jobs:
       - name: Build JS/TS sources
         run: pnpm -w build:electron
 
+      # Must run BEFORE create-universal-bins.cjs so that the flat
+      # packages/target-electron/node_modules/@privitty/* directories exist.
+      - name: Flatten node_modules (patch)
+        working-directory: packages/target-electron
+        run: node ../../bin/writeFlatDependencies.js packages/target-electron node_modules
+
       - name: Create universal fat binaries (lipo)
         working-directory: packages/target-electron
         run: node ./build/create-universal-bins.cjs
@@ -67,16 +77,12 @@ jobs:
           UNIVERSAL_BUILD: 'true'
         run: node ./build/gen-electron-builder-config.js
 
-      - name: Patch node_modules
-        working-directory: packages/target-electron
-        run: node ../../bin/writeFlatDependencies.js packages/target-electron node_modules
-
       - name: Build unsigned universal DMG
         working-directory: packages/target-electron
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: |
-          electron-builder \
+          pnpm exec electron-builder \
             --config ./electron-builder.json5 \
             --mac dmg \
             --universal \
@@ -125,24 +131,27 @@ jobs:
 
       - name: Generate electron-builder config (unsigned)
         working-directory: packages/target-electron
+        shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: ''
         run: node ./build/gen-electron-builder-config.js
 
-      - name: Patch node_modules
+      - name: Flatten node_modules (patch)
         working-directory: packages/target-electron
+        shell: bash
         run: node ../../bin/writeFlatDependencies.js packages/target-electron node_modules
 
       - name: Build unsigned Windows installer
         working-directory: packages/target-electron
+        shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: ''
         run: |
-          electron-builder `
-            --config ./electron-builder.json5 `
-            --win nsis portable `
+          pnpm exec electron-builder \
+            --config ./electron-builder.json5 \
+            --win nsis portable \
             --publish never
 
       - name: Upload Windows artifacts
@@ -192,16 +201,18 @@ jobs:
 
       - name: Generate electron-builder config
         working-directory: packages/target-electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: node ./build/gen-electron-builder-config.js
 
-      - name: Patch node_modules
+      - name: Flatten node_modules (patch)
         working-directory: packages/target-electron
         run: node ../../bin/writeFlatDependencies.js packages/target-electron node_modules
 
       - name: Build Linux packages
         working-directory: packages/target-electron
         run: |
-          electron-builder \
+          pnpm exec electron-builder \
             --config ./electron-builder.json5 \
             --linux AppImage deb \
             --publish never

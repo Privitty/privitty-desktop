@@ -1,9 +1,7 @@
 name: Code Checks for rust part of delta tauri
 
 on:
-  pull_request:
-    paths:
-      - packages/target-tauri/**
+  workflow_dispatch: # disabled – use privitty-release.yml
 
 jobs:
   fmt:
