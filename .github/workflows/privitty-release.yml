@@ -81,6 +81,7 @@ jobs:
         working-directory: packages/target-electron
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          UNIVERSAL_BUILD: 'true'
         run: |
           pnpm exec electron-builder \
             --config ./electron-builder.json5 \
