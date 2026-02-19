@@ -115,6 +115,18 @@ module.exports = async context => {
     isMacBuild,
     env['NO_ASAR'] ? false : true
   )
+
+  // For single-arch macOS builds: remove wrong-arch native packages from
+  // app.asar.unpacked.  This is NOT used for UNIVERSAL_BUILD=true because
+  // those packages are removed from source node_modules before electron-builder
+  // runs (see privitty-release.yml "Pre-cleanup arch-specific packages" step).
+  // Post-ASAR deletion doesn't work for universal builds: the ASAR header
+  // still references deleted files and @electron/universal's mergeASARs throws
+  // ENOENT when it tries to read them.
+  // ---------------------------------------------------------------------------------
+  if (isMacBuild && process.env.UNIVERSAL_BUILD !== 'true') {
+    await cleanupWrongArchUnpackedModules(resources_dir, context)
+  }
 }
 
 async function packageMSVCRedist(context) {
@@ -221,6 +233,134 @@ async function cleanupPrivittyBinaries(
     console.log('Remaining privitty packages:', remaining)
   } catch (error) {
     console.log('Failed to cleanup privitty binaries:', error)
+  }
+}
+
+/**
+ * Remove arch-specific packages from app.asar.unpacked so that both the
+ * x64-temp and arm64-temp build slices end up with IDENTICAL file trees.
+ *
+ * @electron/universal's merge algorithm (v2+) requires every file in the
+ * app bundle to exist at the SAME RELATIVE PATH in both slices. If even one
+ * file is unique to a single slice the merge throws:
+ *   "While trying to merge mach-o files … the number of mach-o files is not
+ *    the same between the arm64 and x64 builds"
+ * (The error message is misleading — the real check is: uniqueToX64.length
+ *  !== 0 || uniqueToArm64.length !== 0, i.e. ANY file difference fails.)
+ *
+ * pnpm's supportedArchitectures installs packages for every declared OS/arch
+ * combination (darwin/linux/win32 × x64/arm64).  All of these land in
+ * app.asar.unpacked in every build slice, creating two failure modes:
+ *
+ *   A. Arch-specific packages at different paths:
+ *      x64-temp has  …/@privitty/privitty-core-darwin-x64/privitty-server
+ *      arm64-temp has …/@privitty/privitty-core-darwin-arm64/privitty-server
+ *      → Different paths → unique to each slice → merge fails.
+ *
+ *   B. Asymmetric non-darwin packages:
+ *      privitty-core publishes linux-x64 but NOT linux-arm64, so only the
+ *      x64 slice has that package → again unique → merge fails.
+ *
+ * Solution for universal macOS builds (UNIVERSAL_BUILD=true):
+ *   Remove ALL arch-specific packages from BOTH slices; keep ONLY
+ *   *-darwin-universal packages (fat binaries created by the lipo step).
+ *   Both slices then contain identical files → @electron/universal passes.
+ *
+ * Solution for single-arch macOS builds (UNIVERSAL_BUILD unset/false):
+ *   Keep only darwin-{buildArch} packages; remove all others including
+ *   linux-* and win32-*.
+ *
+ * Windows/Linux builds: remove packages for the opposite CPU arch only.
+ * universal arch value: skip (merge already done by @electron/universal).
+ *
+ * Handles both scoped (@scope/pkg-darwin-arm64) and unscoped packages.
+ */
+async function cleanupWrongArchUnpackedModules(resources_dir, context) {
+  const buildArch = convertArch(context.arch)
+  const platform = context.electronPlatformName
+  const isUniversalBuild = process.env.UNIVERSAL_BUILD === 'true'
+
+  if (buildArch === 'universal') {
+    console.log('cleanupWrongArchUnpackedModules: universal build, skipping')
+    return
+  }
+
+  const unpacked_nm = join(resources_dir, 'app.asar.unpacked', 'node_modules')
+
+  if (!existsSync(unpacked_nm)) {
+    console.log(
+      'cleanupWrongArchUnpackedModules: app.asar.unpacked/node_modules not found, skipping'
+    )
+    return
+  }
+
+  // Matches package names like: foo-darwin-x64, @scope/bar-linux-arm64
+  const osArchSuffix = /-(darwin|linux|win32)-(x64|arm64|ia32|arm|universal)$/
+
+  const shouldDelete = name => {
+    const m = name.match(osArchSuffix)
+    if (!m) return false // Not an arch-specific package — keep it
+
+    const [, pkgOs, pkgArch] = m
+
+    if (platform === 'darwin') {
+      if (isUniversalBuild) {
+        // Universal build: BOTH slices must have IDENTICAL file trees.
+        // Keep ONLY darwin-universal (fat) packages; delete everything else
+        // including darwin-x64, darwin-arm64, linux-*, win32-*.
+        // @parcel/watcher-darwin-* also gets removed here — chokidar falls
+        // back to fsevents (already bundled in Electron) on macOS.
+        if (pkgOs !== 'darwin') return true // Remove non-darwin (linux, win32)
+        return pkgArch !== 'universal' // Remove all non-fat darwin packages
+      }
+
+      // Single-arch build: keep only current-arch darwin packages.
+      if (pkgOs !== 'darwin') return true // Remove non-darwin
+      return pkgArch !== buildArch && pkgArch !== 'universal' // Remove wrong arch
+    }
+
+    // Non-macOS builds: remove packages for the opposite CPU arch only.
+    const archToDelete = buildArch === 'x64' ? 'arm64' : 'x64'
+    return (
+      name.endsWith(`-darwin-${archToDelete}`) ||
+      name.endsWith(`-linux-${archToDelete}`) ||
+      name.endsWith(`-win32-${archToDelete}`)
+    )
+  }
+
+  const deleted = []
+  const topLevel = await readdir(unpacked_nm)
+
+  for (const entry of topLevel) {
+    if (entry.startsWith('@')) {
+      const scopeDir = join(unpacked_nm, entry)
+      let scoped
+      try {
+        scoped = await readdir(scopeDir)
+      } catch {
+        continue
+      }
+      for (const pkg of scoped) {
+        if (shouldDelete(pkg)) {
+          await rm(join(scopeDir, pkg), { recursive: true, force: true })
+          deleted.push(`${entry}/${pkg}`)
+        }
+      }
+    } else if (shouldDelete(entry)) {
+      await rm(join(unpacked_nm, entry), { recursive: true, force: true })
+      deleted.push(entry)
+    }
+  }
+
+  if (deleted.length > 0) {
+    console.log(
+      `cleanupWrongArchUnpackedModules [${platform}/${buildArch} universal=${isUniversalBuild}]: removed:`,
+      deleted
+    )
+  } else {
+    console.log(
+      `cleanupWrongArchUnpackedModules [${platform}/${buildArch} universal=${isUniversalBuild}]: nothing to remove`
+    )
   }
 }
 

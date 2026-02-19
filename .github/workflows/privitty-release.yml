@@ -70,6 +70,42 @@ jobs:
         working-directory: packages/target-electron
         run: node ./build/create-universal-bins.cjs
 
+      # Delete ALL arch-specific packages from the flat node_modules BEFORE
+      # electron-builder runs.  electron-builder builds the ASAR header from
+      # whatever is in node_modules.  If arch-specific packages (e.g.
+      # @parcel/watcher-darwin-x64) are present, they get listed in the ASAR
+      # header as "unpacked" files.  The afterPackHook then deletes them from
+      # app.asar.unpacked, but the ASAR header still references them.  When
+      # @electron/universal's mergeASARs step tries to read those files it
+      # gets ENOENT and fails.
+      #
+      # By removing them here (after lipo has already created the universal
+      # fat binaries), only the -darwin-universal packages remain and both
+      # build slices end up with identical ASAR headers.
+      - name: Pre-cleanup arch-specific packages (universal build)
+        working-directory: packages/target-electron
+        run: |
+          rm -rf \
+            node_modules/@parcel/watcher-darwin-arm64 \
+            node_modules/@parcel/watcher-darwin-x64 \
+            node_modules/@parcel/watcher-linux-arm64 \
+            node_modules/@parcel/watcher-linux-x64 \
+            node_modules/@parcel/watcher-win32-arm64 \
+            node_modules/@parcel/watcher-win32-ia32 \
+            node_modules/@parcel/watcher-win32-x64 \
+            node_modules/@privitty/deltachat-rpc-server-darwin-arm64 \
+            node_modules/@privitty/deltachat-rpc-server-darwin-x64 \
+            node_modules/@privitty/privitty-core-darwin-arm64 \
+            node_modules/@privitty/privitty-core-darwin-x64 \
+            node_modules/@privitty/privitty-core-linux-arm64 \
+            node_modules/@privitty/privitty-core-linux-x64 \
+            node_modules/@privitty/privitty-core-win32-arm64 \
+            node_modules/@privitty/privitty-core-win32-x64 \
+            || true
+          echo "Pre-cleanup done. Remaining @parcel/watcher and @privitty packages:"
+          ls node_modules/@parcel/ 2>/dev/null || echo "  (none)"
+          ls node_modules/@privitty/ 2>/dev/null || echo "  (none)"
+
       - name: Generate electron-builder config (unsigned, universal)
         working-directory: packages/target-electron
         env:
@@ -81,6 +117,7 @@ jobs:
         working-directory: packages/target-electron
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          UNIVERSAL_BUILD: 'true'
         run: |
           pnpm exec electron-builder \
             --config ./electron-builder.json5 \

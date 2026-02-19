@@ -246,7 +246,7 @@ build['deb'] = {
 }
 
 build['win'] = {
-  icon: 'html-dist/images/deltachat.ico',
+  icon: 'build/icon.png',
   // Use a fixed prefix for Windows installer filenames
   artifactName: 'PrivittyChat-${version}-Setup.${arch}.${ext}', // specifying it inside of build['nsis'] does not work for unknown reasons.
   files: [...files, PREBUILD_FILTERS.NOT_MAC, PREBUILD_FILTERS.NOT_LINUX],
