@@ -77,31 +77,53 @@ build['fileAssociations'] = [
 ]
 
 build['files'] = files
+// When building a universal DMG (UNIVERSAL_BUILD=true), the lipo step has
+// already merged arm64+x64 into "-darwin-universal" packages. We include only
+// those so @electron/universal sees the same Mach-O path in both arch slices.
+// For single-arch builds we include both arch packages and let afterPackHook
+// prune the one that does not match the current build architecture.
+const isUniversalBuild = env.UNIVERSAL_BUILD === 'true'
+
+const macExtraResources = isUniversalBuild
+  ? [
+      {
+        from: 'node_modules/@privitty/deltachat-rpc-server-darwin-universal',
+        to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-universal',
+      },
+      {
+        from: 'node_modules/@privitty/privitty-core-darwin-universal',
+        to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-universal',
+      },
+    ]
+  : [
+      {
+        from: 'node_modules/@privitty/deltachat-rpc-server-darwin-arm64',
+        to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-arm64',
+      },
+      {
+        from: 'node_modules/@privitty/deltachat-rpc-server-darwin-x64',
+        to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-x64',
+      },
+      {
+        from: 'node_modules/@privitty/privitty-core-darwin-arm64',
+        to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-arm64',
+      },
+      {
+        from: 'node_modules/@privitty/privitty-core-darwin-x64',
+        to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-x64',
+      },
+    ]
+
 build['extraResources'] = [
   {
     from: 'node_modules/@privitty/deltachat-rpc-server',
     to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server',
   },
   {
-    from: 'node_modules/@privitty/deltachat-rpc-server-darwin-arm64',
-    to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-arm64',
-  },
-  {
-    from: 'node_modules/@privitty/deltachat-rpc-server-darwin-x64',
-    to: 'app.asar.unpacked/node_modules/@privitty/deltachat-rpc-server-darwin-x64',
-  },
-  {
     from: 'node_modules/@privitty/privitty-core',
     to: 'app.asar.unpacked/node_modules/@privitty/privitty-core',
   },
-  {
-    from: 'node_modules/@privitty/privitty-core-darwin-arm64',
-    to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-arm64',
-  },
-  {
-    from: 'node_modules/@privitty/privitty-core-darwin-x64',
-    to: 'app.asar.unpacked/node_modules/@privitty/privitty-core-darwin-x64',
-  },
+  ...macExtraResources,
 ]
 build['asarUnpack'] = [
   // Privitty packages
@@ -155,9 +177,16 @@ build['mac'] = {
   identity: shouldSign ? undefined : null, // null = skip signing, undefined = auto-detect
   files: [...files, PREBUILD_FILTERS.NOT_LINUX, PREBUILD_FILTERS.NOT_WINDOWS],
   darkModeSupport: true,
-  // For universal builds: specify which files differ per architecture
-  x64ArchFiles: 'Contents/Resources/app.asar.unpacked/node_modules/**/*-darwin-x64/**',
-  mergeASARs: true,
+  // For lipo-based universal builds the fat binary already covers both archs,
+  // so x64ArchFiles / mergeASARs are not needed (and would confuse the merger).
+  // For single-arch or electron-builder-native universal builds, keep them.
+  ...(isUniversalBuild
+    ? {}
+    : {
+        x64ArchFiles:
+          'Contents/Resources/app.asar.unpacked/node_modules/**/*-darwin-x64/**',
+        mergeASARs: true,
+      }),
 }
 
 build['mas'] = {
