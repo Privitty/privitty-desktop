@@ -115,6 +115,16 @@ module.exports = async context => {
     isMacBuild,
     env['NO_ASAR'] ? false : true
   )
+
+  // Generic cleanup: remove all wrong-arch native packages from app.asar.unpacked.
+  // This handles @parcel/watcher, @privitty/* and any other package that ships
+  // arch-specific sub-packages (e.g. foo-darwin-arm64, bar-darwin-x64).
+  // Without this, @electron/universal finds the same Mach-O binary in both the
+  // x64-temp and arm64-temp slices and refuses to merge them.
+  // ---------------------------------------------------------------------------------
+  if (isMacBuild) {
+    await cleanupWrongArchUnpackedModules(resources_dir, context)
+  }
 }
 
 async function packageMSVCRedist(context) {
@@ -221,6 +231,87 @@ async function cleanupPrivittyBinaries(
     console.log('Remaining privitty packages:', remaining)
   } catch (error) {
     console.log('Failed to cleanup privitty binaries:', error)
+  }
+}
+
+/**
+ * Remove arch-specific packages from app.asar.unpacked that do NOT match the
+ * current build slice architecture.
+ *
+ * When pnpm installs with supportedArchitectures: { cpu: [x64, arm64] }, it
+ * installs both @parcel/watcher-darwin-arm64 and @parcel/watcher-darwin-x64
+ * (and similarly for any other package with optional arch sub-packages).
+ * Both end up in every build slice, causing @electron/universal to error when
+ * it finds the same arch-specific Mach-O binary in both x64 and arm64 builds.
+ *
+ * This function runs during each intermediate slice (arch=x64 or arch=arm64):
+ *   x64 slice  → delete all *-darwin-arm64, *-linux-arm64, *-win32-arm64 packages
+ *   arm64 slice → delete all *-darwin-x64,  *-linux-x64,  *-win32-x64  packages
+ *   universal   → skip (merging already done)
+ *
+ * Handles both scoped (@scope/pkg-darwin-arm64) and unscoped (pkg-darwin-arm64)
+ * packages.
+ */
+async function cleanupWrongArchUnpackedModules(resources_dir, context) {
+  const buildArch = convertArch(context.arch)
+
+  if (buildArch === 'universal') {
+    console.log('cleanupWrongArchUnpackedModules: universal build, skipping')
+    return
+  }
+
+  const unpacked_nm = join(resources_dir, 'app.asar.unpacked', 'node_modules')
+
+  if (!existsSync(unpacked_nm)) {
+    console.log(
+      'cleanupWrongArchUnpackedModules: app.asar.unpacked/node_modules not found, skipping'
+    )
+    return
+  }
+
+  const archToDelete = buildArch === 'x64' ? 'arm64' : 'x64'
+  const badSuffixes = [
+    `-darwin-${archToDelete}`,
+    `-linux-${archToDelete}`,
+    `-win32-${archToDelete}`,
+  ]
+  const isWrongArch = name => badSuffixes.some(s => name.endsWith(s))
+
+  const deleted = []
+
+  const topLevel = await readdir(unpacked_nm)
+  for (const entry of topLevel) {
+    if (entry.startsWith('@')) {
+      // Scoped package directory — scan one level deeper
+      const scopeDir = join(unpacked_nm, entry)
+      let scoped
+      try {
+        scoped = await readdir(scopeDir)
+      } catch {
+        continue
+      }
+      for (const pkg of scoped) {
+        if (isWrongArch(pkg)) {
+          const fullPath = join(scopeDir, pkg)
+          await rm(fullPath, { recursive: true, force: true })
+          deleted.push(`${entry}/${pkg}`)
+        }
+      }
+    } else if (isWrongArch(entry)) {
+      await rm(join(unpacked_nm, entry), { recursive: true, force: true })
+      deleted.push(entry)
+    }
+  }
+
+  if (deleted.length > 0) {
+    console.log(
+      `cleanupWrongArchUnpackedModules [${buildArch} slice]: removed ${archToDelete} packages:`,
+      deleted
+    )
+  } else {
+    console.log(
+      `cleanupWrongArchUnpackedModules [${buildArch} slice]: no ${archToDelete} packages found`
+    )
   }
 }
 
