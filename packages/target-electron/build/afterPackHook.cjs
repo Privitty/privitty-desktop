@@ -116,13 +116,15 @@ module.exports = async context => {
     env['NO_ASAR'] ? false : true
   )
 
-  // Generic cleanup: remove all wrong-arch native packages from app.asar.unpacked.
-  // This handles @parcel/watcher, @privitty/* and any other package that ships
-  // arch-specific sub-packages (e.g. foo-darwin-arm64, bar-darwin-x64).
-  // Without this, @electron/universal finds the same Mach-O binary in both the
-  // x64-temp and arm64-temp slices and refuses to merge them.
+  // For single-arch macOS builds: remove wrong-arch native packages from
+  // app.asar.unpacked.  This is NOT used for UNIVERSAL_BUILD=true because
+  // those packages are removed from source node_modules before electron-builder
+  // runs (see privitty-release.yml "Pre-cleanup arch-specific packages" step).
+  // Post-ASAR deletion doesn't work for universal builds: the ASAR header
+  // still references deleted files and @electron/universal's mergeASARs throws
+  // ENOENT when it tries to read them.
   // ---------------------------------------------------------------------------------
-  if (isMacBuild) {
+  if (isMacBuild && process.env.UNIVERSAL_BUILD !== 'true') {
     await cleanupWrongArchUnpackedModules(resources_dir, context)
   }
 }
