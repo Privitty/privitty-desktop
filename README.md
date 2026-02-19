@@ -214,6 +214,8 @@ Licensed under `GPL-3.0-or-later`, see [`LICENSE`](./LICENSE) file for details.
 # Build DMG for macOS
 
 ```sh
+cd /Users/milinddeore/PROJECTS/delta/privitty-desktop
+pnpm -w build:electron
 cd /Users/milinddeore/PROJECTS/delta/privitty-desktop/packages/target-electron
 export CSC_IDENTITY_AUTO_DISCOVERY=false
 pnpm pack:generate_config
