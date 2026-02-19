@@ -1,11 +1,8 @@
 # documentation: https://github.com/deltachat/sysadmin/tree/master/download.delta.chat
 name: Delete Preview Deliverables
 
-on: 
-  pull_request:
-    types: [closed]
-    paths-ignore:
-      - 'docs/**'  # only trigger build if a file outside of /docs was changed
+on:
+  workflow_dispatch: # disabled – use privitty-release.yml
 
 jobs:
   delete:

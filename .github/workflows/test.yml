@@ -1,12 +1,6 @@
 # Run unit & integration tests
-on: 
-  push:
-    paths-ignore:
-      - 'docs/**'  # only trigger build if a file outside of /docs was changed
-      - '_locales/*.xml'
-      - '.vscode/**'
-      - 'README_ASSETS/**'
-      - 'README.md'
+on:
+  workflow_dispatch: # disabled – use privitty-release.yml
 
 jobs:
   test:

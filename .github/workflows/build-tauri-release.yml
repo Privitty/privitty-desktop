@@ -1,9 +1,7 @@
 name: Build Tauri Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch: # disabled – use privitty-release.yml
 
 jobs:
   build-tauri:
