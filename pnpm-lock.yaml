@@ -335,11 +335,11 @@ importers:
         specifier: 'catalog:'
         version: 1.159.5(ws@7.5.10)
       '@privitty/deltachat-rpc-server':
-        specifier: ^1.60.0
+        specifier: 1.160.0
         version: 1.160.0(@deltachat/jsonrpc-client@1.159.5(ws@7.5.10))
       '@privitty/privitty-core':
-        specifier: ^0.3.3
-        version: 0.3.3
+        specifier: 0.3.4
+        version: 0.3.4
       mime-types:
         specifier: 'catalog:'
         version: 2.1.35
@@ -1535,8 +1535,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@privitty/privitty-core@0.3.3':
-    resolution: {integrity: sha512-Yq7cWZ/7BV/EKl9rkQsMkCtUH69l3TJAIgRNyiXhPbb+pYuJvRXPlr+nKXaNTawiRGBhaxVK73aarODrg94OXQ==}
+  '@privitty/privitty-core@0.3.4':
+    resolution: {integrity: sha512-d20UK+wKxkQRsgyAljXbyAM0uWtkAf8Mdthxd1yYHv7ehDrZN/xfDN5QhF896qwec2o8zBz2Al0/gHrKeK3u9w==}
     engines: {node: '>=14.0.0'}
     cpu: [x64, arm64]
     os: [darwin, linux, win32]
@@ -5110,7 +5110,7 @@ snapshots:
   '@privitty/privitty-core-win32-x64@0.3.2':
     optional: true
 
-  '@privitty/privitty-core@0.3.3':
+  '@privitty/privitty-core@0.3.4':
     optionalDependencies:
       '@privitty/privitty-core-darwin-arm64': 0.3.2
       '@privitty/privitty-core-darwin-x64': 0.3.2
