@@ -57,21 +57,24 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
     ? 'deltachat-rpc-server.exe'
     : 'deltachat-rpc-server'
 
+  // Arch-specific package name — used by both the packaged-app and dev resolvers.
+  const packageName = `@privitty/deltachat-rpc-server-${currentPlatform}-${currentArch}`
+
   if (rawApp.isPackaged) {
     // In a packaged app, binaries live in app.asar.unpacked/node_modules/.
     // Try arch-specific package first, then fall back to the universal fat
     // binary created by the CI lipo step.
     const packageCandidates = [
-      `@privitty/deltachat-rpc-server-${currentPlatform}-${currentArch}`,
+      packageName,
       `@privitty/deltachat-rpc-server-${currentPlatform}-universal`,
     ]
 
-    for (const packageName of packageCandidates) {
+    for (const candidate of packageCandidates) {
       const unpackedPath = join(
         process.resourcesPath,
         'app.asar.unpacked',
         'node_modules',
-        packageName,
+        candidate,
         binaryName
       )
       if (existsSync(unpackedPath)) {
@@ -268,6 +271,55 @@ export default class DeltaChatController extends EventEmitter {
     }
   }
 
+  async handleMsgsChangedEvent(response: string) {
+
+    const responseObj = JSON.parse(response)
+    
+    console.log('🧲🧲🧲 responseObj : 🧲🧲🧲 ========', responseObj);
+    console.log('🧲🧲🧲 responseObj result : 🧲🧲🧲 ========', responseObj.result);
+    console.log('🧲🧲🧲 responseObj event : 🧲🧲🧲 ========', responseObj.result.event);
+
+  try {
+
+    const Msg = await this.jsonrpcRemote.rpc.getMessage(
+      responseObj.result.contextId,
+      responseObj.result.event.msgId
+    )
+
+    console.log('🧲🧲🧲 SYNC MESSAGE EVENT : 🧲🧲🧲 ========', Msg);
+    
+
+    const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(
+      responseObj.result.contextId,
+      responseObj.result.event.chatId
+    )
+
+    // Match Android conditions
+    const isOutgoing = Msg?.fromId === Msg?.selfId || Msg?.isOutgoing
+    const isEncrypted = Msg?.showPadlock
+    const hasNoFile = !Msg?.file
+    const isNotContactRequest = !chatInfo?.isContactRequest
+
+    if (!isOutgoing || !isEncrypted || !hasNoFile || !isNotContactRequest)
+      return
+
+    if (!Msg.text?.startsWith("PRIVITTY_SYNC:"))
+      return
+
+    const syncJson = JSON.parse(
+      Msg.text.slice("PRIVITTY_SYNC:".length)
+    )
+
+    console.log("🧲 Electron received BCC-self sync", syncJson)
+
+    await this.applyPrivittySyncData(syncJson)
+
+  } catch (err) {
+    console.error("handleMsgsChangedEvent error", err)
+  }
+}
+
+
   async privittyHandleIncomingMsg(response: string) {
     let sequenceNumber = this.getGlobalSequence()
 
@@ -293,6 +345,21 @@ export default class DeltaChatController extends EventEmitter {
         return
       }
 
+      // ---- SYNC DETECTION ----
+      if (Msg.text?.startsWith("PRIVITTY_SYNC:")) {
+        try {
+          const syncJson = JSON.parse(
+            Msg.text.slice("PRIVITTY_SYNC:".length)
+          )
+          console.log('🧲🧲🧲PRIVITTY_SYNC:␖🧲🧲🧲',syncJson);
+          
+          await this.applyPrivittySyncData(syncJson)
+        } catch(e) {
+          console.warn("Invalid sync payload", e)
+        }
+        return
+      }
+
       this.callbackMap.set(sequenceNumber, (response: string) => {
         this.handlePrivittyValidation(
           response,
@@ -309,6 +376,44 @@ export default class DeltaChatController extends EventEmitter {
       )
     }
   }
+
+  async applyPrivittySyncData(syncJson:any) {
+
+  if(syncJson.type !== "privitty_sync")
+    return
+
+  const action = syncJson.action
+  const data = syncJson.data
+
+  console.log("⚙️ Applying sync action:", action)
+
+  switch(action){
+
+    case "update_chat":
+      await this.sendPrivittyMessage(
+        "updateChat",
+        data
+      )
+      break
+
+    case "delete_file":
+      await this.sendPrivittyMessage(
+        "deleteFile",
+        data
+      )
+      break
+
+    case "update_config":
+      await this.sendPrivittyMessage(
+        "updateConfig",
+        data
+      )
+      break
+
+    default:
+      console.log("Unknown sync action")
+  }
+}
 
   async handlePrivittyValidation(
     response: string,
@@ -406,6 +511,9 @@ export default class DeltaChatController extends EventEmitter {
         if (response.indexOf('"kind":"IncomingMsg"') !== -1) {
           console.log('IncomingMsg =', response)
           this.privittyHandleIncomingMsg(response)
+        }
+        if (response.indexOf('"kind":"MsgsChanged"')){
+          this.handleMsgsChangedEvent(response)
         }
         mainWindow.send('json-rpc-message', response)
 
