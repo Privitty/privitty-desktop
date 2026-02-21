@@ -130,4 +130,23 @@ Licensed under **GPL-3.0-or-later**. See the [LICENSE](./LICENSE) file for detai
 
 > This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-> You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+> You should have received a copy of the GNU General Public License
+> along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# Build DMG for macOS
+
+```sh
+cd /Users/milinddeore/PROJECTS/delta/privitty-desktop
+pnpm -w build:electron
+cd /Users/milinddeore/PROJECTS/delta/privitty-desktop/packages/target-electron
+export CSC_IDENTITY_AUTO_DISCOVERY=false
+pnpm pack:generate_config
+pnpm pack:patch-node-modules
+rm -rf dist
+# arm64
+electron-builder --config ./electron-builder.json5 --mac dmg --arm64 --publish never
+# OR x86_64
+electron-builder --config ./electron-builder.json5 --mac dmg --x64 --publish never
+# OR universal
+electron-builder --config ./electron-builder.json5 --mac dmg --universal --publish never
+```
