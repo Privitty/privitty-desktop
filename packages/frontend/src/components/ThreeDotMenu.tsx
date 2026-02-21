@@ -55,18 +55,17 @@ export function useThreeDotMenu(selectedChat?: T.FullChat) {
 
     const deleteChat = async () => {
       try {
-        const response = await runtime.PrivittySendMessage('sendEvent', {
+        const _response = await runtime.PrivittySendMessage('sendEvent', {
           event_type: 'deleteChatRoom',
           event_data: {
             chat_id: String(selectedChat.id),
           },
         })
-        onDeleteChat();
+        onDeleteChat()
       } catch (error) {
         console.error('Error Deleting chat:', error)
       }
     }
-
 
     const onUnmuteChat = () => unmuteChat(accountId, chatId)
 

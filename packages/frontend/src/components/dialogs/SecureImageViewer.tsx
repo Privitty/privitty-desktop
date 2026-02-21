@@ -17,7 +17,7 @@ type Props = {
 export default function SecureImageViewer(props: Props & DialogProps) {
   const { filePath, fileName, onClose } = props
   const tx = useTranslationFunction()
-  
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scale, setScale] = useState(1)
@@ -33,11 +33,11 @@ export default function SecureImageViewer(props: Props & DialogProps) {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Create a file URL for the image
       const url = `file://${filePath}`
       log.info('Loading image in secure viewer', { filePath, url })
-      
+
       setImageUrl(url)
       setLoading(false)
     } catch (err) {
@@ -93,14 +93,10 @@ export default function SecureImageViewer(props: Props & DialogProps) {
     <Dialog onClose={onClose} className='secure-image-viewer'>
       <div className='secure-image-viewer-header'>
         <h2>{fileName}</h2>
-        <IconButton
-          icon='cross'
-          onClick={onClose}
-          aria-label={tx('close')}
-        />
+        <IconButton icon='cross' onClick={onClose} aria-label={tx('close')} />
       </div>
-      
-      <div 
+
+      <div
         className='secure-image-viewer-content'
         onKeyDown={handleKeyDown}
         tabIndex={0}
@@ -115,7 +111,11 @@ export default function SecureImageViewer(props: Props & DialogProps) {
         {error && (
           <div className='image-error-overlay'>
             <div className='error-content'>
-              <IconButton icon='cross' size={48} aria-label={tx('error_loading_image')} />
+              <IconButton
+                icon='cross'
+                size={48}
+                aria-label={tx('error_loading_image')}
+              />
               <h3>{tx('error_loading_image')}</h3>
               <p>{error}</p>
               <button onClick={loadImage} className='retry-button'>
@@ -143,8 +143,8 @@ export default function SecureImageViewer(props: Props & DialogProps) {
                   onLoad={handleImageLoad}
                   onError={handleImageError}
                   onContextMenu={handleContextMenu}
-                  onDragStart={(e) => e.preventDefault()}
-                  onDrop={(e) => e.preventDefault()}
+                  onDragStart={e => e.preventDefault()}
+                  onDrop={e => e.preventDefault()}
                   style={{
                     userSelect: 'none',
                     WebkitUserSelect: 'none',
@@ -152,7 +152,7 @@ export default function SecureImageViewer(props: Props & DialogProps) {
                     msUserSelect: 'none',
                     maxWidth: '100%',
                     maxHeight: '100%',
-                    objectFit: 'contain'
+                    objectFit: 'contain',
                   }}
                 />
               </div>
@@ -160,7 +160,7 @@ export default function SecureImageViewer(props: Props & DialogProps) {
           </TransformWrapper>
         )}
       </div>
-      
+
       <div className='secure-image-viewer-bottom-controls'>
         <div className='zoom-controls'>
           <IconButton
@@ -169,11 +169,7 @@ export default function SecureImageViewer(props: Props & DialogProps) {
             aria-label={tx('zoom_out')}
           />
           <span className='zoom-level'>{Math.round(scale * 100)}%</span>
-          <IconButton
-            icon='plus'
-            onClick={zoomIn}
-            aria-label={tx('zoom_in')}
-          />
+          <IconButton icon='plus' onClick={zoomIn} aria-label={tx('zoom_in')} />
           <IconButton
             icon='rotate-right'
             onClick={resetZoom}
@@ -181,13 +177,17 @@ export default function SecureImageViewer(props: Props & DialogProps) {
           />
         </div>
       </div>
-      
+
       <div className='secure-image-viewer-footer'>
         <div className='secure-notice'>
-          <IconButton icon='info' size={16} aria-label={tx('secure_viewer_notice')} />
+          <IconButton
+            icon='info'
+            size={16}
+            aria-label={tx('secure_viewer_notice')}
+          />
           <span>{tx('secure_viewer_notice')}</span>
         </div>
       </div>
     </Dialog>
   )
-} 
+}

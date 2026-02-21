@@ -49,4 +49,4 @@ jobs:
       with:
         name: e2e-report
         path: packages/e2e-tests/playwright-report
-        retention-days: 10
+        retention-days: 45

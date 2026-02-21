@@ -122,25 +122,30 @@ class ElectronDeltachat extends BaseDeltaChat<ElectronTransport> {
 
 class ElectronRuntime implements Runtime {
   checkFileExists(filePath: string): Promise<boolean> {
-    console.log('checkFileExists runtime', filePath)
     return Promise.resolve(ipcBackend.invoke('getFileExist', filePath))
   }
 
-  async PrivittyHandleMessage(response: String): Promise<void> {
-    // TODO: Implement PrivittyHandleMessage logic or leave as noop if not needed
-    // For now, just log or ignore
-    // this.log?.info('PrivittyHandleMessage called', message)
-    console.log('PrivittyHandleMessage runtime', response)
-    ipcBackend.invoke('privittyHandleMessage', response)
+  PrivittyHandleMessage(_response: string): Promise<void> {
     return Promise.resolve()
   }
+
   async PrivittySendMessage(method: string, params: any): Promise<string> {
-    // TODO: Implement PrivittySendMessage logic or leave as noop if not needed
-    // For now, just log or ignore
-    // this.log?.info('PrivittySendMessage called', message)
-    console.log('PrivittySendMessage runtime', method, params)
-    return await ipcBackend.invoke('privitty_Send_Message', method, params)
+    return ipcBackend.invoke('privitty_Send_Message', method, params)
   }
+
+  onPrivittyMessageDetected(callback: (chatId: number) => void): () => void {
+    const handler = (_ev: any, data: { chatId: number }) =>
+      callback(data.chatId)
+    ipcBackend.on('privittyMessageDetected', handler)
+    return () => ipcBackend.removeListener('privittyMessageDetected', handler)
+  }
+
+  onPrivittyServerReady(callback: () => void): () => void {
+    const handler = () => callback()
+    ipcBackend.on('privittyServerReady', handler)
+    return () => ipcBackend.removeListener('privittyServerReady', handler)
+  }
+
   onDrop: DropListener | null = null
   setDropListener(onDrop: DropListener | null) {
     this.onDrop = onDrop

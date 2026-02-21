@@ -1,16 +1,10 @@
-//import { useCallback } from 'react'
-import React, { useCallback, useContext } from 'react'
+import { useCallback } from 'react'
 import useChat from './useChat'
 import { BackendRemote } from '../../backend-com'
 import { ChatView } from '../../contexts/ChatContext'
 import { getLogger } from '../../../../shared/logger'
 
 import type { T } from '@deltachat/jsonrpc-client'
-import { partial } from 'filesize'
-//import useDialog from '../../hooks/dialog/useDialog'
-//import SmallSelectDialogPrivitty from '../../components/SmallSelectDialogPrivitty'
-import { runtime } from '@deltachat-desktop/runtime-interface'
-import { dirname, basename, normalize } from 'path'
 //import { ContextMenuContext } from '../../contexts/ContextMenuContext'
 import { useSharedDataOptional } from '../../contexts/FileAttribContext'
 
@@ -142,22 +136,17 @@ export default function useMessage() {
       chatId: number,
       message: Partial<T.MessageData>
     ) => {
-      console.log('filePathName:', message)
+      log.debug('filePathName', message)
       let msgId = 0
       if (message.file && message.filename) {
-        msgId = await BackendRemote.rpc.sendMsg(
-          accountId,
-          chatId,
-          {
-            ...MESSAGE_DEFAULT,
-            ...message,
-          }
-        )
+        msgId = await BackendRemote.rpc.sendMsg(accountId, chatId, {
+          ...MESSAGE_DEFAULT,
+          ...message,
+        })
 
         if (sharedData.oneTimeKey) {
-          console.log('need to send otsp message:');
           log.info('need to send otsp message:')
-        
+
           const pdu = sharedData.oneTimeKey
           const MESSAGE_DEFAULT: T.MessageData = {
             file: null,
@@ -177,11 +166,10 @@ export default function useMessage() {
             quotedMessageId: null,
             viewtype: 'Text',
           }
-          BackendRemote.rpc.sendMsg(
-            accountId,
-            chatId,
-            { ...MESSAGE_DEFAULT, ...message }
-          )
+          BackendRemote.rpc.sendMsg(accountId, chatId, {
+            ...MESSAGE_DEFAULT,
+            ...message,
+          })
         }
       } else {
         msgId = await BackendRemote.rpc.sendMsg(accountId, chatId, {

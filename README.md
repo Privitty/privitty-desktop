@@ -1,18 +1,18 @@
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
-# Delta Chat Desktop <a id="deltachat-desktop"></a>
+# Privitty Desktop <a id="privitty-desktop"></a>
 
-**Desktop Application for [delta.chat](https://delta.chat)**
+**Desktop application for [Privitty](https://privittytech.com)** — take control of your shared data with guaranteed encryption and revocable access.
 
 <center><img src="README_ASSETS/desktop.png" style="min-height: 600px;" /></center>
 
 ## Editions
 
-| [`Electron`](https://www.electronjs.org/) :electron:                                               | [`Tauri`](https://tauri.app/) <img src="README_ASSETS/TAURI_Glyph_Color.svg" width="16px" height="16px" style="vertical-align:middle" />                                                         | Browser 🦊🧭🏐                                                                                                                                   |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| <img src="README_ASSETS/desktop.png" style="max-width:256px;min-hight:200px" />                    | <img src="README_ASSETS/desktop.png" style="max-width:256px" />                                                                                                                                  | <img src="README_ASSETS/browser-screenshot.png" style="max-width:256px;min-hight:200px" />                                                       |
-| The default application. Based on Electron. Currently deployed in appstore and used by most users. | WIP client using Tauri instead of Electron. <br /> Tauri is a modern alternative to Electron: Less disk usage, less ram usage and better performance rust backend.                               | Highly experimental version with a webserver component and web-ui in the browser. At the moment only meant for developers and automated testing. |
-| [Project Folder](./packages/target-electron) <br /> [Download Links](https://get.delta.chat)       | [Project Folder](./packages/target-tauri) <br /> [Fediverse Thread](https://fosstodon.org/@treefit/113578409177635057) <br /> [Delta Tauri - nlnet project](https://nlnet.nl/project/DeltaTauri) | [Project Folder](./packages/target-browser) <br /> [Fediverse Thread](https://fosstodon.org/@treefit/113116480883632874)                         |
+| [`Electron`](https://www.electronjs.org/) :electron:                                       | [`Tauri`](https://tauri.app/) <img src="README_ASSETS/TAURI_Glyph_Color.svg" width="16px" height="16px" style="vertical-align:middle" /> | Browser 🦊🧭🏐                                                                             |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| <img src="README_ASSETS/desktop.png" style="max-width:256px;min-hight:200px" />            | <img src="README_ASSETS/desktop.png" style="max-width:256px" />                                                                          | <img src="README_ASSETS/browser-screenshot.png" style="max-width:256px;min-hight:200px" /> |
+| Default application. Based on Electron. Used for production builds and distribution.       | WIP client using Tauri (modern alternative to Electron: less disk/RAM, better performance).                                              | Experimental version with webserver and web UI. For developers and automated testing.      |
+| [Project Folder](./packages/target-electron) <br /> [Build & Release](./PRIVITTY_BUILD.md) | [Project Folder](./packages/target-tauri)                                                                                                | [Project Folder](./packages/target-browser)                                                |
 
 ## Documentation Links <a id="docs"></a>
 
@@ -31,182 +31,104 @@
 - [Styling Guidelines](./docs/STYLES.md)
 - [How to update core](./docs/UPDATE_CORE.md)
 - [How to do end to end testing](./docs/E2E-TESTING.md)
-- [How to do a release](./RELEASE.md)
+- [Privitty build & release](./PRIVITTY_BUILD.md)
+- [Release process](./RELEASE.md)
 
 ## Table of Contents
 
 <details><summary>Click to expand</summary>
 
-- [Delta Chat Desktop ](#delta-chat-desktop-)
+- [Privitty Desktop](#privitty-desktop-)
   - [Editions](#editions)
-  - [Documentation Links ](#documentation-links-)
+  - [Documentation Links](#documentation-links-)
     - [For Users](#for-users)
     - [For Developers](#for-developers)
   - [Table of Contents](#table-of-contents)
-  - [Install ](#install-)
-    - [Linux ](#linux-)
-      - [Flatpak ](#flatpak-)
-      - [Arch Linux ](#arch-linux-)
-    - [Mac OS ](#mac-os-)
-      - [Homebrew](#homebrew)
-      - [DMG](#dmg)
-    - [Windows ](#windows-)
-    - [From Source ](#from-source-)
-    - [Troubleshooting ](#troubleshooting-)
-  - [Configuration and Databases ](#configuration-and-databases-)
-  - [How to Contribute ](#how-to-contribute-)
-  - [Logging ](#logging-)
-  - [License ](#license-)
+  - [Install](#install-)
+    - [Linux](#linux-)
+    - [macOS](#mac-os-)
+    - [Windows](#windows-)
+    - [From Source](#from-source-)
+    - [Troubleshooting](#troubleshooting-)
+  - [Configuration and Databases](#configuration-and-databases-)
+  - [How to Contribute](#how-to-contribute-)
+  - [Logging](#logging-)
+  - [License](#license-)
 
 </details>
 
 ## Install <a id="install"></a>
 
-The application can be downloaded from **<https://get.delta.chat>**.
-Here you'll find binary releases for all supported platforms.
-See below for platform specific instructions. If you run into any
-problems please consult the [`Troubleshooting`](#troubleshooting) section below.
-
-[![Packaging status](https://repology.org/badge/vertical-allrepos/deltachat-desktop.svg)](https://repology.org/project/deltachat-desktop/versions)
+Installers and builds are produced via CI or locally; see [PRIVITTY_BUILD.md](./PRIVITTY_BUILD.md) for build and release instructions. Platform-specific notes are below.
 
 ### Linux <a id="linux"></a>
 
-#### Flatpak <a id="flatpak"></a>
+- **From source:** See [From Source](#from-source-) and [PRIVITTY_BUILD.md](./PRIVITTY_BUILD.md).
+- Distribution packages (Flatpak, AUR, etc.) may be available separately; check Privitty documentation or releases.
 
-The primary distribution-independent way to install is to use the
-flatpak build.
-This is maintained in [its own
-repository](https://github.com/flathub/chat.delta.desktop). However, a
-pre-built binary can be downloaded and installed from
-[`Flathub`](https://flathub.org/apps/details/chat.delta.desktop) which
-also has a setup guide for many Linux platforms.
+### macOS <a id="mac"></a>
 
-#### Arch Linux <a id="arch-linux"></a>
-
-Run `pacman -S deltachat-desktop` to install Delta Chat Desktop on Arch Linux.
-
-Alternatively, build `deltachat-desktop-git` package from Arch User Repository.
-
-> **WARNING: Currently the AUR package compiles from latest master.
-> This can be more recent as the latest release, introduce new features
-> but also new bugs.**
-
-If you have a AUR helper like yay or paru installed, you can install it
-by running `yay -S deltachat-desktop-git` and following the instruction
-in your terminal.
-
-Otherwise you can still do it manually:
-
-<details>
-<summary>Show manual steps</summary>
-
-```sh
-# Download the latest snapshot of the PKGBUILD
-wget https://aur.archlinux.org/cgit/aur.git/snapshot/deltachat-desktop-git.tar.gz
-
-# extract the archive and rm the archive file afterwards
-tar xzfv deltachat-desktop-git.tar.gz && rm deltachat-desktop-git.tar.gz
-
-# cd into extracted folder
-cd deltachat-desktop-git
-
-# build package
-makepkg -si
-
-# install package (you need to replace <version> with whatever version makepkg built)
-sudo pacman -U deltachat-desktop-git-<version>.tar.xz
-```
-
-</details>
-
-### Mac OS <a id="mac"></a>
-
-#### Homebrew
-
-```
-$ brew install --cask deltachat
-```
-
-#### DMG
-
-Simply install the `.dmg` file as you do it with all other software on Mac.
+- **DMG:** Use the `.dmg` from [releases](https://github.com/Privitty/privitty-desktop/releases) (or your build output). Open and drag Privitty to Applications.
+- **Homebrew:** If a cask is published, `brew install --cask privitty` (or the name provided by Privitty).
 
 ### Windows <a id="windows"></a>
 
-You can find the downloads for windows on <https://get.delta.chat>.
-However, we recommend using the release from [Microsoft Store](https://www.microsoft.com/en-us/p/deltachat/9pjtxx7hn3pk?activetab=pivot:overviewtab),
-because there you get automatic updates.
+- Installers are built via GitHub Actions or locally; see [PRIVITTY_BUILD.md](./PRIVITTY_BUILD.md). Download the installer from [releases](https://github.com/Privitty/privitty-desktop/releases) when available.
 
 ### From Source <a id="source"></a>
 
-> ⚠ This is mostly for development purposes, this won't install/integrate deltachat into your system.
-> So unless you know what you are doing, we recommend to stick to the methods above if possible.
+> ⚠ Primarily for development. This does not install Privitty system-wide. For end users, prefer official installers when available.
 
 ```sh
-# Get the code
-$ git clone https://github.com/deltachat/deltachat-desktop.git
-$ cd deltachat-desktop
+# Clone the repository
+git clone https://github.com/Privitty/privitty-desktop.git
+cd privitty-desktop
 
-# Install pnpm
-$ npm i -g pnpm
+# Install pnpm (if not already installed)
+npm i -g pnpm
 
 # Install dependencies
-$ pnpm install
+pnpm install
 
-# Build the app (only needed on the first time or if the code was changed)
-$ pnpm -w build:electron
+# Build the Electron app (first time or after code changes)
+pnpm -w build:electron
 
-# Start the application:
-$ pnpm -w start:electron
+# Run the application
+pnpm -w start:electron
 ```
 
-> `-w` means workspace root package, with this you don't need to have your current working directory at the repo-root to run those scripts.
+> The `-w` flag runs the command at the workspace root; you can run it from any folder in the repo.
 
-For development with local `deltachat core` read [`docs/UPDATE_CORE.md`](docs/UPDATE_CORE.md).
+For details on building installers (DMG, Windows, Linux) and signing, see [PRIVITTY_BUILD.md](./PRIVITTY_BUILD.md). For working with a local core/RPC server, see [docs/UPDATE_CORE.md](docs/UPDATE_CORE.md).
 
 ### Troubleshooting <a id="troubleshooting"></a>
 
-- This module builds on top of [`deltachat core`](https://github.com/chatmail/core),
-  which in turn has external dependencies. The instructions below assume a Linux system (e.g. Ubuntu 18.10).
-- Read the error, maybe it already tells you what you need to do. If not feel free to file an issue in this github repo.
-- Make sure that your nodejs version is `20.0.0` or newer.
-- If you still get errors look at the instructions in [`docs/UPDATE_CORE.md`](docs/UPDATE_CORE.md) to set things up or [write an issue](https://github.com/deltachat/deltachat-desktop/issues/new/choose).
+- The app is built on top of a messaging core and the Privitty security layer. Dependencies and setup are described in [PRIVITTY_BUILD.md](./PRIVITTY_BUILD.md) and [docs/UPDATE_CORE.md](docs/UPDATE_CORE.md).
+- Use Node.js **20.0.0** or newer.
+- If you hit build or runtime errors, check the docs above or open an issue in this repository.
 
 ## Configuration and Databases <a id="config-and-db"></a>
 
-The configuration files and database are stored at [application-config's default file paths](https://www.npmjs.com/package/application-config#config-location).
-
-Each database is a SQLite file that represents the account for a given email address.
+Configuration and account databases use [application-config's default paths](https://www.npmjs.com/package/application-config#config-location). Each account is represented by a SQLite database file.
 
 ## How to Contribute <a id="how-to-contribute"></a>
 
-- Read [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
-- For translations see our transifex page: https://www.transifex.com/delta-chat/public/
-- For other ways to contribute: https://delta.chat/en/contribute
+- Read [CONTRIBUTING.md](./CONTRIBUTING.md) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+- For other ways to contribute, see [Privitty](https://privittytech.com) or this repo’s issue tracker.
 
 ## Logging <a id="logging"></a>
 
-You can access the log folder and the current log file under the `View->Developer` menu:
-
-<center><img src="README_ASSETS/devMenu.png"/></center>
-
-For more details on how the logging system works, read [`docs/LOGGING.md`](docs/LOGGING.md).
+Open the log folder and current log file from **View → Developer** in the app. For how logging works, see [docs/LOGGING.md](docs/LOGGING.md).
 
 ## License <a id="license"></a>
 
-Licensed under `GPL-3.0-or-later`, see [`LICENSE`](./LICENSE) file for details.
+Licensed under **GPL-3.0-or-later**. See the [LICENSE](./LICENSE) file for details.
 
-> Copyright © DeltaChat contributors.
+> Copyright © Privitty contributors.
 
-> This program is free software: you can redistribute it and/or modify
-> it under the terms of the GNU General Public License as published by
-> the Free Software Foundation, either version 3 of the License, or
-> (at your option) any later version.
+> This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-> This program is distributed in the hope that it will be useful,
-> but WITHOUT ANY WARRANTY; without even the implied warranty of
-> MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-> GNU General Public License for more details.
+> This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 > You should have received a copy of the GNU General Public License
 > along with this program. If not, see <http://www.gnu.org/licenses/>.
@@ -227,16 +149,4 @@ electron-builder --config ./electron-builder.json5 --mac dmg --arm64 --publish n
 electron-builder --config ./electron-builder.json5 --mac dmg --x64 --publish never
 # OR universal
 electron-builder --config ./electron-builder.json5 --mac dmg --universal --publish never
-```
-
-# For Production DMG
-
-```sh
-# Remove CSC_IDENTITY_AUTO_DISCOVERY=false (or set to true)
-# Set your Apple Developer credentials
-export APPLE_ID="your-apple-id@example.com"
-export APPLE_ID_PASSWORD="app-specific-password"
-export APPLE_TEAM_ID="your-team-id"
-
-electron-builder --config ./electron-builder.json5 --mac dmg --universal
 ```

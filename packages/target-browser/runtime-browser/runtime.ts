@@ -106,14 +106,22 @@ class BrowserRuntime implements Runtime {
     })
   }
 
-  PrivittyHandleMessage(response: String): Promise<void> {
+  PrivittyHandleMessage(_response: string): Promise<void> {
     throw new Error('Method not implemented.')
   }
 
-  PrivittySendMessage(method: string, params: any): Promise<string> {
+  PrivittySendMessage(_method: string, _params: any): Promise<string> {
     throw new Error('Method not implemented.')
   }
-  
+
+  onPrivittyMessageDetected(_callback: (chatId: number) => void): () => void {
+    return () => {}
+  }
+
+  onPrivittyServerReady(_callback: () => void): () => void {
+    return () => {}
+  }
+
   onDrop: DropListener | null = null
   setDropListener(onDrop: DropListener | null) {
     this.onDrop = onDrop

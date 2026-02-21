@@ -121,14 +121,23 @@ export class TauriDeltaChat extends BaseDeltaChat<TauriTransport> {
 const isWindowsOS = navigator.userAgent.includes('Win')
 
 class TauriRuntime implements Runtime {
-  PrivittyHandleMessage(response: String): Promise<void> {
+  PrivittyHandleMessage(_response: string): Promise<void> {
     // Implementation
     throw new Error('Method not implemented.')
   }
-  async PrivittySendMessage(method: string, params: any): Promise<string> {
+  async PrivittySendMessage(_method: string, _params: any): Promise<string> {
     // Implementation
     throw new Error('Method not implemented.')
   }
+
+  onPrivittyMessageDetected(_callback: (chatId: number) => void): () => void {
+    return () => {}
+  }
+
+  onPrivittyServerReady(_callback: () => void): () => void {
+    return () => {}
+  }
+
   constructor() {
     this.getActiveTheme = this.getActiveTheme.bind(this)
   }

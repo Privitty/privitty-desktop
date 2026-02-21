@@ -1,5 +1,5 @@
-import { getMessageFunction, LocaleData } from './localize.ts'
-import type { T } from '@deltachat/jsonrpc-client'
+import { getMessageFunction, LocaleData } from './localize.js'
+import type { T as _T } from '@deltachat/jsonrpc-client'
 
 declare global {
   interface Window {
@@ -19,6 +19,10 @@ declare module '@deltachat/jsonrpc-client' {
 // Extend the RawClient type to include Privitty-specific methods
 declare module '@deltachat/jsonrpc-client' {
   interface RawClient {
-    sendMsgWithSubject?: (chatId: number, text: string, subject: string) => Promise<number>
+    sendMsgWithSubject?: (
+      chatId: number,
+      text: string,
+      subject: string
+    ) => Promise<number>
   }
 }

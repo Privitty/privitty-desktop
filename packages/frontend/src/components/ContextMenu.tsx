@@ -30,7 +30,7 @@ type ContextMenuItemExpandable = {
 }
 
 export type ContextMenuItem =
- | ({ type?: 'item'; label: string;  dataTestid?: string } & (
+  | ({ type?: 'item'; label: string; dataTestid?: string } & (
       | ContextMenuItemActionable
       | ContextMenuItemExpandable
     ))
@@ -410,12 +410,15 @@ export function ContextMenu(props: {
                 key={index}
                 {...(item.subitems && { 'data-expandable-index': index })}
               >
-                
                 {item.icon && <Icon className='left-icon' icon={item.icon} />}
                 {item.label}
                 {/* Right icon (custom OR submenu arrow) */}
-                {item.rightIcon && <Icon className='right-icon' icon={item.rightIcon} />}
-                {item.subitems && !item.rightIcon && <div className='right-icon' />}
+                {item.rightIcon && (
+                  <Icon className='right-icon' icon={item.rightIcon} />
+                )}
+                {item.subitems && !item.rightIcon && (
+                  <div className='right-icon' />
+                )}
               </button>
             )
           })}

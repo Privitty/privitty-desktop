@@ -112,6 +112,7 @@ jobs:
       with:
         name: ${{ matrix.os }} output
         path: packages/target-electron/dist/preview/
+        retention-days: 45
     - name: "Post links to GitHub artifact to details"
       if: steps.upload-github.outcome == 'success'
       run: node ./bin/github-actions/postLinksToDetails.js

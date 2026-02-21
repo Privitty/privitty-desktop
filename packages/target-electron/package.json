@@ -63,8 +63,8 @@
   },
   "dependencies": {
     "@deltachat/jsonrpc-client": "catalog:",
-    "@privitty/deltachat-rpc-server": "^1.60.0",
-    "@privitty/privitty-core": "^0.3.3",
+    "@privitty/deltachat-rpc-server": "1.160.0",
+    "@privitty/privitty-core": "0.3.5",
     "mime-types": "catalog:",
     "sass": "catalog:",
     "ws": "7.5.10"

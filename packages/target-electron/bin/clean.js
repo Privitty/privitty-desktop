@@ -9,7 +9,7 @@ function rmrf(dirPath) {
   if (!fs.existsSync(dirPath)) {
     return
   }
-  
+
   const files = fs.readdirSync(dirPath)
   for (const file of files) {
     const curPath = path.join(dirPath, file)
@@ -35,4 +35,4 @@ try {
 } catch (error) {
   console.error(`❌ Error during clean: ${error.message}`)
   process.exit(1)
-} 
+}

@@ -1,36 +1,39 @@
-# Run unit & integration tests
+# Run unit & integration tests (Electron build + tests on ubuntu/windows).
+name: Test – Build & unit tests
+
 on:
-  workflow_dispatch: # disabled – use privitty-release.yml
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Tests #and E2E Tests
+    name: Tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest] # macos-latest doesn't work currently: ERROR UnableToAccessScreenRecordingAPIError: The find-window process cannot access the Screen Recording API.
-      fail-fast: false # don't fail fast, because some tests can be flaky so better we get all results
+        os: [ubuntu-latest, windows-latest]
+      fail-fast: false
     steps:
-    - uses: actions/checkout@v4
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9.6.0
-    - name: Setup Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20.x
-        cache: 'pnpm'
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-    - name: Set version info
-      shell: bash
-      run: |
-        echo "VERSION_INFO_GIT_REF=${{ github.sha }}-${{ github.ref_name }}" >> $GITHUB_ENV
-    - name: build
-      run: |
-        pnpm run build
-    - name: test
-      run: |
-        pnpm run test
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set version info
+        run: |
+          echo "VERSION_INFO_GIT_REF=${{ github.sha }}-${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Build Electron
+        run: pnpm build:electron
+      - name: Test
+        run: pnpm test
 

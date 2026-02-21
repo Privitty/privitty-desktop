@@ -55,12 +55,32 @@ const contextMenuFactory = (
   const showCopyImage = message.viewType === 'Image'
   const tx = window.static_translate
   const { id: msgId, viewType } = message
-  
+
   // Check if this is a supported media file (including .prv files that decrypt to supported formats)
-  const supportedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.m4v']
-  const isSupportedMedia = message.fileName?.toLowerCase().endsWith('.prv') || 
-                          supportedExtensions.some(ext => message.fileName?.toLowerCase().endsWith(ext))
-  
+  const supportedExtensions = [
+    '.pdf',
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.bmp',
+    '.webp',
+    '.svg',
+    '.mp4',
+    '.avi',
+    '.mov',
+    '.wmv',
+    '.flv',
+    '.webm',
+    '.mkv',
+    '.m4v',
+  ]
+  const isSupportedMedia =
+    message.fileName?.toLowerCase().endsWith('.prv') ||
+    supportedExtensions.some(ext =>
+      message.fileName?.toLowerCase().endsWith(ext)
+    )
+
   return [
     !hideOpenInShellTypes.includes(viewType) && {
       label: tx('open'),
@@ -69,7 +89,12 @@ const contextMenuFactory = (
           try {
             const result = await openAttachmentInShell(message)
             if (result?.useSecureViewer) {
-              openSecureViewer(openDialog, result.filePath, result.fileName, result.viewerType)
+              openSecureViewer(
+                openDialog,
+                result.filePath,
+                result.fileName,
+                result.viewerType
+              )
             }
           } catch (error) {
             console.error('Error opening media:', error)
@@ -138,9 +163,10 @@ const getMediaActions = (
   accountId: number
 ) => {
   // Check if this is a PDF file
-  const isPDF = message.fileName?.toLowerCase().endsWith('.pdf') || 
-               message.fileName?.toLowerCase().endsWith('.prv')
-  
+  const _isPDF =
+    message.fileName?.toLowerCase().endsWith('.pdf') ||
+    message.fileName?.toLowerCase().endsWith('.prv')
+
   return {
     openContextMenu: makeContextMenu(
       contextMenuFactory.bind(
@@ -158,7 +184,12 @@ const getMediaActions = (
         try {
           const result = await openAttachmentInShell(message)
           if (result?.useSecureViewer) {
-            openSecureViewer(openDialog, result.filePath, result.fileName, result.viewerType)
+            openSecureViewer(
+              openDialog,
+              result.filePath,
+              result.fileName,
+              result.viewerType
+            )
           }
         } catch (error) {
           console.error('Error opening media:', error)

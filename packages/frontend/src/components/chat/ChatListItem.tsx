@@ -14,6 +14,7 @@ import { runtime } from '@deltachat-desktop/runtime-interface'
 import { message2React } from '../message/MessageMarkdown'
 import { useRovingTabindex } from '../../contexts/RovingTabindex'
 import useTranslationFunction from '../../hooks/useTranslationFunction'
+import { privittyStore } from '../../privitty/privittyStore'
 
 const log = getLogger('renderer/chatlist/item')
 
@@ -84,8 +85,8 @@ const Message = React.memo<
     | 'isArchived'
     | 'isContactRequest'
     | 'summaryPreviewImage'
-    | `lastMessageId`
-  >
+    | 'lastMessageId'
+  > & { chatId: number }
 >(function ({
   summaryStatus,
   summaryText1,
@@ -95,6 +96,7 @@ const Message = React.memo<
   isContactRequest,
   summaryPreviewImage,
   lastMessageId,
+  chatId,
 }) {
   const isIncoming =
     summaryStatus === C.DC_STATE_IN_FRESH ||
@@ -102,47 +104,28 @@ const Message = React.memo<
     summaryStatus === C.DC_STATE_IN_NOTICED
 
   const status = isIncoming ? '' : mapCoreMsgStatus2String(summaryStatus)
-  const [isPrivitty, setIsPrivitty] = useState(false)
 
-    useEffect(() => {
-    let cancelled = false
+  // Each Message component owns its own isPrivitty state and subscribes
+  // directly to privittyStore. This guarantees a re-render whenever the store
+  // marks this chat as Privitty, bypassing React.memo(areEqual) in ancestor
+  // react-window rows which would otherwise block context propagation.
+  const accountId = selectedAccountId()
+  const [isPrivitty, setIsPrivitty] = useState(() =>
+    privittyStore.isPrivitty(accountId, chatId)
+  )
 
-    async function check() {
-      if (!summaryText2) {
-        setIsPrivitty(false)
-        return
-      }
-
-      try {
-        const response = await runtime.PrivittySendMessage(
-          'isPrivittyMessage',
-          { base64_data: summaryText2 }
-        )
-
-        const parsed = JSON.parse(response)
-        const valid = parsed?.result?.is_valid === true
-
-        if (!cancelled) {
-          setIsPrivitty(valid)
-        }
-      } catch (e) {
-        console.error('Privitty check failed', e)
-        if (!cancelled) setIsPrivitty(false)
-      }
+  useEffect(() => {
+    // Re-read on mount in case the store was updated between initial render
+    // and effect execution (e.g. localStorage populated before component mounted).
+    if (privittyStore.isPrivitty(accountId, chatId)) {
+      setIsPrivitty(true)
+      return
     }
-
-    check()
-
-    return () => {
-      cancelled = true
-    }
-  }, [summaryText2])
-
-
-
-  console.log("Last Chat list Message", message2React(summaryText2 || '', true, -1));
-  
-  
+    // Subscribe: when any chat is marked Privitty, check if it's ours.
+    return privittyStore.subscribe(markedChatId => {
+      if (markedChatId === chatId) setIsPrivitty(true)
+    })
+  }, [accountId, chatId])
 
   const iswebxdc = summaryPreviewImage === 'webxdc-icon://last-msg-id'
 
@@ -158,7 +141,7 @@ const Message = React.memo<
             {summaryText1 + ': '}
           </div>
         )}
-        {summaryPreviewImage && !iswebxdc && (
+        {!isPrivitty && summaryPreviewImage && !iswebxdc && (
           <div
             className='summary_thumbnail'
             style={{
@@ -168,7 +151,7 @@ const Message = React.memo<
             }}
           />
         )}
-        {iswebxdc && lastMessageId && (
+        {!isPrivitty && iswebxdc && lastMessageId && (
           <div
             className='summary_thumbnail'
             style={{
@@ -179,11 +162,13 @@ const Message = React.memo<
             }}
           />
         )}
-        {
-          !isPrivitty
-            ? message2React(summaryText2 || '', true, -1)
-            : <span className="protected-label">🔒 Privitty Message</span>
-        }
+        {isPrivitty ? (
+          <span className='summary' style={{ fontStyle: 'italic' }}>
+            Privitty Message
+          </span>
+        ) : (
+          message2React(summaryText2 || '', true, -1)
+        )}
       </div>
       {isContactRequest && (
         <div className='label'>
@@ -398,6 +383,7 @@ function ChatListItemNormal({
         />
 
         <Message
+          chatId={chatListItem.id}
           summaryStatus={chatListItem.summaryStatus}
           summaryText1={chatListItem.summaryText1}
           summaryText2={chatListItem.summaryText2}

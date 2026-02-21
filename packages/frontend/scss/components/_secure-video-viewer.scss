@@ -116,7 +116,7 @@
         object-fit: contain;
         border-radius: 4px;
         display: block;
-        
+
         // Ensure controls are visible
         &::-webkit-media-controls {
           display: flex !important;
@@ -124,7 +124,7 @@
           position: relative;
           z-index: 5;
         }
-        
+
         &::-webkit-media-controls-panel {
           display: flex !important;
           background: rgba(0, 0, 0, 0.8);
@@ -133,7 +133,7 @@
           position: relative;
           z-index: 5;
         }
-        
+
         &::-webkit-media-controls-play-button {
           display: block !important;
           background: var(--color-accent);
@@ -141,14 +141,14 @@
           width: 32px;
           height: 32px;
         }
-        
+
         &::-webkit-media-controls-timeline {
           display: block !important;
           background: rgba(255, 255, 255, 0.3);
           border-radius: 2px;
           height: 4px;
         }
-        
+
         &::-webkit-media-controls-current-time-display,
         &::-webkit-media-controls-time-remaining-display {
           display: block !important;
@@ -156,21 +156,19 @@
           font-weight: 500;
           font-size: 12px;
         }
-        
+
         &::-webkit-media-controls-volume-slider {
           display: block !important;
           background: rgba(255, 255, 255, 0.3);
           border-radius: 2px;
         }
-        
+
         &::-webkit-media-controls-fullscreen-button {
           display: block !important;
           background: var(--color-accent);
           border-radius: 4px;
         }
       }
-
-
     }
   }
 
@@ -194,6 +192,10 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-} 
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

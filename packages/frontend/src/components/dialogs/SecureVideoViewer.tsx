@@ -14,7 +14,7 @@ type Props = {
 
 export default function SecureVideoViewer(props: Props & DialogProps) {
   const { filePath, fileName, onClose } = props
-  
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -39,18 +39,21 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
     try {
       setLoading(true)
       setError(null)
-      
+
       log.info('Loading video in secure viewer', {
         filePath,
-        platform: typeof window !== 'undefined' ? window.process?.platform : 'unknown',
-        containsPrv: filePath.includes('.prv')
+        platform:
+          typeof window !== 'undefined' ? window.process?.platform : 'unknown',
+        containsPrv: filePath.includes('.prv'),
       })
 
       // Load file using Node.js fs (works on both Windows and macOS)
       let videoUrl: string
 
       try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs in Electron
         const fs = require('fs')
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js path in Electron
         const path = require('path')
 
         // Normalize file path
@@ -71,8 +74,10 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
         videoUrl = blobUrl
         blobUrlRef.current = blobUrl
 
-        log.info('Video loaded using Node.js fs', { fileSize: fileBuffer.length })
-      } catch (fsError) {
+        log.info('Video loaded using Node.js fs', {
+          fileSize: fileBuffer.length,
+        })
+      } catch (_fsError) {
         // Fallback: use file:// URL (works on macOS, may fail on Windows)
         let normalizedFilePath = filePath
         if (!normalizedFilePath.startsWith('file://')) {
@@ -81,7 +86,7 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
         videoUrl = normalizedFilePath
         log.info('Using file:// URL fallback for video')
       }
-      
+
       setVideoUrl(videoUrl)
       setLoading(false)
     } catch (err) {
@@ -119,8 +124,8 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
         <h2>{fileName}</h2>
         <IconButton icon='cross' onClick={onClose} aria-label='Close' />
       </div>
-      
-      <div 
+
+      <div
         className='secure-video-viewer-content'
         onKeyDown={handleKeyDown}
         tabIndex={0}
@@ -139,7 +144,7 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
               <h3>Video Loading Error</h3>
               <p>{error}</p>
               <button onClick={loadVideo} className='retry-button'>
-              Retry
+                Retry
               </button>
             </div>
           </div>
@@ -154,12 +159,12 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
               onLoadedData={handleVideoLoad}
               onError={handleVideoError}
               onContextMenu={handleContextMenu}
-              onDragStart={(e) => e.preventDefault()}
-              onDrop={(e) => e.preventDefault()}
+              onDragStart={e => e.preventDefault()}
+              onDrop={e => e.preventDefault()}
               controls
               autoPlay
               muted
-              preload="metadata"
+              preload='metadata'
               style={{
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
@@ -168,19 +173,21 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
                 maxWidth: '100%',
                 maxHeight: '100%',
                 objectFit: 'contain',
-                backgroundColor: '#000'
+                backgroundColor: '#000',
               }}
             />
           </div>
         )}
       </div>
-      
+
       <div className='secure-video-viewer-footer'>
         <div className='secure-notice'>
           <IconButton icon='info' size={16} aria-label='Secure viewer notice' />
-          <span>This is a secure viewer. Video content cannot be copied or saved.</span>
+          <span>
+            This is a secure viewer. Video content cannot be copied or saved.
+          </span>
         </div>
       </div>
     </Dialog>
   )
-} 
+}

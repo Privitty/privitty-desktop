@@ -72,11 +72,11 @@ export function init(options: { hidden: boolean }) {
     })
   ))
   mainWindow.filePathWhiteList = []
-  
+
   // Add PDF.js worker file to whitelist
   const workerPath = join(htmlDistDir(), 'pdf.worker.min.mjs')
   mainWindow.filePathWhiteList.push(workerPath)
-  
+
   // Add accounts tmp directory to whitelist for decrypted files
   const accountsPath = getAccountsPath()
   const tmpDirPath = join(accountsPath, 'tmp')
@@ -188,24 +188,26 @@ export function init(options: { hidden: boolean }) {
     (details, callback) => {
       // Log the URL being processed for debugging
       log.debug('Processing file URL request', details.url)
-      
+
       // Additional logging for PDF files
       if (details.url.includes('.pdf')) {
-        log.debug('PDF file access detected', { 
+        log.debug('PDF file access detected', {
           url: details.url,
           pathname: details.url.replace('file:///', ''),
           method: details.method,
-          resourceType: details.resourceType
+          resourceType: details.resourceType,
         })
       }
-      
+
       let pathname: string
       try {
-        pathname = fileURLToPath(
-          decodeURIComponent(new URL(details.url).href)
-        )
+        pathname = fileURLToPath(decodeURIComponent(new URL(details.url).href))
       } catch (error) {
-        log.errorWithoutStackTrace('Invalid file URL detected', details.url, error)
+        log.errorWithoutStackTrace(
+          'Invalid file URL detected',
+          details.url,
+          error
+        )
         return callback({ cancel: true })
       }
 
@@ -227,14 +229,20 @@ export function init(options: { hidden: boolean }) {
           log.debug('Allowing access to account folder', pathname)
           return callback({ cancel: false })
         }
-        
+
         // Allow access to tmp directory files (for decrypted PDFs)
         if (relativePathInAccount.includes('tmp/')) {
-          log.debug('Allowing access to tmp file', { pathname, relativePathInAccount })
+          log.debug('Allowing access to tmp file', {
+            pathname,
+            relativePathInAccount,
+          })
           return callback({ cancel: false })
         }
-        
-        log.debug('File in accounts path but not in allowed folders', { pathname, relativePathInAccount })
+
+        log.debug('File in accounts path but not in allowed folders', {
+          pathname,
+          relativePathInAccount,
+        })
       }
 
       if (
@@ -251,7 +259,8 @@ export function init(options: { hidden: boolean }) {
         return callback({ cancel: false })
       }
       log.debug(
-        'Access to file path not whitelisted, blocking access',pathname
+        'Access to file path not whitelisted, blocking access',
+        pathname
       )
       log.errorWithoutStackTrace(
         'tried to access path that is not whitelisted',
@@ -262,10 +271,6 @@ export function init(options: { hidden: boolean }) {
     }
   )
 }
-
-
-
-
 
 export function hide() {
   window?.hide()

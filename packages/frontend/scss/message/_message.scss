@@ -253,20 +253,20 @@
     .message-attachment-media {
       border-bottom-left-radius: 1px;
     }
-    .msg-body{
+    .msg-body {
       color: var(--messageIncomingTextColor);
 
       &,
       .document-wrapper {
         .message-attachment-generic {
-          background-color: #7F66C5;
-          
+          background-color: #7f66c5;
+
           &,
-          .text-part{
-            .name{
+          .text-part {
+            .name {
               color: white;
             }
-            .size{
+            .size {
               color: white;
             }
           }
@@ -316,7 +316,7 @@
       );
     }
 
-     .privitty-status-icon.relay {
+    .privitty-status-icon.relay {
       @include mixins.color-svg(
         './images/relay.svg',
         var(--messageMetadataIconColorIncoming),
@@ -352,7 +352,6 @@
     .status-icon.delivered {
       background-color: var(--messageOutgoingStatusColor);
     }
-    
   }
   .metadata.with-image-no-caption > .status-icon {
     background-color: white;
@@ -363,23 +362,23 @@
     --messageBg: var(--messageOutgoingBg);
 
     &,
-    .file-access-bell-button{
+    .file-access-bell-button {
       color: #fff;
     }
-    .msg-body{
+    .msg-body {
       color: var(--messageOutgoingTextColor);
 
       &,
       .document-wrapper {
         .message-attachment-generic {
           background-color: white;
-          
+
           &,
-          .text-part{
-            .name{
+          .text-part {
+            .name {
               color: #010101;
             }
-            .size{
+            .size {
               color: #010101;
             }
           }

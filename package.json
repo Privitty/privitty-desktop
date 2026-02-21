@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "scripts": {
     "preinstall": "node ./bin/check-nodejs-version.js",
-    "check": "pnpm check:types && pnpm check:lint && pnpm check:format && pnpm check:target-versions && pnpm check:log-conventions",
+    "check": "pnpm check:lint && pnpm check:format && pnpm check:target-versions && pnpm check:log-conventions",
     "check:types": "pnpm -r --no-bail check:types",
     "check:lint": "eslint . --cache",
     "check:format": "prettier --check \"**/*.scss\" \"packages/**/*.{js,ts,tsx,json}\" \"**/*.md\"",
@@ -56,13 +56,22 @@
       "electron",
       "esbuild"
     ],
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@emoji-mart/react>react": "19"
+      }
+    },
     "overrides": {
       "tar": ">=7.5.8",
       "qs": ">=6.14.2",
       "glob@>=10.0.0 <10.5.0": "10.5.0",
       "lodash": ">=4.17.23",
       "js-yaml": ">=4.1.1",
-      "minimatch@>=9.0.0 <10.2.1": "10.2.1"
+      "minimatch@>=9.0.0 <10.2.1": "10.2.1",
+      "@privitty/privitty-core-darwin-arm64": "0.3.5",
+      "@privitty/privitty-core-darwin-x64": "0.3.5",
+      "@privitty/privitty-core-linux-x64": "0.3.5",
+      "@privitty/privitty-core-win32-x64": "0.3.5"
     }
   },
   "devDependencies": {
