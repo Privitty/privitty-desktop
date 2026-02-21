@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 import { yerpc, BaseDeltaChat, T } from '@deltachat/jsonrpc-client'
 import { getRPCServerPath } from '@privitty/deltachat-rpc-server'
 import { join, dirname } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, readdirSync } from 'fs'
 import { arch, platform } from 'os'
 
 import { getLogger } from '../../../shared/logger.js'
@@ -12,7 +12,6 @@ import { ExtendedAppMainProcess } from '../types.js'
 import DCWebxdc from './webxdc.js'
 import { DesktopSettings } from '../desktop_settings.js'
 import { StdioServer } from './stdio_server.js'
-import rc_config from '../rc.js'
 import { migrateAccountsIfNeeded } from './migration.js'
 
 import { PrivittyClient } from '../privitty/client.js'
@@ -51,9 +50,10 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
   const currentPlatform = platform()
   const currentArch = arch()
 
-  const binaryName = currentPlatform === 'win32'
-    ? 'deltachat-rpc-server.exe'
-    : 'deltachat-rpc-server'
+  const binaryName =
+    currentPlatform === 'win32'
+      ? 'deltachat-rpc-server.exe'
+      : 'deltachat-rpc-server'
 
   // Arch-specific package name — used by both the packaged-app and dev resolvers.
   const packageName = `@privitty/deltachat-rpc-server-${currentPlatform}-${currentArch}`
@@ -84,7 +84,8 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
 
     log.error(
       'deltachat-rpc-server not found in app.asar.unpacked. ' +
-      'Tried packages:', packageCandidates
+        'Tried packages:',
+      packageCandidates
     )
     return null
   } else {
@@ -92,33 +93,32 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
     // __dirname when running from bundle_out/ will be: packages/target-electron/bundle_out
     // So we need to go up to the workspace root to find .pnpm store
     const searchPaths = [
-      join(__dirname, '../../../node_modules/.pnpm'),    // workspace root from bundle_out
-      join(__dirname, '../../node_modules/.pnpm'),        // packages/target-electron from bundle_out
-      join(__dirname, '../../../../node_modules/.pnpm'),  // if there's deeper nesting
+      join(__dirname, '../../../node_modules/.pnpm'), // workspace root from bundle_out
+      join(__dirname, '../../node_modules/.pnpm'), // packages/target-electron from bundle_out
+      join(__dirname, '../../../../node_modules/.pnpm'), // if there's deeper nesting
     ]
-    
+
     log.info('DeltaChat development mode - searching for binary:', {
       packageName,
       binaryName,
       __dirname,
-      searchPaths
+      searchPaths,
     })
-    
+
     for (const pnpmStore of searchPaths) {
       if (!existsSync(pnpmStore)) {
         log.debug('pnpm store does not exist:', pnpmStore)
         continue
       }
-      
+
       try {
-        const fs = require('fs')
-        const entries = fs.readdirSync(pnpmStore)
-        
+        const entries = readdirSync(pnpmStore)
+
         // Find the platform-specific package directory
-        const targetDir = entries.find((entry: string) => 
+        const targetDir = entries.find((entry: string) =>
           entry.startsWith(packageName.replace('@privitty/', '@privitty+'))
         )
-        
+
         if (targetDir) {
           const binaryPath = join(
             pnpmStore,
@@ -127,14 +127,17 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
             packageName,
             binaryName
           )
-          
+
           log.info('Checking binary path:', binaryPath)
-          
+
           if (existsSync(binaryPath)) {
             log.info('Found DeltaChat binary in pnpm store:', binaryPath)
             return binaryPath
           } else {
-            log.warn('Binary path exists in pnpm but file not found:', binaryPath)
+            log.warn(
+              'Binary path exists in pnpm but file not found:',
+              binaryPath
+            )
           }
         } else {
           log.debug('Target directory not found in pnpm store:', packageName)
@@ -143,7 +146,7 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
         log.debug('Error searching pnpm store:', pnpmStore, error)
       }
     }
-    
+
     log.warn('DeltaChat binary not found in pnpm stores')
     return null
   }
@@ -236,11 +239,17 @@ export default class DeltaChatController extends EventEmitter {
         log.info('openPrivittyVault: account directory resolved:', accountDir)
       }
     } catch (error) {
-      log.error('openPrivittyVault: getBlobDir failed for account', accountId, error)
+      log.error(
+        'openPrivittyVault: getBlobDir failed for account',
+        accountId,
+        error
+      )
     }
 
     if (!accountDir) {
-      log.error('openPrivittyVault: could not resolve account directory — aborting')
+      log.error(
+        'openPrivittyVault: could not resolve account directory — aborting'
+      )
       return
     }
 
@@ -262,7 +271,9 @@ export default class DeltaChatController extends EventEmitter {
 
     if (!displayName) {
       // Mirrors Android: skip switchProfile when userName is null or empty.
-      log.warn('openPrivittyVault: displayname is empty — switchProfile skipped')
+      log.warn(
+        'openPrivittyVault: displayname is empty — switchProfile skipped'
+      )
       return
     }
 
@@ -285,9 +296,14 @@ export default class DeltaChatController extends EventEmitter {
           setTimeout(() => reject(new Error('switchProfile timeout')), 20_000)
         ),
       ])
-      log.info('openPrivittyVault: switchProfile completed — notifying renderer')
+      log.info(
+        'openPrivittyVault: switchProfile completed — notifying renderer'
+      )
     } catch (error) {
-      log.error('openPrivittyVault: switchProfile error (proceeding anyway):', error)
+      log.error(
+        'openPrivittyVault: switchProfile error (proceeding anyway):',
+        error
+      )
     }
 
     // Notify the renderer that the privitty-server is fully ready.
@@ -296,7 +312,7 @@ export default class DeltaChatController extends EventEmitter {
   }
 
   sendPrivittyMessage(method: string, params: any) {
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<string>((resolve, _reject) => {
       const sequenceNumber = this.getGlobalSequence()
       this.callbackMap.set(sequenceNumber, response =>
         resolve(response as string)
@@ -304,7 +320,7 @@ export default class DeltaChatController extends EventEmitter {
       this._inner_privitty_account_manager?.sendJsonRpcRequest(
         method,
         params,
-        sequenceNumber,
+        sequenceNumber
       )
     })
   }
@@ -326,10 +342,9 @@ export default class DeltaChatController extends EventEmitter {
       return false
     }
     try {
-      const responseStr = await this.sendPrivittyMessage(
-        'isChatProtected',
-        { chat_id: chatId }
-      )
+      const responseStr = await this.sendPrivittyMessage('isChatProtected', {
+        chat_id: chatId,
+      })
       const response = JSON.parse(responseStr)
       const result = response?.result
       // Server may return a bare boolean or a { is_protected: bool } object
@@ -395,7 +410,10 @@ export default class DeltaChatController extends EventEmitter {
       const Msg = await this.jsonrpcRemote.rpc.getMessage(contextId, msgId)
       if (!Msg) return
 
-      const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(contextId, chatId)
+      const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(
+        contextId,
+        chatId
+      )
 
       // Common requirements: encrypted, text-only, not a contact request
       const isEncrypted = Msg.showPadlock
@@ -410,11 +428,16 @@ export default class DeltaChatController extends EventEmitter {
       // another device. Only process them when outgoing + bcc_self enabled.
       if (Msg.text.startsWith('PRIVITTY_SYNC:')) {
         if (!Msg.isOutgoing) return
-        const config = await this.jsonrpcRemote.rpc.batchGetConfig(contextId, ['bcc_self'])
+        const config = await this.jsonrpcRemote.rpc.batchGetConfig(contextId, [
+          'bcc_self',
+        ])
         if (config?.bcc_self !== '1') return
         try {
           const syncJson = JSON.parse(Msg.text.slice('PRIVITTY_SYNC:'.length))
-          log.debug('handleMsgsChangedEvent: Received BCC-self PRIVITTY_SYNC', syncJson)
+          log.debug(
+            'handleMsgsChangedEvent: Received BCC-self PRIVITTY_SYNC',
+            syncJson
+          )
           await this.applyPrivittySyncData(syncJson)
         } catch (e) {
           log.warn('handleMsgsChangedEvent: Invalid sync payload', e)
@@ -426,13 +449,19 @@ export default class DeltaChatController extends EventEmitter {
       // All encrypted Privitty PDUs — both incoming partner messages and
       // BCC-self copies — are processed here regardless of isOutgoing or
       // bcc_self, because on desktop they all arrive via MsgsChanged.
-      const isPrivittyResp = await this.sendPrivittyMessage('isPrivittyMessage', {
-        base64_data: Msg.text,
-      })
+      const isPrivittyResp = await this.sendPrivittyMessage(
+        'isPrivittyMessage',
+        {
+          base64_data: Msg.text,
+        }
+      )
       const isPrivittyParsed = JSON.parse(isPrivittyResp)
       if (!isPrivittyParsed?.result?.is_valid) return
 
-      log.info('handleMsgsChangedEvent: Processing Privitty PDU, outgoing=' + Msg.isOutgoing)
+      log.info(
+        'handleMsgsChangedEvent: Processing Privitty PDU, outgoing=' +
+          Msg.isOutgoing
+      )
 
       const resp = await this.sendPrivittyMessage('processMessage', {
         event_data: {
@@ -452,12 +481,10 @@ export default class DeltaChatController extends EventEmitter {
       if (pdu && targetChatId) {
         this.sendMessageToPeer(pdu, targetChatId)
       }
-
     } catch (err) {
       log.error('handleMsgsChangedEvent error', err)
     }
   }
-
 
   // Mirrors Android's DC_EVENT_INCOMING_MSG handler in ApplicationContext.java.
   async privittyHandleIncomingMsg(response: string) {
@@ -491,9 +518,12 @@ export default class DeltaChatController extends EventEmitter {
 
       // Regular Privitty PDU — mirrors Android's prvIsPrivittyMessageString
       // followed by prvProcessMessage.
-      const isPrivittyRaw = await this.sendPrivittyMessage('isPrivittyMessage', {
-        base64_data: Msg.text,
-      })
+      const isPrivittyRaw = await this.sendPrivittyMessage(
+        'isPrivittyMessage',
+        {
+          base64_data: Msg.text,
+        }
+      )
       await this.handlePrivittyValidation(isPrivittyRaw, Msg, chatId)
       return
     }
@@ -521,26 +551,44 @@ export default class DeltaChatController extends EventEmitter {
             const maxRetries = 10
             let fileExists = false
             for (let i = 0; i < maxRetries; i++) {
-              if (existsSync(filePath)) { fileExists = true; break }
+              if (existsSync(filePath)) {
+                fileExists = true
+                break
+              }
               await new Promise(r => setTimeout(r, 500))
             }
 
             if (!fileExists) {
-              log.warn('privittyHandleIncomingMsg: forwarded .prv not downloaded after retries', filePath)
+              log.warn(
+                'privittyHandleIncomingMsg: forwarded .prv not downloaded after retries',
+                filePath
+              )
               return
             }
 
-            const statusResp = await this.sendPrivittyMessage('getFileAccessStatus', {
-              event_data: { chat_id: chatIdStr, file_path: filePath },
-            })
+            const statusResp = await this.sendPrivittyMessage(
+              'getFileAccessStatus',
+              {
+                event_data: { chat_id: chatIdStr, file_path: filePath },
+              }
+            )
             const status = JSON.parse(statusResp)?.result?.data?.status ?? ''
             if (status === 'not_found') {
-              log.info('privittyHandleIncomingMsg: .prv not in server DB yet — registers on first access', filePath)
+              log.info(
+                'privittyHandleIncomingMsg: .prv not in server DB yet — registers on first access',
+                filePath
+              )
             } else {
-              log.info('privittyHandleIncomingMsg: .prv registered, status:', status)
+              log.info(
+                'privittyHandleIncomingMsg: .prv registered, status:',
+                status
+              )
             }
           } catch (e) {
-            log.warn('privittyHandleIncomingMsg: forwarded .prv check failed', e)
+            log.warn(
+              'privittyHandleIncomingMsg: forwarded .prv check failed',
+              e
+            )
           }
         })()
       }
@@ -570,11 +618,7 @@ export default class DeltaChatController extends EventEmitter {
     }
   }
 
-  async handlePrivittyValidation(
-    response: string,
-    msg: any,
-    chatId: number
-  ) {
+  async handlePrivittyValidation(response: string, msg: any, chatId: number) {
     const parsed = JSON.parse(response)
 
     if (!parsed?.result?.is_valid) return
@@ -628,10 +672,10 @@ export default class DeltaChatController extends EventEmitter {
     }
 
     log.debug('Initiating DeltaChatNode')
-    
+
     // Try custom resolver first (works in packaged apps)
     let serverPath = findDeltaChatBinaryInPackagedApp()
-    
+
     // Fall back to the npm package's resolver if custom resolver failed
     if (!serverPath) {
       log.debug('Custom resolver failed, trying getRPCServerPath()')
@@ -718,30 +762,27 @@ export default class DeltaChatController extends EventEmitter {
     // once the selected account is known (triggered by ImapConnected).
     // When the server emits its first JSON response (= fully initialised),
     // we notify the renderer so it can run the Privitty chatlist scan.
-    this._inner_privitty_account_manager = new PrivittyClient(
-      response => {
-        // Forward all messages to the IPC callback (frontend).
-        try {
-          this.onPrivittyData(response)
-        } catch (error) {
-          log.error('Error in onPrivittyData callback:', error)
-        }
-        // Resolve any pending JSON-RPC requests by ID.
-        try {
-          const resp = JSON.parse(response.trim())
-          if (resp.id !== undefined && this.callbackMap.has(resp.id)) {
-            const resolve = this.callbackMap.get(resp.id)
-            if (resolve) {
-              resolve(response)
-            }
-            this.callbackMap.delete(resp.id)
+    this._inner_privitty_account_manager = new PrivittyClient(response => {
+      // Forward all messages to the IPC callback (frontend).
+      try {
+        this.onPrivittyData(response)
+      } catch (error) {
+        log.error('Error in onPrivittyData callback:', error)
+      }
+      // Resolve any pending JSON-RPC requests by ID.
+      try {
+        const resp = JSON.parse(response.trim())
+        if (resp.id !== undefined && this.callbackMap.has(resp.id)) {
+          const resolve = this.callbackMap.get(resp.id)
+          if (resolve) {
+            resolve(response)
           }
-        } catch (error) {
-          log.error('Failed to parse privitty-server response:', error)
+          this.callbackMap.delete(resp.id)
         }
-      },
-      this.cwd
-    )
+      } catch (error) {
+        log.error('Failed to parse privitty-server response:', error)
+      }
+    }, this.cwd)
 
     this.account_manager.start()
 

@@ -66,7 +66,7 @@ export default function FileAccessStatusDialog({
   const [error, setError] = useState<string | null>(null)
   const [sharedUsers, setSharedUsers] = useState<FileAccessUser[]>([])
   const [forwardedUsers, setForwardedUsers] = useState<FileAccessUser[]>([])
-  const [displayFileName, setDisplayFileName] = useState<string>('')
+  const [, setDisplayFileName] = useState<string>('')
   const { openDialog, closeAllDialogs } = useDialog()
   const [isOwner, setIsOwner] = useState<boolean>(false)
   const accountId = selectedAccountId()
@@ -91,17 +91,23 @@ export default function FileAccessStatusDialog({
         },
       })
 
-      const parsed = typeof response === 'string' ? JSON.parse(response) : response
+      const parsed =
+        typeof response === 'string' ? JSON.parse(response) : response
       let result = parsed?.result
 
       if (typeof result === 'string') {
-        try { result = JSON.parse(result) } catch { /* keep original */ }
+        try {
+          result = JSON.parse(result)
+        } catch {
+          /* keep original */
+        }
       }
 
       const data = result?.data
       const fileData = data?.file
 
-      if (!data) throw new Error('Invalid response from getFileAccessStatusList')
+      if (!data)
+        throw new Error('Invalid response from getFileAccessStatusList')
 
       const shared: FileAccessUser[] = []
       if (fileData?.shared_info) {
@@ -118,7 +124,8 @@ export default function FileAccessStatusDialog({
       }
 
       const forwarded: FileAccessUser[] = []
-      const forwardedList = fileData?.forwarded_list ?? data?.forwarded_list ?? []
+      const forwardedList =
+        fileData?.forwarded_list ?? data?.forwarded_list ?? []
       if (Array.isArray(forwardedList)) {
         forwardedList.forEach((u: any) => {
           forwarded.push({
@@ -161,7 +168,9 @@ export default function FileAccessStatusDialog({
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Failed to fetch file access status'
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch file access status'
       )
     } finally {
       setLoading(false)
@@ -194,7 +203,9 @@ export default function FileAccessStatusDialog({
               Are you sure you want to revoke access for{' '}
               <strong>{userName}</strong>?
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <div
+              style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
+            >
               <button onClick={onDialogClose}>Cancel</button>
               <button
                 onClick={onConfirm}
@@ -226,7 +237,9 @@ export default function FileAccessStatusDialog({
             <p style={{ marginBottom: 20 }}>
               Do you want to allow access for this file?
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <div
+              style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
+            >
               <button onClick={onDenied}>Denied</button>
               <button onClick={onAccept}>Accept</button>
             </div>
@@ -262,7 +275,9 @@ export default function FileAccessStatusDialog({
       // reload the full data — same as Android's adapter.updateRequesteeStatus
       // + loadAccessData().
       const markRevoked = (users: FileAccessUser[]) =>
-        users.map(u => (u.email === contactId ? { ...u, status: 'revoked' } : u))
+        users.map(u =>
+          u.email === contactId ? { ...u, status: 'revoked' } : u
+        )
       setSharedUsers(prev => markRevoked(prev))
       setForwardedUsers(prev => markRevoked(prev))
       await fetchFileAccessStatus()
@@ -309,7 +324,9 @@ export default function FileAccessStatusDialog({
           const pdu = JSON.parse(response)?.result?.data?.pdu
           if (pdu) await sendPdu(pdu, accountId, chatId)
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Failed to accept access')
+          setError(
+            err instanceof Error ? err.message : 'Failed to accept access'
+          )
         } finally {
           await fetchFileAccessStatus()
         }
@@ -457,7 +474,9 @@ export default function FileAccessStatusDialog({
             </div>
           )}
           {isRevoked && (
-            <div style={{ fontSize: '12px', color: '#D93229', marginTop: '2px' }}>
+            <div
+              style={{ fontSize: '12px', color: '#D93229', marginTop: '2px' }}
+            >
               Access revoked
             </div>
           )}
@@ -539,13 +558,25 @@ export default function FileAccessStatusDialog({
           </div>
 
           {loading && (
-            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#666' }}>
+            <div
+              style={{
+                padding: '40px 20px',
+                textAlign: 'center',
+                color: '#666',
+              }}
+            >
               {tx('loading') || 'Loading...'}
             </div>
           )}
 
           {error && (
-            <div style={{ padding: '40px 20px', color: '#d32f2f', textAlign: 'center' }}>
+            <div
+              style={{
+                padding: '40px 20px',
+                color: '#d32f2f',
+                textAlign: 'center',
+              }}
+            >
               {error}
             </div>
           )}

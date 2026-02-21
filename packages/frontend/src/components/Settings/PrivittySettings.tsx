@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react'
 
-import SettingsStoreInstance, {
-  SettingsStoreState,
-  useSettingsStore,
-} from '../../stores/settings'
+import type { SettingsStoreState } from '../../stores/settings'
 import DesktopSettingsSwitch from './DesktopSettingsSwitch'
 import useTranslationFunction from '../../hooks/useTranslationFunction'
 
@@ -16,16 +13,16 @@ import { runtime } from '@deltachat-desktop/runtime-interface'
 type Props = {
   settingsStore: SettingsStoreState
 }
-export function PrivittySettings({ settingsStore }: Props) {
+export function PrivittySettings({ settingsStore: _settingsStore }: Props) {
   const tx = useTranslationFunction()
   //
   const [configValue, setConfigValue] = useState(25)
   //  desktopSettings.privittyDefaultAccessTime || 25
   useEffect(() => {
-    runtime.getDesktopSettings().then((settings) => {
-      setConfigValue(settings.privittyDefaultAccessTime || 25)})
-    }
-  )
+    runtime.getDesktopSettings().then(settings => {
+      setConfigValue(settings.privittyDefaultAccessTime || 25)
+    })
+  })
   // let defaultAccessTime = settingsStore.desktopSettings.privittyDefaultAccessTime || 25
 
   const onTimeChange = async (

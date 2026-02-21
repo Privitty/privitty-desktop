@@ -1,56 +1,56 @@
+# Lint, format, target-versions, log-conventions + build & unit tests.
 name: Basic Code Checks & Tests
 
 on:
-  workflow_dispatch: # disabled – use privitty-release.yml
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   check:
     name: Code Validation
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9.6.0
-    - name: Setup Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20.x
-        cache: 'pnpm'
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-    - name: Set version info
-      shell: bash
-      run: |
-        echo "VERSION_INFO_GIT_REF=${{ github.sha }}-${{ github.ref_name }}" >> $GITHUB_ENV
-    - name: Run all checks
-      run: |
-        pnpm check
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set version info
+        run: |
+          echo "VERSION_INFO_GIT_REF=${{ github.sha }}-${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Run checks (types, lint, format, etc.)
+        run: pnpm check
+
   test:
     name: Code Tests
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 9.6.0
-    - name: Setup Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20.x
-        cache: 'pnpm'
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
-    - name: Set version info
-      shell: bash
-      run: |
-        echo "VERSION_INFO_GIT_REF=${{ github.sha }}-${{ github.ref_name }}" >> $GITHUB_ENV
-    - name: Build
-      run: pnpm build:electron
-    - name: Run all checks
-      run: |
-        pnpm test
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Set version info
+        run: |
+          echo "VERSION_INFO_GIT_REF=${{ github.sha }}-${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Build Electron
+        run: pnpm build:electron
+      - name: Run tests
+        run: pnpm test

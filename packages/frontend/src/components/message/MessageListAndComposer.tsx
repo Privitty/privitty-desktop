@@ -15,8 +15,6 @@ import { ReactionsBarProvider } from '../ReactionsBar'
 import useDialog from '../../hooks/dialog/useDialog'
 import useMessage from '../../hooks/chat/useMessage'
 import { Viewtype } from '@deltachat/jsonrpc-client/dist/generated/types'
-import {useSharedData} from '../../contexts/FileAttribContext'
-
 
 const log = getLogger('renderer/MessageListAndComposer')
 
@@ -55,7 +53,9 @@ export function getBackgroundImageStyle(
           const configPath = runtime.getConfigPath()
           const fullPath = join(configPath, 'background/', filePath)
           // Ensure proper file URL format for macOS
-          const fileUrl = fullPath.startsWith('/') ? `file://${fullPath}` : `file:///${fullPath}`
+          const fileUrl = fullPath.startsWith('/')
+            ? `file://${fullPath}`
+            : `file:///${fullPath}`
           style.backgroundImage = `url("${fileUrl}")`
           break
         }
@@ -299,7 +299,6 @@ export default function MessageListAndComposer({ accountId, chat }: Props) {
     : {}
 
   return (
-    
     <div
       className='message-list-and-composer'
       style={style}

@@ -54,8 +54,8 @@ export interface Runtime {
     receiveTime: string,
     content: string
   ): void
-  PrivittyHandleMessage(response: String): Promise<void>
-  PrivittySendMessage(method: string, params: any ): Promise<string>
+  PrivittyHandleMessage(response: string): Promise<void>
+  PrivittySendMessage(method: string, params: any): Promise<string>
   /**
    * Subscribe to real-time notifications emitted by the backend whenever it
    * successfully validates an incoming Privitty message.

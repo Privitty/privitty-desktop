@@ -58,7 +58,7 @@ export default function ConfirmDeleteMessageDialog(props: Props) {
   return (
     <Dialog onClose={onClose}>
       <DialogBody>
-         <h2 style={{alignSelf: "center"}}>Delete File?</h2>
+        <h2 style={{ alignSelf: 'center' }}>Delete File?</h2>
       </DialogBody>
       <DialogBody>
         <DialogContent>

@@ -54,7 +54,7 @@ function getMinDateTime(): string {
 }
 
 export default function SmallSelectDialogPrivitty({
-  initialSelectedValue,
+  initialSelectedValue: _initialSelectedValue,
   onSave,
   title,
   onClose,

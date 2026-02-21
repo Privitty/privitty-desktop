@@ -35,5 +35,8 @@ export function getDefaultState(): DesktopSettingsType {
     isMentionsEnabled: true,
     inChatSoundsVolume: 0.5,
     autostart: true,
+    privittyDefaultAccessTime: 25,
+    privittyNotifyOnAccess: true,
+    privittyNotifyOnForwardAccess: true,
   }
 }

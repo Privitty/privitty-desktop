@@ -35,7 +35,12 @@ export class PrivittyClient {
         process.platform === 'win32' ? 'privitty-server.exe' : 'privitty-server'
 
       if (app.isPackaged) {
-        const fallbackPath = join(process.resourcesPath, 'privitty', 'dll', binName)
+        const fallbackPath = join(
+          process.resourcesPath,
+          'privitty',
+          'dll',
+          binName
+        )
         log.warn('Using packaged-app fallback path:', fallbackPath)
         return fallbackPath
       }
@@ -124,7 +129,13 @@ export class PrivittyClient {
           e.startsWith(packageName.replace('@', '@').replace('/', '+'))
         )
         if (entry) {
-          const binaryPath = join(pnpmStore, entry, 'node_modules', packageName, binaryName)
+          const binaryPath = join(
+            pnpmStore,
+            entry,
+            'node_modules',
+            packageName,
+            binaryName
+          )
           if (existsSync(binaryPath)) {
             return binaryPath
           }
@@ -225,7 +236,11 @@ export class PrivittyClient {
     this.serverProcess?.stdin.write(message + '\n')
   }
 
-  sendJsonRpcRequest(method: string, params: any = {}, requestId?: number): Promise<any> {
+  sendJsonRpcRequest(
+    method: string,
+    params: any = {},
+    requestId?: number
+  ): Promise<any> {
     const request = {
       jsonrpc: '2.0',
       method,

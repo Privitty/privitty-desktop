@@ -125,7 +125,7 @@ class ElectronRuntime implements Runtime {
     return Promise.resolve(ipcBackend.invoke('getFileExist', filePath))
   }
 
-  PrivittyHandleMessage(_response: String): Promise<void> {
+  PrivittyHandleMessage(_response: string): Promise<void> {
     return Promise.resolve()
   }
 
@@ -134,7 +134,8 @@ class ElectronRuntime implements Runtime {
   }
 
   onPrivittyMessageDetected(callback: (chatId: number) => void): () => void {
-    const handler = (_ev: any, data: { chatId: number }) => callback(data.chatId)
+    const handler = (_ev: any, data: { chatId: number }) =>
+      callback(data.chatId)
     ipcBackend.on('privittyMessageDetected', handler)
     return () => ipcBackend.removeListener('privittyMessageDetected', handler)
   }

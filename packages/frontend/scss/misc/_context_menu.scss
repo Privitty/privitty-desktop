@@ -36,7 +36,7 @@
   color: var(--textPrimary);
 
   border-radius: 16px;
-  border-color: #D1D1D1;
+  border-color: #d1d1d1;
   border-width: 1px;
   overflow: hidden;
 
@@ -58,7 +58,7 @@
     @include mixins.button-reset;
     width: 100%;
     line-height: 20px;
-     padding: 12px;
+    padding: 12px;
     gap: 20px;
     white-space: nowrap;
     display: flex;
@@ -73,7 +73,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-
     }
 
     &.danger {

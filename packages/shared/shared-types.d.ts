@@ -94,7 +94,7 @@ export interface RC_Config {
 }
 
 import type { T } from '@deltachat/jsonrpc-client'
-import { NOTIFICATION_TYPE } from './constants.ts'
+import { NOTIFICATION_TYPE } from './constants.js'
 
 export type Theme = {
   name: string

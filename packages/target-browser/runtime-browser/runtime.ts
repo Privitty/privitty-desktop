@@ -106,11 +106,11 @@ class BrowserRuntime implements Runtime {
     })
   }
 
-  PrivittyHandleMessage(response: String): Promise<void> {
+  PrivittyHandleMessage(_response: string): Promise<void> {
     throw new Error('Method not implemented.')
   }
 
-  PrivittySendMessage(method: string, params: any): Promise<string> {
+  PrivittySendMessage(_method: string, _params: any): Promise<string> {
     throw new Error('Method not implemented.')
   }
 

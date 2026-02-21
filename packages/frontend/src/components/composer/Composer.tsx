@@ -50,7 +50,6 @@ import { useHasChanged2 } from '../../hooks/useHasChanged'
 import { ScreenContext } from '../../contexts/ScreenContext'
 import {
   AudioErrorType,
-  AudioRecorder,
   AudioRecorderError,
 } from '../AudioRecorder/AudioRecorder'
 import AlertDialog from '../dialogs/AlertDialog'
@@ -110,7 +109,7 @@ const Composer = forwardRef<
   const { openDialog } = useDialog()
   const { sendMessage } = useMessage()
   const { unselectChat } = useChat()
-  
+
   // The philosophy of the editing mode is as follows.
   // The edit mode can be thought of as a dialog,
   // even though it does not like one visually.
@@ -138,14 +137,14 @@ const Composer = forwardRef<
     ? editMessageInputRef
     : regularMessageInputRef
 
-  const voiceMessageDisabled =
+  const _voiceMessageDisabled =
     !!draftState.file || !!draftState.text || messageEditing.isEditingModeActive
 
   if (useHasChanged2(chatId) && recording) {
     setRecording(false)
   }
 
-  const saveVoiceAsDraft = (voiceData: Blob) => {
+  const _saveVoiceAsDraft = (voiceData: Blob) => {
     const reader = new FileReader()
     reader.readAsDataURL(voiceData)
     reader.onloadend = async () => {
@@ -166,7 +165,7 @@ const Composer = forwardRef<
     }
   }
 
-  const onAudioError = (err: AudioRecorderError) => {
+  const _onAudioError = (err: AudioRecorderError) => {
     log.error('onAudioError', err)
     let message = err.message
     if (err.errorType === AudioErrorType.NO_INPUT) {
@@ -239,7 +238,7 @@ const Composer = forwardRef<
                   ? draftState.quote.messageId
                   : null,
               viewtype: draftState.viewType,
-            },
+            }
             //sharedData
           )
 
@@ -645,7 +644,7 @@ const Composer = forwardRef<
                 <span />
               </button>
             )}
-          {(
+          {
             <button
               // This ensures that the button loses focus as we switch between
               // the editing mode and the regular mode,
@@ -667,7 +666,7 @@ const Composer = forwardRef<
             >
               <div className='paper-plane'></div>
             </button>
-          )}
+          }
         </div>
         {/* We don't want to show the app picker when
         `messageEditing.isEditingModeActive` because picking an app
@@ -909,7 +908,13 @@ export function useDraft(
       clearDraftStateButKeepTextareaValue()
     }
     inputRef.current?.setState({ loadingDraft: false })
-  }, [chatId, clearDraftStateButKeepTextareaValue, canSend, inputRef, sharedData])
+  }, [
+    chatId,
+    clearDraftStateButKeepTextareaValue,
+    canSend,
+    inputRef,
+    sharedData,
+  ])
 
   const updateDraftText = (text: string, InputChatId: number) => {
     if (chatId !== InputChatId) {

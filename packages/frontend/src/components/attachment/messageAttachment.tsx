@@ -27,8 +27,7 @@ import useDialog from '../../hooks/dialog/useDialog'
 import AudioPlayer from '../AudioPlayer'
 import { T, C } from '@deltachat/jsonrpc-client'
 import { selectedAccountId } from '../../ScreenController'
-import { dirname, extname } from 'path'
-import { file } from 'jszip'
+import { extname } from 'path'
 
 type PrivittyStatus =
   | 'active'
@@ -173,10 +172,7 @@ export default function Attachment({
                 message.fileName || '',
                 message.file || ''
               )
-            } catch (copyError) {
-              const errorMessage =
-                copyError instanceof Error ? copyError.message : 'Unknown error'
-
+            } catch (_copyError) {
               // Show user-friendly error message
               runtime.showNotification({
                 title: 'Media File Error',
@@ -193,8 +189,7 @@ export default function Attachment({
               return
             }
 
-            let filePathName = tmpFile
-            filePathName = tmpFile.replace(/\\/g, '/')
+            let filePathName = tmpFile.replace(/\\/g, '/')
 
             // Handle .prv files (encrypted files)
             const isForwarded =
@@ -253,7 +248,7 @@ export default function Attachment({
                     viewtype: 'Text',
                   }
 
-                  const msgId = await BackendRemote.rpc.sendMsg(
+                  await BackendRemote.rpc.sendMsg(
                     selectedAccountId(),
                     message.chatId,
                     {

@@ -1,6 +1,5 @@
 import React, {
   CSSProperties,
-  use,
   useCallback,
   useContext,
   useEffect,
@@ -10,7 +9,6 @@ import React, {
 import reactStringReplace from 'react-string-replace'
 import classNames from 'classnames'
 import { C, T } from '@deltachat/jsonrpc-client'
-import { basename, dirname, extname } from 'path'
 
 import MessageBody from './MessageBody'
 import MessageMetaData, { isMediaWithoutText } from './MessageMetaData'
@@ -65,8 +63,6 @@ import type { JumpToMessage } from '../../hooks/chat/useMessage'
 import { mouseEventToPosition } from '../../utils/mouseEventToPosition'
 import { useRovingTabindex } from '../../contexts/RovingTabindex'
 import { privittyStore } from '../../privitty/privittyStore'
-import { is } from 'immutable'
-import { show } from '../windows/main'
 
 type PrivittyStatus =
   | 'active'
@@ -80,7 +76,6 @@ type PrivittyStatus =
   | 'none'
   | 'error'
   | undefined
-
 
 interface CssWithAvatarColor extends CSSProperties {
   '--local-avatar-color': string
@@ -477,14 +472,10 @@ async function buildContextMenu(
           viewtype: 'Text',
         }
 
-        const msgId = await BackendRemote.rpc.sendMsg(
-          accountId,
-          chat?.id || 0,
-          {
-            ...MESSAGE_DEFAULT,
-            ...messageR,
-          }
-        )
+        await BackendRemote.rpc.sendMsg(accountId, chat?.id || 0, {
+          ...MESSAGE_DEFAULT,
+          ...messageR,
+        })
       },
     },
     // Send emoji reaction
@@ -670,11 +661,11 @@ async function isPduMessage(message: T.Message): Promise<boolean> {
 function getPrivittyStatusLabel(status: PrivittyStatus | null): string | null {
   switch (status) {
     case 'active':
-      return null                       // hidden; expiry label shown instead
+      return null // hidden; expiry label shown instead
     case 'requested':
       return 'Access Requested'
     case 'expired':
-      return null                       // hidden; expiry label shown instead
+      return null // hidden; expiry label shown instead
     case 'revoked':
       return 'Access revoked'
     case 'denied':
@@ -922,7 +913,12 @@ export default function Message(props: {
   useEffect(() => {
     const filePath = message.file
 
-    if (!filePath || filePath === '' || !message.chatId || !filePath.endsWith('.prv')) {
+    if (
+      !filePath ||
+      filePath === '' ||
+      !message.chatId ||
+      !filePath.endsWith('.prv')
+    ) {
       return
     }
 
@@ -940,6 +936,7 @@ export default function Message(props: {
           },
         })
 
+        if (cancelled) return
         const parsed =
           typeof response === 'string' ? JSON.parse(response) : response
         const file = parsed?.result?.data?.file
@@ -957,7 +954,7 @@ export default function Message(props: {
             (f: any) => normalize(f?.status) === 'waiting_owner_action'
           ).length
         }
-        setWaitingCount(count)
+        if (!cancelled) setWaitingCount(count)
       } catch (err) {
         console.error('Red dot count error:', err)
       }

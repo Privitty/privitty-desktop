@@ -45,7 +45,7 @@ import DeltaChatController from './deltachat/controller.js'
 import { BuildInfo } from './get-build-info.js'
 import { updateContentProtectionOnAllActiveWindows } from './content-protection.js'
 import { MediaType } from '@deltachat-desktop/runtime-interface'
-import * as fs from 'fs/promises'; // Using the promise-based API for async/await
+import * as fs from 'fs/promises' // Using the promise-based API for async/await
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -65,12 +65,12 @@ export async function init(cwd: string, logHandler: LogHandler) {
 
   function onPrivittyMessage(response: string) {
     log.info('Privitty message received in IPC')
-    
+
     // Forward all privitty messages to the frontend
     try {
       const parsed = JSON.parse(response)
       log.debug('Sending privitty event to frontend')
-      
+
       // Send to all windows
       main.window?.webContents.send('privitty-message', parsed)
     } catch (error) {
@@ -280,13 +280,13 @@ export async function init(cwd: string, logHandler: LogHandler) {
   )
 
   ipcMain.handle('getFileExist', async (_ev, filePath) => {
-   try{
-    // Check access to the file with the F_OK flag (default, checks for existence)
-    await fs.access(filePath);
-    return true; // No error means the file exists
-   }catch (error) {
+    try {
+      // Check access to the file with the F_OK flag (default, checks for existence)
+      await fs.access(filePath)
+      return true // No error means the file exists
+    } catch (error) {
       log.error('Error checking file existence:', error)
-   }
+    }
     return false
   })
 
@@ -301,22 +301,25 @@ export async function init(cwd: string, logHandler: LogHandler) {
     'getFileAccessStatusList',
   ])
 
-  ipcMain.handle('privitty_Send_Message', async (_ev, method: string, params: any) => {
-    if (FILE_ACCESS_METHODS.has(method)) {
-      const chatId = String(params?.chat_id ?? params?.chatId ?? '')
-      if (chatId) {
-        const isProtected = await dcController.isChatProtected(chatId)
-        if (!isProtected) {
-          log.debug(
-            `privitty_Send_Message: chat ${chatId} is not Privitty-protected` +
-            ` — skipping ${method}`
-          )
-          return JSON.stringify({ success: true, data: null })
+  ipcMain.handle(
+    'privitty_Send_Message',
+    async (_ev, method: string, params: any) => {
+      if (FILE_ACCESS_METHODS.has(method)) {
+        const chatId = String(params?.chat_id ?? params?.chatId ?? '')
+        if (chatId) {
+          const isProtected = await dcController.isChatProtected(chatId)
+          if (!isProtected) {
+            log.debug(
+              `privitty_Send_Message: chat ${chatId} is not Privitty-protected` +
+                ` — skipping ${method}`
+            )
+            return JSON.stringify({ success: true, data: null })
+          }
         }
       }
+      return dcController.sendPrivittyMessage(method, params)
     }
-    return dcController.sendPrivittyMessage(method, params)
-  })
+  )
 
   ipcMain.handle('get-desktop-settings', async _ev => {
     return DesktopSettings.state
@@ -438,7 +441,7 @@ export async function init(cwd: string, logHandler: LogHandler) {
   return () => {
     // the shutdown function
     dcController.jsonrpcRemote.rpc.stopIoForAllAccounts()
-    
+
     // Stop privitty server process
     try {
       dcController._inner_privitty_account_manager?.stop()

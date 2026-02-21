@@ -8,7 +8,7 @@
     "rootDirs": [".", "../shared"],
     "allowJs": false,
     "esModuleInterop": true,
-    "moduleResolution": "Node10",
+    "moduleResolution": "node",
     "strictNullChecks": true,
     "strict": true
   },

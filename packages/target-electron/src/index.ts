@@ -178,18 +178,27 @@ async function onReady([_appReady, _loadedState, _appx, _webxdc_cleanup]: [
   log.info(`cwd ${cwd}`)
   // Prefer local core build if available (works outside dev mode too)
   {
-    const binName = process.platform === 'win32' ? 'deltachat-rpc-server.exe' : 'deltachat-rpc-server'
+    const binName =
+      process.platform === 'win32'
+        ? 'deltachat-rpc-server.exe'
+        : 'deltachat-rpc-server'
     const candidates: string[] = []
     // Dev: relative to repo
-    candidates.push(pathResolve(app.getAppPath(), '../../core/target/debug', binName))
+    candidates.push(
+      pathResolve(app.getAppPath(), '../../core/target/debug', binName)
+    )
     // Packaged: relative to install dir (one up from resources)
     // e.g. <InstallDir>\core\target\debug\deltachat-rpc-server.exe
     // process.resourcesPath typically points to <InstallDir>\resources
-    candidates.push(pathResolve(process.resourcesPath, '..', 'core/target/debug', binName))
+    candidates.push(
+      pathResolve(process.resourcesPath, '..', 'core/target/debug', binName)
+    )
     for (const p of candidates) {
       if (!process.env.DELTA_CHAT_RPC_SERVER && existsSync(p)) {
         process.env.DELTA_CHAT_RPC_SERVER = p
-        log.info('Using local deltachat core via DELTA_CHAT_RPC_SERVER', { localCorePath: p })
+        log.info('Using local deltachat core via DELTA_CHAT_RPC_SERVER', {
+          localCorePath: p,
+        })
         break
       }
     }

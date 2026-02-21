@@ -131,7 +131,7 @@ build['asarUnpack'] = [
   './node_modules/@privitty/privitty-core-*/**',
   // Privitty DeltaChat RPC server packages (meta-package AND platform-specific)
   './node_modules/@privitty/deltachat-rpc-server/**',
-  './node_modules/@privitty/deltachat-rpc-server-*/**'
+  './node_modules/@privitty/deltachat-rpc-server-*/**',
 ]
 // 'html-dist/xdcs/' should be in 'asarUnpack', but that had "file already exists" errors in the ci
 // see https://github.com/deltachat/deltachat-desktop/pull/3876, so we now do it "manually" in the afterPackHook
@@ -218,7 +218,7 @@ build['linux'] = {
     entry: {
       Comment: 'privitty Chat email-based messenger',
       Keywords: 'privitty;chat;privitty;messaging;messenger;email',
-    }
+    },
   },
   files: [...files, PREBUILD_FILTERS.NOT_MAC, PREBUILD_FILTERS.NOT_WINDOWS],
   icon: 'build/icon.icns', // electron builder gets the icon out of the mac icon archive
@@ -230,7 +230,9 @@ build['appImage'] = {
 }
 
 build['deb'] = {
-  packageName: previewBuild ? 'privittychat-desktop-preview' : 'privittychat-desktop',
+  packageName: previewBuild
+    ? 'privittychat-desktop-preview'
+    : 'privittychat-desktop',
   depends: [
     'libasound2',
     'libgtk-3-0',

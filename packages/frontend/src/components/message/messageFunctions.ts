@@ -15,8 +15,7 @@ import SecureVideoViewer from '../dialogs/SecureVideoViewer'
 import type { OpenDialog } from '../../contexts/DialogContext'
 import { C, type T } from '@deltachat/jsonrpc-client'
 import ConfirmDeleteMessageDialog from '../dialogs/ConfirmDeleteMessage'
-import { basename, dirname, extname } from 'path'
-import { json } from 'stream/consumers'
+import { extname } from 'path'
 
 const log = getLogger('render/msgFunctions')
 
@@ -76,11 +75,11 @@ export async function openAttachmentInShell(
   }
 
   let filePathName = tmpFile
-  console.log('messagefuntions 🛣️🛣️🛣️', filePathName)
+  log.debug('messagefuntions filePathName', filePathName)
 
   if (extname(msg.fileName) === '.prv') {
     filePathName = tmpFile.replace(/\\/g, '/')
-    const response = await runtime.PrivittySendMessage('sendEvent', {
+    await runtime.PrivittySendMessage('sendEvent', {
       event_type: 'fileDecryptRequest',
       event_data: {
         chat_id: String(msg.chatId),
@@ -90,15 +89,7 @@ export async function openAttachmentInShell(
 
     if (msg.fromId === C.DC_CONTACT_ID_SELF) {
       // we will open the viewer if the file is not downloadable
-      //we will open the viewer if the file is not downloadable
-      console.log(
-        'we will open the viewer if the file is not downloadable ⬇️⬇️⬇️⬇️⬇️⬇️'
-      )
-
-      console.log(
-        'Message Functions 1 ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
-        filePathName
-      )
+      log.debug('Opening viewer for non-downloadable file', filePathName)
 
       const fileAccessResponse = await runtime.PrivittySendMessage(
         'sendEvent',
@@ -110,7 +101,7 @@ export async function openAttachmentInShell(
           },
         }
       )
-      console.log('fileAccessResponse ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️', fileAccessResponse)
+      log.debug('fileAccessResponse', fileAccessResponse)
 
       if (JSON.parse(fileAccessResponse).fileAccessState != 'revoked') {
         // Check if the decrypted file is a supported media type that should be opened in secure viewer
@@ -160,11 +151,7 @@ export async function openAttachmentInShell(
         return
       }
     } else {
-      //we will open the viewer if the file is not downloadable
-      console.log(
-        'Message Functions 2 ➡️ MESSAGE FILENAME ⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
-        filePathName
-      )
+      log.debug('Message Functions 2 filePathName', filePathName)
       const fileAccessResponse = await runtime.PrivittySendMessage(
         'sendEvent',
         {
@@ -175,7 +162,7 @@ export async function openAttachmentInShell(
           },
         }
       )
-      console.log('fileAccessResponse ⚠️⚠️⚠️⚠️⚠️', fileAccessResponse)
+      log.debug('fileAccessResponse', fileAccessResponse)
       if (fileAccessResponse.result?.data?.success === 'false') {
         //if (JSON.parse(fileAccessResponse).status === 'false') {
         // Check if the decrypted file is a supported media type that should be opened in secure viewer
@@ -302,7 +289,7 @@ const privittyForwardable = async (message: T.Message): Promise<boolean> => {
         },
       })
       const result = JSON.parse(response)
-      console.log('result ⏭️⏭️⏭️⏭️⏭️⏭️ =====>>>', result)
+      log.debug('getFileAccessStatus result', result)
 
       //"result":"{"fileAccessState":"active"}
       if (result) {
@@ -401,7 +388,11 @@ export async function confirmForwardMessage(
               accountId,
               chat?.id || 0
             )
-            if (fullChat && fullChat.contactIds && fullChat.contactIds.length > 0) {
+            if (
+              fullChat &&
+              fullChat.contactIds &&
+              fullChat.contactIds.length > 0
+            ) {
               const contact = await BackendRemote.rpc.getContact(
                 accountId,
                 fullChat.contactIds[0]
@@ -411,7 +402,7 @@ export async function confirmForwardMessage(
               }
             }
           } catch (error) {
-            console.error('Error getting contact email:', error)
+            log.error('Error getting contact email:', error)
             // Use fallback email if there's an error
           }
           const addpeerResponse = await runtime.PrivittySendMessage(
@@ -426,7 +417,7 @@ export async function confirmForwardMessage(
               },
             }
           )
-          console.log('addpeerResponse =', addpeerResponse)
+          log.debug('addpeerResponse', addpeerResponse)
           const parsedResponse = JSON.parse(addpeerResponse)
           if (parsedResponse.result.success == true) {
             const pdu = parsedResponse?.result?.data?.pdu
@@ -450,14 +441,10 @@ export async function confirmForwardMessage(
               viewtype: 'Text',
             }
 
-            const msgId = await BackendRemote.rpc.sendMsg(
-              accountId,
-              chat?.id || 0,
-              {
-                ...MESSAGE_DEFAULT,
-                ...message,
-              }
-            )
+            await BackendRemote.rpc.sendMsg(accountId, chat?.id || 0, {
+              ...MESSAGE_DEFAULT,
+              ...message,
+            })
           } else {
             runtime.showNotification({
               title: 'Privitty',
@@ -495,8 +482,7 @@ export async function confirmForwardMessage(
         filePathName1 = tmpFile.replace(/\\/g, '/')
 
         //we need to send a split key to the peer
-        const filePathName = message.file.replace(/\\/g, '/')
-
+        const _filePathName = message.file.replace(/\\/g, '/')
 
         const responseFwdPeerAdd = await runtime.PrivittySendMessage(
           'sendEvent',
@@ -510,7 +496,7 @@ export async function confirmForwardMessage(
           }
         )
         const parsedResponse = JSON.parse(responseFwdPeerAdd)
-        console.log('parsedResponse ======', parsedResponse)
+        log.debug('parsedResponse', parsedResponse)
 
         if (parsedResponse.result?.data?.status === 'success') {
           const pdu = parsedResponse.result?.data?.pdu
@@ -532,17 +518,13 @@ export async function confirmForwardMessage(
             quotedMessageId: null,
             viewtype: 'Text',
           }
-          const msgId = await BackendRemote.rpc.sendMsg(
-            accountId,
-            chat?.id || 0,
-            {
-              ...MESSAGE_DEFAULT,
-              ...message,
-            }
-          )
+          await BackendRemote.rpc.sendMsg(accountId, chat?.id || 0, {
+            ...MESSAGE_DEFAULT,
+            ...message,
+          })
         }
       } catch (e) {
-        console.error('Error in Enabling Privitty Secure', e)
+        log.error('Error in Enabling Privitty Secure', e)
         return
       }
     } else {

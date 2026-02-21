@@ -102,6 +102,7 @@ jobs:
         with:
           name: ${{ matrix.platform }}-${{ matrix.label }}
           path: out/*
+          retention-days: 45
 
   check-webxdc-denied-permissions:
     name: check the list of denied web permissions for webxdc

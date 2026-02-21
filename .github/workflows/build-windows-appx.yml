@@ -46,3 +46,4 @@ jobs:
       with:
         name: windows appx release
         path: packages/target-electron/dist/preview/
+        retention-days: 45

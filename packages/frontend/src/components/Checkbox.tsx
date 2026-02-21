@@ -16,5 +16,3 @@ const Checkbox: React.FC<CheckboxProps> = ({ checked, onChange, label }) => {
 }
 
 export default Checkbox
-
-

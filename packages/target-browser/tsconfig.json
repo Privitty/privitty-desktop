@@ -9,7 +9,7 @@
     "lib": [],
     "allowJs": false,
     "esModuleInterop": true,
-    "moduleResolution": "Node10",
+    "moduleResolution": "node",
     "resolveJsonModule": true,
     "strictNullChecks": true,
     "strict": true

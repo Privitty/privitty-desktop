@@ -1,5 +1,5 @@
 import React, { useCallback, useContext } from 'react'
-import { dirname, basename, normalize } from 'path'
+import { dirname, basename } from 'path'
 
 import { runtime } from '@deltachat-desktop/runtime-interface'
 import { useStore } from '../../stores/store'
@@ -46,7 +46,7 @@ export default function MenuAttachment({
   const { sendMessage } = useMessage()
   const [settings] = useStore(SettingsStoreInstance)
   const accountId = selectedAccountId()
-  const { sharedData, setSharedData } = useSharedData()
+  const { setSharedData } = useSharedData()
 
   const confirmSendMultipleFiles = (
     filePaths: string[],
@@ -91,43 +91,35 @@ export default function MenuAttachment({
       defaultPath,
     })
 
- 
     if (files.length === 1) {
       setLastPath(dirname(files[0]))
-      let filePathName = files[0].replace(/\\/g, '/')
-      
+      const filePathName = files[0].replace(/\\/g, '/')
+
       try {
         if (selectedChat?.id) {
-
           const basicChat = await BackendRemote.rpc.getBasicChatInfo(
             accountId,
             selectedChat.id
           )
           if (basicChat.chatType === C.DC_CHAT_TYPE_GROUP) {
-            encryptedFile = await runtime.PrivittySendMessage(
-              'sendEvent',
-              {
-                event_type: 'groupFileEncryptRequest',
-                event_data: {
-                  group_chat_id: String(selectedChat?.id || 0),
-                  file_path: filePathName,
-                },
-              }
-            )
+            encryptedFile = await runtime.PrivittySendMessage('sendEvent', {
+              event_type: 'groupFileEncryptRequest',
+              event_data: {
+                group_chat_id: String(selectedChat?.id || 0),
+                file_path: filePathName,
+              },
+            })
           } else {
-            encryptedFile = await runtime.PrivittySendMessage(
-              'sendEvent',
-              {
-                event_type: 'fileEncryptRequest',
-                event_data: {
-                  chat_id: String(selectedChat?.id || 0),
-                  file_path: filePathName,
-                  allow_download: fileAttribute.allowDownload,
-                  allow_forward: fileAttribute.allowForward,
-                  access_duration: Number(fileAttribute.allowedTime), // duration in seconds (string)
-                },
-              }
-            )
+            encryptedFile = await runtime.PrivittySendMessage('sendEvent', {
+              event_type: 'fileEncryptRequest',
+              event_data: {
+                chat_id: String(selectedChat?.id || 0),
+                file_path: filePathName,
+                allow_download: fileAttribute.allowDownload,
+                allow_forward: fileAttribute.allowForward,
+                access_duration: Number(fileAttribute.allowedTime), // duration in seconds (string)
+              },
+            })
           }
         }
       } catch (e) {
@@ -137,7 +129,7 @@ export default function MenuAttachment({
         )
       }
 
-      let data = JSON.parse(encryptedFile)
+      const data = JSON.parse(encryptedFile)
       const fileName = data.result?.data?.prv_file_name
       const oneTimeKey = data.result?.data?.one_time_key
       console.log('FileName 📇📇📇📇', fileName)
@@ -195,7 +187,7 @@ export default function MenuAttachment({
   }
 
   const openPrivittyProcess = async () => {
-    let smallDialogID = await openDialog(SmallSelectDialogPrivitty, {
+    const smallDialogID = await openDialog(SmallSelectDialogPrivitty, {
       initialSelectedValue: {
         allowDownload: false,
         allowForward: false,
@@ -286,9 +278,7 @@ export default function MenuAttachment({
 
   const addFilenameMedia = async () => {
     // function for media
-    const { defaultPath, setLastPath } = await rememberLastUsedPath(
-      LastUsedSlot.Attachment
-    )
+    await rememberLastUsedPath(LastUsedSlot.Attachment)
     fileFilters = [
       {
         name: tx('image'),
@@ -348,7 +338,7 @@ export default function MenuAttachment({
     dialogId = openDialog(SelectContactDialog, { onOk: addContactAsVcard })
   }
 
-  const selectAppPicker = async () => {
+  const _selectAppPicker = async () => {
     showAppPicker(true)
   }
 

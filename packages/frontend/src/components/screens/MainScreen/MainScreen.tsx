@@ -42,7 +42,6 @@ import { runtime } from '@deltachat-desktop/runtime-interface'
 import { SharedDataProvider } from '../../../contexts/FileAttribContext'
 import { PrivittyChatProvider } from '../../../contexts/PrivittyChatContext'
 
-
 type Props = {
   accountId?: number
 }
