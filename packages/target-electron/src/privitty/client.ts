@@ -85,18 +85,34 @@ export class PrivittyClient {
       throw new Error(`Unsupported platform: ${platformName}`)
     }
     
-    // In packaged apps, look in app.asar.unpacked
+    // In packaged apps, look in app.asar.unpacked.
+    // CI universal macOS builds replace arch-specific packages with a single
+    // fat binary at @privitty/privitty-core-darwin-universal (created by lipo).
+    // Try the arch-specific package first, then fall back to universal.
     if (app.isPackaged) {
-      const unpackedPath = join(
-        process.resourcesPath,
-        'app.asar.unpacked',
-        'node_modules',
-        packageName,
-        binaryName
-      )
-      if (existsSync(unpackedPath)) {
-        return unpackedPath
+      const packageCandidates: string[] = [packageName]
+      if (platformName === 'darwin') {
+        packageCandidates.push('@privitty/privitty-core-darwin-universal')
       }
+
+      for (const pkg of packageCandidates) {
+        const unpackedPath = join(
+          process.resourcesPath,
+          'app.asar.unpacked',
+          'node_modules',
+          pkg,
+          binaryName
+        )
+        if (existsSync(unpackedPath)) {
+          log.info('Found privitty-server at:', unpackedPath)
+          return unpackedPath
+        }
+        log.debug('privitty-server not at:', unpackedPath)
+      }
+
+      throw new Error(
+        `privitty-server not found in app.asar.unpacked. Tried: ${packageCandidates.join(', ')}`
+      )
     }
     
     // In development, search in pnpm store

@@ -40,36 +40,52 @@ class ElectronMainTransport extends yerpc.BaseTransport {
 export class JRPCDeltaChat extends BaseDeltaChat<ElectronMainTransport> {}
 
 /**
- * Find DeltaChat RPC binary in packaged app
- * Similar to Privitty's findPrivittyBinaryInPnpm() but for DeltaChat
+ * Find DeltaChat RPC binary in packaged app.
+ *
+ * In CI universal macOS builds all arch-specific optional packages
+ * (@privitty/deltachat-rpc-server-darwin-arm64, -darwin-x64) are replaced
+ * with a single fat binary at @privitty/deltachat-rpc-server-darwin-universal.
+ * We try candidates in order:
+ *   1. arch-specific  (non-universal or dev builds)
+ *   2. -darwin-universal (universal macOS production build)
  */
 function findDeltaChatBinaryInPackagedApp(): string | null {
   const currentPlatform = platform()
   const currentArch = arch()
-  
-  // Determine package name and binary name
-  const packageName = `@privitty/deltachat-rpc-server-${currentPlatform}-${currentArch}`
-  const binaryName = currentPlatform === 'win32' 
-    ? 'deltachat-rpc-server.exe' 
+
+  const binaryName = currentPlatform === 'win32'
+    ? 'deltachat-rpc-server.exe'
     : 'deltachat-rpc-server'
-  
+
   if (rawApp.isPackaged) {
-    // In packaged app: binaries are in app.asar.unpacked
-    const unpackedPath = join(
-      process.resourcesPath,
-      'app.asar.unpacked',
-      'node_modules',
-      packageName,
-      binaryName
-    )
-    
-    if (existsSync(unpackedPath)) {
-      log.info('Found DeltaChat binary in packaged app:', unpackedPath)
-      return unpackedPath
-    } else {
-      log.error('DeltaChat binary not found in packaged app:', unpackedPath)
-      return null
+    // In a packaged app, binaries live in app.asar.unpacked/node_modules/.
+    // Try arch-specific package first, then fall back to the universal fat
+    // binary created by the CI lipo step.
+    const packageCandidates = [
+      `@privitty/deltachat-rpc-server-${currentPlatform}-${currentArch}`,
+      `@privitty/deltachat-rpc-server-${currentPlatform}-universal`,
+    ]
+
+    for (const packageName of packageCandidates) {
+      const unpackedPath = join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'node_modules',
+        packageName,
+        binaryName
+      )
+      if (existsSync(unpackedPath)) {
+        log.info('Found deltachat-rpc-server in packaged app:', unpackedPath)
+        return unpackedPath
+      }
+      log.debug('deltachat-rpc-server not at:', unpackedPath)
     }
+
+    log.error(
+      'deltachat-rpc-server not found in app.asar.unpacked. ' +
+      'Tried packages:', packageCandidates
+    )
+    return null
   } else {
     // In development: search in pnpm store
     // __dirname when running from bundle_out/ will be: packages/target-electron/bundle_out
