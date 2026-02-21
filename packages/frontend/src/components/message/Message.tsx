@@ -64,6 +64,7 @@ import type { PrivateReply } from '../../hooks/chat/usePrivateReply'
 import type { JumpToMessage } from '../../hooks/chat/useMessage'
 import { mouseEventToPosition } from '../../utils/mouseEventToPosition'
 import { useRovingTabindex } from '../../contexts/RovingTabindex'
+import { privittyStore } from '../../privitty/privittyStore'
 import { is } from 'immutable'
 import { show } from '../windows/main'
 
@@ -80,48 +81,6 @@ type PrivittyStatus =
   | 'error'
   | undefined
 
-async function getPrivittyMessageStatus(
-  message: T.Message
-): Promise<PrivittyStatus> {
-  let privittyStatus: PrivittyStatus = 'none'
-
-  if (!message.file && message.fileName) {
-    if (message.isForwarded) {
-      const response = await runtime.PrivittySendMessage(
-        'getFileForwardAccessState',
-        {
-          chatId: message.chatId,
-          fileName: message.file,
-          outgoing: message.fromId === C.DC_CONTACT_ID_SELF,
-        }
-      )
-      try {
-        const jsonrespstr = JSON.parse(response)
-        privittyStatus = JSON.parse(jsonrespstr?.result).fileAccessState
-      } catch (e) {
-        console.error('Error parsing response:', e)
-      }
-    } else {
-      const response = await runtime.PrivittySendMessage('sendEvent', {
-        event_type: 'initAccessGrantRequest',
-        event_data: {
-          chat_id: String(message.chatId),
-          file_path: String(`${message.file}/${message.fileName}`),
-        },
-        // chatId: message.chatId,
-        // fileName: message.fileName,
-        // outgoing: message.fromId === C.DC_CONTACT_ID_SELF
-      })
-      try {
-        const jsonrespstr = JSON.parse(response)
-        privittyStatus = JSON.parse(jsonrespstr?.result?.data?.status)
-      } catch (e) {
-        console.error('Error parsing response:', e)
-      }
-    }
-  }
-  return Promise.resolve(privittyStatus)
-}
 
 interface CssWithAvatarColor extends CSSProperties {
   '--local-avatar-color': string
@@ -704,93 +663,57 @@ async function isPduMessage(message: T.Message): Promise<boolean> {
   return isPrivitty
 }
 
+/**
+ * Mirrors Android DocumentView.setFileAccessStatus() label logic.
+ * Returns null for statuses where no text is shown (active/expired/error).
+ */
 function getPrivittyStatusLabel(status: PrivittyStatus | null): string | null {
   switch (status) {
     case 'active':
-      return 'Access active'
+      return null                       // hidden; expiry label shown instead
     case 'requested':
-      return 'Access requested'
+      return 'Access Requested'
     case 'expired':
-      return 'Access expired'
+      return null                       // hidden; expiry label shown instead
     case 'revoked':
       return 'Access revoked'
+    case 'denied':
+      return 'Request denied'
     case 'deleted':
       return 'File deleted'
     case 'waiting_owner_action':
       return 'Waiting for owner action'
-    case 'denied':
-      return 'Request denied'
     case 'not_found':
       return 'File not found'
     case 'none':
       return 'Checking access...'
     case 'error':
-      return 'Status unavailable'
     default:
       return null
   }
 }
 
-/**
- * Gets the color for the Privitty status based on the status value.
- * Returns yellow for revoked, grey for expired, red for denied.
- */
+/** Mirrors Android DocumentView: red for denied, grey for everything else. */
 function getPrivittyStatusColor(status: PrivittyStatus | null): string {
-  switch (status) {
-    case 'revoked':
-      return '#FFA500' // Yellow/Orange
-    case 'expired':
-      return '#808080' // Grey
-    case 'denied':
-      return '#FF0000' // Red
-    case 'active':
-      return '#4CAF50' // Green (for active status)
-    case 'requested':
-      return '#2196F3' // Blue (for requested status)
-    case 'waiting_owner_action':
-      return '#FF9800' // Orange (for waiting status)
-    case 'deleted':
-    case 'not_found':
-    case 'error':
-    case 'none':
-    default:
-      return '#666666' // Default grey
-  }
+  return status === 'denied' ? '#D93229' : '#666666'
 }
 
 /**
- * Gets the background color for the file attachment based on the Privitty status.
- * Returns yellow for revoked, grey for expired, red for denied, or null for default.
+ * Format a Unix-millisecond timestamp the same way Android does:
+ * "MMM dd, yyyy HH:mm"  e.g. "Jan 15, 2026 14:30"
+ *
+ * Mirrors Android FileAccessStatusData.setExpiryTime():
+ * values below year-2000-in-ms are treated as seconds and multiplied by 1000.
  */
-function getPrivittyFileBackgroundColor(
-  status: PrivittyStatus | null,
-  direction: 'incoming' | 'outgoing'
-): string | null {
-  // For outgoing messages, default is white, so we only change for specific statuses
-  if (direction === 'outgoing') {
-    switch (status) {
-      case 'revoked':
-        return '#FFD700' // Yellow
-      case 'expired':
-        return '#808080' // Grey
-      case 'denied':
-        return '#FF6B6B' // Red
-      default:
-        return null // Keep default white
-    }
-  } else {
-    // For incoming messages, default is purple (#7F66C5)
-    switch (status) {
-      case 'revoked':
-        return '#FFD700' // Yellow
-      case 'expired':
-        return '#808080' // Grey
-      case 'denied':
-        return '#FF6B6B' // Red
-      default:
-        return null // Keep default purple
-    }
-  }
+function formatExpiryTime(rawMs: number): string {
+  const ms = rawMs < 946_684_800_000 ? rawMs * 1000 : rawMs
+  return new Date(ms).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 /**
@@ -942,9 +865,22 @@ export default function Message(props: {
 }) {
   const { message, conversationType } = props
   const [waitingCount, setWaitingCount] = useState(0)
-  const [hidePduMessage, setHidePduMessage] = useState(false)
+  // Synchronously hide on first render if the text looks like a raw Privitty
+  // PDU (long, continuous base64 string with no spaces). This eliminates the
+  // flash of gibberish while the async isPduMessage() server call completes.
+  // If the heuristic fires incorrectly, the async effect below corrects it.
+  const [hidePduMessage, setHidePduMessage] = useState<boolean>(() => {
+    const text = message.text
+    if (!text || text.length < 80) return false
+    return /^[A-Za-z0-9+/=\r\n]+$/.test(text.substring(0, 80))
+  })
   const [privittyStatus, setPrivittyFileStatus] =
     useState<PrivittyStatus>('none')
+  // Expiry timestamp in ms (null = no expiry). Shown as "Access Until: …"
+  // for active and expired statuses, mirroring Android DocumentView.
+  const [privittyExpiryTime, setPrivittyExpiryTime] = useState<number | null>(
+    null
+  )
   const [privittyReplacementText, setPrivittyReplacementText] = useState<
     string | null
   >(null)
@@ -952,33 +888,41 @@ export default function Message(props: {
   const privittyStatusLabel = getPrivittyStatusLabel(privittyStatus)
   const privittyStatusColor = getPrivittyStatusColor(privittyStatus)
 
-  // Decide once per message whether it is a raw PDU message that should be hidden
+  // Confirm (or correct) the synchronous heuristic once the server is ready.
+  // We must wait for server readiness: if the server is still doing switchProfile
+  // when this fires, checkIsPrivittyMessage returns false, isPduMessage returns
+  // false, and setHidePduMessage(false) would un-hide the message — revealing
+  // the raw base64 PDU as gibberish. By deferring to onServerReady we guarantee
+  // the server has its user-context loaded before we query it.
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const shouldHide = await isPduMessage(message)
-        if (!cancelled) {
-          setHidePduMessage(shouldHide)
+
+    const unsubscribeReady = privittyStore.onServerReady(() => {
+      if (cancelled) return
+      ;(async () => {
+        try {
+          const shouldHide = await isPduMessage(message)
+          if (!cancelled) {
+            setHidePduMessage(shouldHide)
+          }
+        } catch (error) {
+          console.error('Error determining if message is PDU:', error)
+          // On error keep the heuristic value — do NOT un-hide.
         }
-      } catch (error) {
-        console.error('Error determining if message is PDU:', error)
-        if (!cancelled) {
-          setHidePduMessage(false)
-        }
-      }
-    })()
+      })()
+    })
 
     return () => {
       cancelled = true
+      unsubscribeReady()
     }
   }, [message.id, message.text])
 
-  // 🔴 Fetch red-dot "requested access" status
+  // 🔴 Fetch red-dot "requested access" status (only for .prv files)
   useEffect(() => {
     const filePath = message.file
 
-    if (!filePath || filePath === '' || !message.chatId) {
+    if (!filePath || filePath === '' || !message.chatId || !filePath.endsWith('.prv')) {
       return
     }
 
@@ -1026,33 +970,41 @@ export default function Message(props: {
     }
   }, [message.id, message.file, message.chatId])
 
-  // Get replacement text for first two Privitty messages
+  // Fetch the human-readable replacement text for the first two Privitty
+  // handshake messages. Must wait for server readiness — same reason as the
+  // isPduMessage effect above: calling checkIsPrivittyMessage before
+  // switchProfile completes returns false, causing replacement text to be
+  // permanently null and the message to remain hidden with no info text shown.
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const replacementText = await getPrivittyReplacementTextForFirstTwo(
-          message,
-          accountId
-        )
-        if (!cancelled) {
-          setPrivittyReplacementText(replacementText)
+
+    const unsubscribeReady = privittyStore.onServerReady(() => {
+      if (cancelled) return
+      ;(async () => {
+        try {
+          const replacementText = await getPrivittyReplacementTextForFirstTwo(
+            message,
+            accountId
+          )
+          if (!cancelled) {
+            setPrivittyReplacementText(replacementText)
+          }
+        } catch (error) {
+          console.error('Error getting Privitty replacement text:', error)
+          // Leave as null on error — message stays hidden, which is safe.
         }
-      } catch (error) {
-        console.error('Error getting Privitty replacement text:', error)
-        if (!cancelled) {
-          setPrivittyReplacementText(null)
-        }
-      }
-    })()
+      })()
+    })
 
     return () => {
       cancelled = true
+      unsubscribeReady()
     }
   }, [message.id, message.text, message.chatId, accountId])
 
   useEffect(() => {
-    if (!message.file) return
+    // Only fetch access status for Privitty-protected files (.prv extension)
+    if (!message.file || !message.file.endsWith('.prv')) return
 
     let cancelled = false
     let intervalId: NodeJS.Timeout | null = null
@@ -1071,8 +1023,16 @@ export default function Message(props: {
 
         if (cancelled) return
         const parsed = JSON.parse(response)
-        const status = parsed?.result?.data?.status
+        const data = parsed?.result?.data
+        const status = data?.status
+        // Mirrors Android FileAccessStatusData.setExpiryTime() — present when
+        // status is 'active' or 'expired' to show the "Access Until:" label.
+        const rawExpiry =
+          typeof data?.expiry_time === 'number' && data.expiry_time > 0
+            ? data.expiry_time
+            : null
         setPrivittyFileStatus(status as PrivittyStatus)
+        setPrivittyExpiryTime(rawExpiry)
       } catch (err) {
         if (cancelled) return
         console.error('Privity status error', err)
@@ -1080,16 +1040,22 @@ export default function Message(props: {
       }
     }
 
-    // Fetch immediately
-    fetchStatus()
-
-    // Set up polling every 3 seconds for real-time updates
-    intervalId = setInterval(() => {
-      fetchStatus()
-    }, 20000)
+    // Wait for the privitty-server to finish switchProfile before the first
+    // fetch. If the server is already ready (returning user opens chat),
+    // onServerReady calls fetchStatus immediately. If the server is still
+    // initialising, fetchStatus fires the moment it becomes ready — no more
+    // 18-second wait for the first status update.
+    const unsubscribeReady = privittyStore.onServerReady(() => {
+      if (!cancelled) {
+        fetchStatus()
+        // Poll for status changes after the initial fetch
+        intervalId = setInterval(fetchStatus, 20000)
+      }
+    })
 
     return () => {
       cancelled = true
+      unsubscribeReady()
       if (intervalId) {
         clearInterval(intervalId)
       }
@@ -1670,12 +1636,34 @@ export default function Message(props: {
               </button>
             )}
           </div>
-          {showAttachment(message) && (
-            <p
-              style={{ marginTop: 6, fontSize: 12, color: privittyStatusColor }}
-            >
-              Status: {privittyStatusLabel || 'Loading...'}
-            </p>
+          {showAttachment(message) && message.file?.endsWith('.prv') && (
+            <div style={{ marginTop: 6 }}>
+              {/* Status text — hidden for 'active' and 'expired' (Android parity) */}
+              {privittyStatusLabel && (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 12,
+                    color: privittyStatusColor,
+                  }}
+                >
+                  {privittyStatusLabel}
+                </p>
+              )}
+              {/* "Access Until:" — shown for active and expired when expiry is set */}
+              {(privittyStatus === 'active' || privittyStatus === 'expired') &&
+                privittyExpiryTime != null && (
+                  <p
+                    style={{
+                      margin: '2px 0 0',
+                      fontSize: 12,
+                      color: '#666666',
+                    }}
+                  >
+                    Access Until: {formatExpiryTime(privittyExpiryTime)}
+                  </p>
+                )}
+            </div>
           )}
         </div>
         <footer

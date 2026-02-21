@@ -129,6 +129,15 @@ class TauriRuntime implements Runtime {
     // Implementation
     throw new Error('Method not implemented.')
   }
+
+  onPrivittyMessageDetected(_callback: (chatId: number) => void): () => void {
+    return () => {}
+  }
+
+  onPrivittyServerReady(_callback: () => void): () => void {
+    return () => {}
+  }
+
   constructor() {
     this.getActiveTheme = this.getActiveTheme.bind(this)
   }

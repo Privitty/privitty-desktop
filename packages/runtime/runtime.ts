@@ -56,6 +56,18 @@ export interface Runtime {
   ): void
   PrivittyHandleMessage(response: String): Promise<void>
   PrivittySendMessage(method: string, params: any ): Promise<string>
+  /**
+   * Subscribe to real-time notifications emitted by the backend whenever it
+   * successfully validates an incoming Privitty message.
+   * Returns a cleanup/unsubscribe function (suitable for useEffect returns).
+   */
+  onPrivittyMessageDetected(callback: (chatId: number) => void): () => void
+  /**
+   * Subscribe to the one-shot event fired by the backend when the
+   * privitty-server process is fully initialised (first JSON response received).
+   * Returns a cleanup/unsubscribe function (suitable for useEffect returns).
+   */
+  onPrivittyServerReady(callback: () => void): () => void
   checkFileExists(filePath: string): Promise<boolean>
   getDesktopSettings(): Promise<DesktopSettingsType>
   setDesktopSetting(

@@ -40,6 +40,7 @@ import type { T } from '@deltachat/jsonrpc-client'
 import CreateChat from '../../dialogs/CreateChat'
 import { runtime } from '@deltachat-desktop/runtime-interface'
 import { SharedDataProvider } from '../../../contexts/FileAttribContext'
+import { PrivittyChatProvider } from '../../../contexts/PrivittyChatContext'
 
 
 type Props = {
@@ -47,6 +48,14 @@ type Props = {
 }
 
 export default function MainScreen({ accountId }: Props) {
+  return (
+    <PrivittyChatProvider accountId={accountId}>
+      <MainScreenInner accountId={accountId} />
+    </PrivittyChatProvider>
+  )
+}
+
+function MainScreenInner({ accountId }: Props) {
   // Automatically select last known chat when account changed
   useSelectLastChat(accountId)
 

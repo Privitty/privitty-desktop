@@ -10,7 +10,6 @@ import useDialog from '../../hooks/dialog/useDialog'
 import { selectedAccountId } from '../../ScreenController'
 import { BackendRemote } from '../../backend-com'
 import { T } from '@deltachat/jsonrpc-client'
-import { Contact } from '@deltachat/jsonrpc-client/dist/generated/types'
 
 interface FileAccessUser {
   email: string
@@ -28,6 +27,34 @@ interface FileAccessStatusDialogProps extends DialogProps {
   fileName?: string
 }
 
+// ---------------------------------------------------------------------------
+// Helper: extract PDU from a privitty-server response and send it as a
+// DeltaChat text message. Mirrors Android's pattern of calling sendMsg with
+// the PDU string after every access-control API call.
+// ---------------------------------------------------------------------------
+async function sendPdu(
+  pdu: string,
+  accountId: number,
+  chatId: number
+): Promise<void> {
+  const MESSAGE_DEFAULT: T.MessageData = {
+    file: null,
+    filename: null,
+    viewtype: null,
+    html: null,
+    location: null,
+    overrideSenderName: null,
+    quotedMessageId: null,
+    quotedText: null,
+    text: null,
+  }
+  await BackendRemote.rpc.sendMsg(accountId, chatId, {
+    ...MESSAGE_DEFAULT,
+    text: pdu,
+    viewtype: 'Text',
+  })
+}
+
 export default function FileAccessStatusDialog({
   chatId,
   filePath,
@@ -40,7 +67,7 @@ export default function FileAccessStatusDialog({
   const [sharedUsers, setSharedUsers] = useState<FileAccessUser[]>([])
   const [forwardedUsers, setForwardedUsers] = useState<FileAccessUser[]>([])
   const [displayFileName, setDisplayFileName] = useState<string>('')
-  const { openDialog, closeDialog, closeAllDialogs } = useDialog()
+  const { openDialog, closeAllDialogs } = useDialog()
   const [isOwner, setIsOwner] = useState<boolean>(false)
   const accountId = selectedAccountId()
 
@@ -56,8 +83,6 @@ export default function FileAccessStatusDialog({
       setLoading(true)
       setError(null)
 
-      console.log('filePath ==== 📂📂📂📂📂', filePath)
-
       const response = await runtime.PrivittySendMessage('sendEvent', {
         event_type: 'getFileAccessStatusList',
         event_data: {
@@ -69,49 +94,40 @@ export default function FileAccessStatusDialog({
       const parsed = typeof response === 'string' ? JSON.parse(response) : response
       let result = parsed?.result
 
-      // Handle double-encoded result (result may be a JSON string)
       if (typeof result === 'string') {
-        try {
-          result = JSON.parse(result)
-        } catch {
-          // fallback to original
-        }
+        try { result = JSON.parse(result) } catch { /* keep original */ }
       }
 
       const data = result?.data
       const fileData = data?.file
 
-      if (!data) {
-        throw new Error('Invalid response from getFileAccessStatusList')
-      }
+      if (!data) throw new Error('Invalid response from getFileAccessStatusList')
 
-      // Process Shared (Relay) users - shared_info is a single object
       const shared: FileAccessUser[] = []
       if (fileData?.shared_info) {
-        const sharedInfo = fileData.shared_info
+        const s = fileData.shared_info
         shared.push({
-          email: sharedInfo.contact_id || '',
-          name: sharedInfo.contact_name,
+          email: s.contact_id || '',
+          name: s.contact_name,
           role: 'Relay',
-          status: sharedInfo.status || 'active',
-          expiry: sharedInfo.expiry_time || null,
-          timestamp: sharedInfo.timestamp || null,
+          status: s.status || 'active',
+          expiry: s.expiry_time || null,
+          timestamp: s.timestamp || null,
           permissions: [],
         })
       }
 
-      // Process Forwarded users - forwarded_list is an array (in file or at data level)
       const forwarded: FileAccessUser[] = []
       const forwardedList = fileData?.forwarded_list ?? data?.forwarded_list ?? []
       if (Array.isArray(forwardedList)) {
-        forwardedList.forEach((user: any) => {
+        forwardedList.forEach((u: any) => {
           forwarded.push({
-            email: user.contact_id || '',
-            name: user.contact_name,
+            email: u.contact_id || '',
+            name: u.contact_name,
             role: 'Forwardee',
-            status: user.status || 'active',
-            expiry: user.expiry_time ?? null,
-            timestamp: user.timestamp ?? null,
+            status: u.status || 'active',
+            expiry: u.expiry_time ?? null,
+            timestamp: u.timestamp ?? null,
             permissions: [],
           })
         })
@@ -120,7 +136,6 @@ export default function FileAccessStatusDialog({
       setSharedUsers(shared)
       setForwardedUsers(forwarded)
 
-      // Set file name from API response or fallback to prop
       if (data.file_name) {
         setDisplayFileName(data.file_name)
       } else if (fileName) {
@@ -129,27 +144,22 @@ export default function FileAccessStatusDialog({
         setDisplayFileName(basename(filePath))
       }
 
-      // Determine if current app user is the owner of the file
       try {
         const accountInfo = await BackendRemote.rpc.getAccountInfo(accountId)
-        const currentEmail = accountInfo.kind === 'Configured' ? accountInfo.addr : null
+        const currentEmail =
+          accountInfo.kind === 'Configured' ? accountInfo.addr : null
         const ownerEmail = fileData?.owner_info?.contact_id || null
-
-        if (
-          currentEmail &&
-          ownerEmail &&
-          currentEmail.toLowerCase() === ownerEmail.toLowerCase()
-        ) {
-          setIsOwner(true)
-        } else {
-          setIsOwner(false)
-        }
-      } catch (e) {
-        console.error('Error determining file owner for lock button:', e)
+        setIsOwner(
+          !!(
+            currentEmail &&
+            ownerEmail &&
+            currentEmail.toLowerCase() === ownerEmail.toLowerCase()
+          )
+        )
+      } catch {
         setIsOwner(false)
       }
     } catch (err) {
-      console.error('Error fetching file access status:', err)
       setError(
         err instanceof Error ? err.message : 'Failed to fetch file access status'
       )
@@ -160,28 +170,63 @@ export default function FileAccessStatusDialog({
 
   useEffect(() => {
     fetchFileAccessStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, filePath])
 
-  function PrivittyConfirmDialog({
+  // ---------------------------------------------------------------------------
+  // Confirmation dialog shown before revoking access — mirrors Android's
+  // showRevokeConfirmationDialog() in FileAccessControlActivity.
+  // ---------------------------------------------------------------------------
+  function RevokeConfirmationDialog({
+    userName,
+    onConfirm,
+    onClose: onDialogClose,
+  }: {
+    userName: string
+    onConfirm: () => void
+    onClose: () => void
+  }) {
+    return (
+      <DialogWithHeader title='Revoke access?' onClose={onDialogClose}>
+        <DialogBody>
+          <DialogContent>
+            <p style={{ marginBottom: 24 }}>
+              Are you sure you want to revoke access for{' '}
+              <strong>{userName}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button onClick={onDialogClose}>Cancel</button>
+              <button
+                onClick={onConfirm}
+                style={{ backgroundColor: '#D93229', color: '#fff' }}
+              >
+                Revoke Access
+              </button>
+            </div>
+          </DialogContent>
+        </DialogBody>
+      </DialogWithHeader>
+    )
+  }
+
+  // Confirmation dialog for accept / deny access requests.
+  function AccessRequestDialog({
     onAccept,
     onDenied,
-    onClose,
+    onClose: onDialogClose,
   }: {
     onAccept: () => void
     onDenied: () => void
     onClose: () => void
   }) {
     return (
-      <DialogWithHeader title='File Access Request' onClose={onClose}>
+      <DialogWithHeader title='File Access Request' onClose={onDialogClose}>
         <DialogBody>
           <DialogContent>
             <p style={{ marginBottom: 20 }}>
               Do you want to allow access for this file?
             </p>
-
-            <div
-              style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
-            >
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={onDenied}>Denied</button>
               <button onClick={onAccept}>Accept</button>
             </div>
@@ -191,71 +236,60 @@ export default function FileAccessStatusDialog({
     )
   }
 
-  function PrivittyProcessDialog({
-    onSave,
-    onClose,
-  }: {
-    onSave: (value: { allowDownload: boolean; allowedTime: string }) => void
-    onClose: () => void
-  }) {
-    const [allowDownload, setAllowDownload] = useState(false)
-    const [allowedTime, setAllowedTime] = useState('')
+  // ---------------------------------------------------------------------------
+  // performRevokeAccess — mirrors Android's performRevokeAccess().
+  // Called after the user confirms the revoke dialog.
+  // ---------------------------------------------------------------------------
+  const performRevokeAccess = async (contactId: string) => {
+    try {
+      const response = await runtime.PrivittySendMessage('sendEvent', {
+        event_type: 'initAccessRevokeRequest',
+        event_data: {
+          chat_id: String(chatId),
+          file_path: filePath,
+          contact_id: contactId,
+        },
+      })
 
-    return (
-      <DialogWithHeader title='File Attributes' onClose={onClose}>
-        <DialogBody>
-          <DialogContent>
-            {/* Allow Download */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type='checkbox'
-                checked={allowDownload}
-                onChange={e => setAllowDownload(e.target.checked)}
-              />
-              Allow Download
-            </label>
+      const parsed = JSON.parse(response)
+      const pdu = parsed?.result?.data?.pdu
 
-            {/* Time Access */}
-            <div style={{ marginTop: 16 }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>
-                Time Access
-              </label>
-              <input
-                type='time'
-                value={allowedTime}
-                onChange={e => setAllowedTime(e.target.value)}
-              />
-            </div>
+      if (pdu) {
+        await sendPdu(pdu, accountId, chatId)
+      }
 
-            {/* Actions */}
-            <div
-              style={{
-                marginTop: 24,
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: 12,
-              }}
-            >
-              <button onClick={onClose}>Cancel</button>
-              <button
-                onClick={() =>
-                  onSave({
-                    allowDownload,
-                    allowedTime,
-                  })
-                }
-              >
-                Save
-              </button>
-            </div>
-          </DialogContent>
-        </DialogBody>
-      </DialogWithHeader>
-    )
+      // Optimistically mark the user as revoked in the local list, then
+      // reload the full data — same as Android's adapter.updateRequesteeStatus
+      // + loadAccessData().
+      const markRevoked = (users: FileAccessUser[]) =>
+        users.map(u => (u.email === contactId ? { ...u, status: 'revoked' } : u))
+      setSharedUsers(prev => markRevoked(prev))
+      setForwardedUsers(prev => markRevoked(prev))
+      await fetchFileAccessStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke access')
+    }
   }
 
-  const handleLockClick = async (contactId: string, role: 'Relay' | 'Forwardee') => {
-    const dialogId = await openDialog(PrivittyConfirmDialog, {
+  // Show the revoke confirmation dialog — mirrors Android's handleRevokeClick()
+  // → showRevokeConfirmationDialog().
+  const handleRevokeClick = (contactId: string, displayName: string) => {
+    openDialog(RevokeConfirmationDialog, {
+      userName: displayName,
+      onConfirm: async () => {
+        closeAllDialogs()
+        await performRevokeAccess(contactId)
+      },
+      onClose: () => closeAllDialogs(),
+    })
+  }
+
+  // Handle accept / deny for pending access requests.
+  const handleLockClick = async (
+    contactId: string,
+    role: 'Relay' | 'Forwardee'
+  ) => {
+    openDialog(AccessRequestDialog, {
       onAccept: async () => {
         closeAllDialogs()
         try {
@@ -272,70 +306,13 @@ export default function FileAccessStatusDialog({
               access_duration: 86400,
             },
           })
-
-          const parsed = JSON.parse(response).result?.data?.pdu
-
-          if (parsed) {
-            // Extract the PDU base64 string directly
-            const pdu = parsed
-            const MESSAGE_DEFAULT: T.MessageData = {
-              file: null,
-              filename: null,
-              viewtype: null,
-              html: null,
-              location: null,
-              overrideSenderName: null,
-              quotedMessageId: null,
-              quotedText: null,
-              text: null,
-            }
-            const message: Partial<T.MessageData> = {
-              text: pdu,
-              file: undefined,
-              filename: undefined,
-              quotedMessageId: null,
-              viewtype: 'Text',
-            }
-
-            const msgId = await BackendRemote.rpc.sendMsg(
-              accountId,
-              chatId || 0,
-              {
-                ...MESSAGE_DEFAULT,
-                ...message,
-              }
-            )
-            console.log('✅ Message sent successfully with ID:', msgId)
-          } else {
-            runtime.showNotification({
-              title: 'Privitty',
-              body: 'Privitty ADD peer state =' + parsed,
-              icon: null,
-              chatId: 0,
-              messageId: 0,
-              accountId,
-              notificationType: 0,
-            })
-            return
-          }
-          runtime.showNotification({
-            title: 'Privitty',
-            body: 'Enabling Privitty security',
-            icon: null,
-            chatId: 0,
-            messageId: 0,
-            accountId,
-            notificationType: 0,
-          })
-
-          console.log('Access accepted successfully')
+          const pdu = JSON.parse(response)?.result?.data?.pdu
+          if (pdu) await sendPdu(pdu, accountId, chatId)
         } catch (err) {
-          console.error('Failed to accept access:', err)
+          setError(err instanceof Error ? err.message : 'Failed to accept access')
         } finally {
-          // refresh list so shared/forwarded status updates after accept
           await fetchFileAccessStatus()
         }
-        // await openPrivittyProcess()
       },
       onDenied: async () => {
         closeAllDialogs()
@@ -350,145 +327,19 @@ export default function FileAccessStatusDialog({
               chat_id: String(chatId),
               file_path: filePath,
               contact_id: contactId,
-              denial_reason: 'File access not authorized for forwarding',
+              denial_reason: 'File access not authorized',
             },
           })
-
-          const parsed = JSON.parse(response).result?.data?.pdu
-
-          if (parsed) {
-            // Extract the PDU base64 string directly
-            const pdu = parsed
-            const MESSAGE_DEFAULT: T.MessageData = {
-              file: null,
-              filename: null,
-              viewtype: null,
-              html: null,
-              location: null,
-              overrideSenderName: null,
-              quotedMessageId: null,
-              quotedText: null,
-              text: null,
-            }
-            const message: Partial<T.MessageData> = {
-              text: pdu,
-              file: undefined,
-              filename: undefined,
-              quotedMessageId: null,
-              viewtype: 'Text',
-            }
-
-            const msgId = await BackendRemote.rpc.sendMsg(
-              accountId,
-              chatId || 0,
-              {
-                ...MESSAGE_DEFAULT,
-                ...message,
-              }
-            )
-            console.log('✅ Message sent successfully with ID:', msgId)
-          } else {
-            runtime.showNotification({
-              title: 'Privitty',
-              body: 'Privitty ADD peer state =' + parsed,
-              icon: null,
-              chatId: 0,
-              messageId: 0,
-              accountId,
-              notificationType: 0,
-            })
-            return
-          }
-          runtime.showNotification({
-            title: 'Privitty',
-            body: 'Enabling Privitty security',
-            icon: null,
-            chatId: 0,
-            messageId: 0,
-            accountId,
-            notificationType: 0,
-          })
-
-          console.log('Access accepted successfully')
+          const pdu = JSON.parse(response)?.result?.data?.pdu
+          if (pdu) await sendPdu(pdu, accountId, chatId)
         } catch (err) {
-          console.error('Failed to accept access:', err)
+          setError(err instanceof Error ? err.message : 'Failed to deny access')
         } finally {
-          // refresh list so shared/forwarded status updates after denied
           await fetchFileAccessStatus()
         }
-        console.log('Access denied')
       },
-      onClose: () => {
-        closeAllDialogs()
-      },
+      onClose: () => closeAllDialogs(),
     })
-  }
-
-  const handleBlockClick = async (contactId: string) => {
-    try {
-      const response = await runtime.PrivittySendMessage('sendEvent', {
-        event_type: 'initAccessRevokeRequest',
-        event_data: {
-          chat_id: String(chatId),
-          file_path: filePath,
-          contact_id: contactId,
-        },
-      })
-
-      const parsed = JSON.parse(response).result?.data?.pdu
-
-      if (parsed) {
-        // Extract the PDU base64 string directly
-        const pdu = parsed
-        const MESSAGE_DEFAULT: T.MessageData = {
-          file: null,
-          filename: null,
-          viewtype: null,
-          html: null,
-          location: null,
-          overrideSenderName: null,
-          quotedMessageId: null,
-          quotedText: null,
-          text: null,
-        }
-        const message: Partial<T.MessageData> = {
-          text: pdu,
-          file: undefined,
-          filename: undefined,
-          quotedMessageId: null,
-          viewtype: 'Text',
-        }
-
-        const msgId = await BackendRemote.rpc.sendMsg(accountId, chatId || 0, {
-          ...MESSAGE_DEFAULT,
-          ...message,
-        })
-        console.log('✅ Message sent successfully with ID:', msgId)
-      } else {
-        runtime.showNotification({
-          title: 'Privitty',
-          body: 'Privitty ADD peer state =' + parsed,
-          icon: null,
-          chatId: 0,
-          messageId: 0,
-          accountId,
-          notificationType: 0,
-        })
-        return
-      }
-      runtime.showNotification({
-        title: 'Privitty',
-        body: 'Enabling Privitty security',
-        icon: null,
-        chatId: 0,
-        messageId: 0,
-        accountId,
-        notificationType: 0,
-      })
-    } finally {
-      // refresh list so revoked user updates immediately
-      await fetchFileAccessStatus()
-    }
   }
 
   const formatTimestamp = (
@@ -529,21 +380,24 @@ export default function FileAccessStatusDialog({
 
   const UserCard = ({
     user,
-    showPadlock = false,
+    showActions = false,
     showLockButton = false,
     onLockClick,
-    onBlockClick,
+    onRevokeClick,
   }: {
     user: FileAccessUser
-    showPadlock?: boolean
+    showActions?: boolean
     showLockButton?: boolean
     onLockClick?: (contactId: string, role?: string) => void
-    onBlockClick?: (contactId: string) => void
+    onRevokeClick?: (contactId: string, displayName: string) => void
   }) => {
     const displayName = user.name || user.email || 'Unknown'
     const initial = avatarInitial(displayName, user.email)
     const timestamp = user.timestamp ? formatTimestamp(user.timestamp) : null
-    const status = isAccessRequested(user.status) ? formatStatus(user.status) : null
+    const statusLabel = isAccessRequested(user.status)
+      ? formatStatus(user.status)
+      : null
+    const isRevoked = user.status.toLowerCase() === 'revoked'
 
     return (
       <div
@@ -553,6 +407,7 @@ export default function FileAccessStatusDialog({
           padding: '12px 16px',
           borderBottom: '1px solid #e0e0e0',
           backgroundColor: '#fff',
+          opacity: isRevoked ? 0.6 : 1,
         }}
       >
         {/* Avatar */}
@@ -575,7 +430,7 @@ export default function FileAccessStatusDialog({
           {initial}
         </div>
 
-        {/* User Info */}
+        {/* User info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             style={{
@@ -587,7 +442,7 @@ export default function FileAccessStatusDialog({
           >
             {displayName}
           </div>
-          {(timestamp || status) && (
+          {(timestamp || statusLabel) && (
             <div
               style={{
                 fontSize: '13px',
@@ -598,27 +453,31 @@ export default function FileAccessStatusDialog({
               }}
             >
               <span style={{ fontSize: '12px' }}>🕐</span>
-              {status || timestamp}
+              {statusLabel || timestamp}
+            </div>
+          )}
+          {isRevoked && (
+            <div style={{ fontSize: '12px', color: '#D93229', marginTop: '2px' }}>
+              Access revoked
             </div>
           )}
         </div>
 
-        {/* Action buttons: Block (shared + forwarded), Lock (accept/deny request) */}
-        {showPadlock &&
-          isOwner &&
-          (onBlockClick || (showLockButton && onLockClick)) && (
+        {/* Action buttons — only shown to the file owner */}
+        {showActions && isOwner && (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
               gap: '8px',
               flexShrink: 0,
             }}
           >
-            {onBlockClick && (
+            {/* Revoke button — shown for non-revoked users */}
+            {onRevokeClick && !isRevoked && (
               <button
-                onClick={() => onBlockClick(user.email)}
+                title='Revoke access'
+                onClick={() => onRevokeClick(user.email, displayName)}
                 style={{
                   width: '32px',
                   height: '32px',
@@ -629,13 +488,16 @@ export default function FileAccessStatusDialog({
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
+                  cursor: 'pointer',
                 }}
               >
-                <Icon icon='blocked' size={20} coloring={'#fff'} />
+                <Icon icon='blocked' size={20} coloring='#fff' />
               </button>
             )}
+            {/* Lock button — shown for pending access requests */}
             {showLockButton && onLockClick && (
               <button
+                title='Review access request'
                 onClick={() => onLockClick(user.email)}
                 style={{
                   width: '32px',
@@ -647,9 +509,10 @@ export default function FileAccessStatusDialog({
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
+                  cursor: 'pointer',
                 }}
               >
-                <Icon icon='lock' size={20} coloring={'#fff'} />
+                <Icon icon='lock' size={20} coloring='#fff' />
               </button>
             )}
           </div>
@@ -662,7 +525,7 @@ export default function FileAccessStatusDialog({
     <DialogWithHeader title='Access Control' onClose={onClose}>
       <DialogBody>
         <DialogContent>
-          {/* File Name */}
+          {/* File name */}
           <div
             style={{
               padding: '16px 20px',
@@ -670,46 +533,26 @@ export default function FileAccessStatusDialog({
               backgroundColor: '#fafafa',
             }}
           >
-            <div
-              style={{
-                fontSize: '15px',
-                fontWeight: '500',
-                color: '#000',
-              }}
-            >
+            <div style={{ fontSize: '15px', fontWeight: '500', color: '#000' }}>
               {getDisplayFileName()}
             </div>
           </div>
 
           {loading && (
-            <div
-              style={{
-                padding: '40px 20px',
-                textAlign: 'center',
-                color: '#666',
-              }}
-            >
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#666' }}>
               {tx('loading') || 'Loading...'}
             </div>
           )}
 
           {error && (
-            <div
-              style={{
-                padding: '40px 20px',
-                color: '#d32f2f',
-                textAlign: 'center',
-              }}
-            >
+            <div style={{ padding: '40px 20px', color: '#d32f2f', textAlign: 'center' }}>
               {error}
             </div>
           )}
 
-          {/* {"id":6762,"jsonrpc":"2.0","result":{"data":{"chat_id":"12","file":{"forwarded_list":[{"contact_id":"nbwm3c2c1@chat.privittytech.com","contact_name":"C","download_allowed":false,"expiry_time":0,"status":"waiting_owner_action"}],"owner_info":{"contact_id":"klqj8jwq6@chat.privittytech.com","contact_name":"souarv PPPP"},"shared_info":{"contact_id":"9nqog1sne@chat.privittytech.com","contact_name":"A","download_allowed":false,"expiry_time":1770967027846,"forward_allowed":true,"status":"active"}},"file_name":"b4a3bdf0cb39334211a4340c26dc008.prv"},"message":"File access status retrieved successfully","state":"ReadyForAction","status":2,"success":true}} */}
-
           {!loading && !error && (
             <div style={{ backgroundColor: '#fafafa' }}>
-              {/* Shared Section */}
+              {/* Shared section */}
               {sharedUsers.length > 0 && (
                 <div>
                   <div
@@ -731,17 +574,19 @@ export default function FileAccessStatusDialog({
                       <UserCard
                         key={`shared-${index}`}
                         user={user}
-                        showPadlock={true}
+                        showActions={true}
                         showLockButton={isAccessRequested(user.status)}
-                        onBlockClick={handleBlockClick}
-                        onLockClick={(contactId) => handleLockClick(contactId, 'Relay')}
+                        onRevokeClick={handleRevokeClick}
+                        onLockClick={contactId =>
+                          handleLockClick(contactId, 'Relay')
+                        }
                       />
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Forwarded Section */}
+              {/* Forwarded section */}
               {forwardedUsers.length > 0 && (
                 <div>
                   <div
@@ -765,10 +610,10 @@ export default function FileAccessStatusDialog({
                       <UserCard
                         key={`forwarded-${index}`}
                         user={user}
-                        showPadlock={true}
+                        showActions={true}
                         showLockButton={isAccessRequested(user.status)}
-                        onBlockClick={handleBlockClick}
-                        onLockClick={(contactId) =>
+                        onRevokeClick={handleRevokeClick}
+                        onLockClick={contactId =>
                           handleLockClick(contactId, 'Forwardee')
                         }
                       />

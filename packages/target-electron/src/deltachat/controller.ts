@@ -2,7 +2,7 @@ import { app as rawApp, ipcMain } from 'electron'
 import { EventEmitter } from 'events'
 import { yerpc, BaseDeltaChat, T } from '@deltachat/jsonrpc-client'
 import { getRPCServerPath } from '@privitty/deltachat-rpc-server'
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { existsSync } from 'fs'
 import { arch, platform } from 'os'
 
@@ -16,8 +16,6 @@ import rc_config from '../rc.js'
 import { migrateAccountsIfNeeded } from './migration.js'
 
 import { PrivittyClient } from '../privitty/client.js'
-
-let dispName: string = ''
 
 const app = rawApp as ExtendedAppMainProcess
 const log = getLogger('main/deltachat')
@@ -165,7 +163,6 @@ export default class DeltaChatController extends EventEmitter {
 
   _inner_account_manager: StdioServer | null = null
   _inner_privitty_account_manager: PrivittyClient | null = null
-  //_inner_is_privitty_vault_open: boolean = false
   _inner_globalPrivittyCounter: number = 0
   callbackMap = new Map<number, (response: any) => void>()
 
@@ -205,26 +202,102 @@ export default class DeltaChatController extends EventEmitter {
     return this._jsonrpcRemote
   }
 
+  /**
+   * Initialize the Privitty server for the currently selected DeltaChat account
+   * and switch to that account's profile.
+   *
+   * Mirrors Android's initializePrivittyForSelectedAccount():
+   *   1. Resolve the per-account directory via getBlobDir() → parent.
+   *   2. Start (or restart) privitty-server scoped to that directory so it
+   *      creates .privitty/ at accounts/<UUID>/.privitty/ (not the root).
+   *   3. Fetch displayname + configured_addr directly from DeltaChat config.
+   *   4. Call switchProfile only when displayname is non-empty.
+   *
+   * Triggered by the ImapConnected core event and also available via IPC
+   * (privittyOpenVault) for manual invocation from the frontend.
+   */
   async openPrivittyVault() {
-    console.log('opening Privity Vault')
-    const accountid: number =
+    const accountId: number =
       (await this.jsonrpcRemote.rpc.getSelectedAccountId()) || 0
-    const accountInfo = await this.jsonrpcRemote.rpc.batchGetConfig(accountid, [
+
+    if (accountId === 0) {
+      log.warn('openPrivittyVault: no account selected — skipping')
+      return
+    }
+
+    // Resolve per-account directory the same way Android does:
+    //   dcContext.getBlobdir()            → e.g. .../accounts/<UUID>/blobs
+    //   new File(blobdir).getParentFile() → e.g. .../accounts/<UUID>/
+    let accountDir: string | null = null
+    try {
+      const blobDir = await this.jsonrpcRemote.rpc.getBlobDir(accountId)
+      if (blobDir) {
+        accountDir = dirname(blobDir)
+        log.info('openPrivittyVault: account directory resolved:', accountDir)
+      }
+    } catch (error) {
+      log.error('openPrivittyVault: getBlobDir failed for account', accountId, error)
+    }
+
+    if (!accountDir) {
+      log.error('openPrivittyVault: could not resolve account directory — aborting')
+      return
+    }
+
+    // Start (or restart) privitty-server scoped to this account's directory.
+    this._inner_privitty_account_manager?.startWithPath(accountDir)
+
+    // Fetch display name and configured address directly from DeltaChat config.
+    // Mirrors Android: dcContext.getConfig(CONFIG_DISPLAY_NAME / CONFIG_CONFIGURED_ADDRESS).
+    // Using batchGetConfig avoids the race condition of the old module-level
+    // dispName variable, which could still be empty when ImapConnected fires.
+    const config = await this.jsonrpcRemote.rpc.batchGetConfig(accountId, [
+      'displayname',
+      'configured_addr',
       'addr',
-      'mail_pw',
     ])
-    this._inner_privitty_account_manager?.createVault(
-      accountid,
-      dispName,
-      accountInfo.addr || 'accountInfo_undifened',
-      accountInfo.mail_pw || 'accountInfo_undifened',
-      this.getGlobalSequence()
-    )
+
+    const displayName = config.displayname ?? ''
+    const userEmail = config.configured_addr || config.addr || ''
+
+    if (!displayName) {
+      // Mirrors Android: skip switchProfile when userName is null or empty.
+      log.warn('openPrivittyVault: displayname is empty — switchProfile skipped')
+      return
+    }
+
+    log.info('openPrivittyVault: switching profile', { displayName, userEmail })
+
+    // IMPORTANT: await the switchProfile response before notifying the renderer.
+    // The server sets up the user database context only AFTER processing
+    // switchProfile. If we notify the renderer earlier, the frontend scan
+    // (isChatProtected / isPrivittyMessage) runs before the user context
+    // exists — every query returns false — and gibberish stays visible.
+    // A 20-second timeout prevents hanging if the server is unresponsive.
+    try {
+      await Promise.race([
+        this.sendPrivittyMessage('switchProfile', {
+          username: displayName,
+          user_email: userEmail,
+          user_id: String(accountId),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('switchProfile timeout')), 20_000)
+        ),
+      ])
+      log.info('openPrivittyVault: switchProfile completed — notifying renderer')
+    } catch (error) {
+      log.error('openPrivittyVault: switchProfile error (proceeding anyway):', error)
+    }
+
+    // Notify the renderer that the privitty-server is fully ready.
+    // The frontend PrivittyChatContext listens for this to run its scan.
+    mainWindow.send('privittyServerReady', {})
   }
 
   sendPrivittyMessage(method: string, params: any) {
     return new Promise<string>((resolve, reject) => {
-      let sequenceNumber = this.getGlobalSequence()
+      const sequenceNumber = this.getGlobalSequence()
       this.callbackMap.set(sequenceNumber, response =>
         resolve(response as string)
       )
@@ -236,11 +309,40 @@ export default class DeltaChatController extends EventEmitter {
     })
   }
 
-  async sendMessageToPeer(pdu: string, chatId: number) {
-    console.log('sendMessageToPeer  ⚠️⚠️⚠️')
-    console.log('PDU⚠️⛔️⛔️⚠️', pdu)
-    console.log('PDU⚠️⛔️⛔️⚠️', chatId)
+  /**
+   * Check whether a given DeltaChat chat has an active Privitty secure
+   * connection.  Mirrors Android's prvContext.prvIsChatProtected(chatId).
+   *
+   * Returns false if:
+   *   - privitty-server is not running yet
+   *   - the chat has never been Privitty-enabled (no peer-exchange done)
+   *   - any error occurs during the RPC call
+   *
+   * Used as a guard before sending file-access queries so that the server
+   * never receives requests for chats it doesn't know about.
+   */
+  async isChatProtected(chatId: string): Promise<boolean> {
+    if (!this._inner_privitty_account_manager?.isRunning) {
+      return false
+    }
+    try {
+      const responseStr = await this.sendPrivittyMessage(
+        'isChatProtected',
+        { chat_id: chatId }
+      )
+      const response = JSON.parse(responseStr)
+      const result = response?.result
+      // Server may return a bare boolean or a { is_protected: bool } object
+      if (typeof result === 'boolean') return result
+      if (typeof result?.is_protected === 'boolean') return result.is_protected
+      return false
+    } catch {
+      return false
+    }
+  }
 
+  async sendMessageToPeer(pdu: string, chatId: number) {
+    log.debug('sendMessageToPeer', { chatId })
     try {
       const MESSAGE_DEFAULT: T.MessageData = {
         file: null,
@@ -260,201 +362,258 @@ export default class DeltaChatController extends EventEmitter {
         quotedMessageId: null,
         viewtype: 'Text',
       }
-      this.jsonrpcRemote.rpc.sendMsg(
+      await this.jsonrpcRemote.rpc.sendMsg(
         (await this.jsonrpcRemote.rpc.getSelectedAccountId()) || 0,
         chatId,
         { ...MESSAGE_DEFAULT, ...message }
       )
-      console.log("➡️➡️➡️ MESSAGE SENT ➡️➡️➡️");
+      log.debug('Message sent to peer')
     } catch (e) {
-      console.warn('sendMessageToPeer error', e)
+      log.warn('sendMessageToPeer error', e)
     }
   }
 
+  // Handles MsgsChanged events for two distinct message categories:
+  //
+  //  A. BCC-self outgoing copies (isOutgoing=true, bcc_self enabled):
+  //     PRIVITTY_SYNC: database sync payloads from the same user on another device.
+  //
+  //  B. All encrypted text messages (incoming OR outgoing, bcc_self irrelevant):
+  //     Regular Privitty PDUs — on desktop these arrive via MsgsChanged, not
+  //     IncomingMsg, for companion-device messages.
+  //
   async handleMsgsChangedEvent(response: string) {
-
     const responseObj = JSON.parse(response)
-    
-    console.log('🧲🧲🧲 responseObj : 🧲🧲🧲 ========', responseObj);
-    console.log('🧲🧲🧲 responseObj result : 🧲🧲🧲 ========', responseObj.result);
-    console.log('🧲🧲🧲 responseObj event : 🧲🧲🧲 ========', responseObj.result.event);
+    try {
+      const msgId: number = responseObj.result.event.msgId
+      const chatId: number = responseObj.result.event.chatId
+      const contextId: number = responseObj.result.contextId
 
-  try {
+      // Skip if msgId or chatId is invalid
+      if (!msgId || !chatId) return
 
-    const Msg = await this.jsonrpcRemote.rpc.getMessage(
-      responseObj.result.contextId,
-      responseObj.result.event.msgId
-    )
+      const Msg = await this.jsonrpcRemote.rpc.getMessage(contextId, msgId)
+      if (!Msg) return
 
-    console.log('🧲🧲🧲 SYNC MESSAGE EVENT : 🧲🧲🧲 ========', Msg);
-    
+      const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(contextId, chatId)
 
-    const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(
-      responseObj.result.contextId,
-      responseObj.result.event.chatId
-    )
+      // Common requirements: encrypted, text-only, not a contact request
+      const isEncrypted = Msg.showPadlock
+      const hasNoFile = !Msg.file
+      const isNotContactRequest = !chatInfo?.isContactRequest
 
-    // Match Android conditions
-    const isOutgoing = Msg?.fromId === Msg?.selfId || Msg?.isOutgoing
-    const isEncrypted = Msg?.showPadlock
-    const hasNoFile = !Msg?.file
-    const isNotContactRequest = !chatInfo?.isContactRequest
+      if (!isEncrypted || !hasNoFile || !isNotContactRequest) return
+      if (!Msg.text) return
 
-    if (!isOutgoing || !isEncrypted || !hasNoFile || !isNotContactRequest)
-      return
-
-    if (!Msg.text?.startsWith("PRIVITTY_SYNC:"))
-      return
-
-    const syncJson = JSON.parse(
-      Msg.text.slice("PRIVITTY_SYNC:".length)
-    )
-
-    console.log("🧲 Electron received BCC-self sync", syncJson)
-
-    await this.applyPrivittySyncData(syncJson)
-
-  } catch (err) {
-    console.error("handleMsgsChangedEvent error", err)
-  }
-}
-
-
-  async privittyHandleIncomingMsg(response: string) {
-    let sequenceNumber = this.getGlobalSequence()
-
-    console.log('privittyHandleIn comingMsg', response)
-
-    const responseObj = JSON.parse(response)
-
-    const Msg = await this.jsonrpcRemote.rpc.getMessage(
-      responseObj.result.contextId,
-      responseObj.result.event.msgId
-    )
-    const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(
-      responseObj.result.contextId,
-      responseObj.result.event.chatId
-    )
-
-    if (Msg.showPadlock && !chatInfo.isContactRequest) {
-      if (!Msg.text || Msg.text.trim() === '') {
-        console.log(
-          '⛔️ Privitty check skipped — empty Msg.text (likely file or system message)',
-          Msg
-        )
-        return
-      }
-
-      // ---- SYNC DETECTION ----
-      if (Msg.text?.startsWith("PRIVITTY_SYNC:")) {
+      // ── Path A: PRIVITTY_SYNC (BCC-self only) ────────────────────────────
+      // SYNC payloads are self-addressed messages sent by the same user on
+      // another device. Only process them when outgoing + bcc_self enabled.
+      if (Msg.text.startsWith('PRIVITTY_SYNC:')) {
+        if (!Msg.isOutgoing) return
+        const config = await this.jsonrpcRemote.rpc.batchGetConfig(contextId, ['bcc_self'])
+        if (config?.bcc_self !== '1') return
         try {
-          const syncJson = JSON.parse(
-            Msg.text.slice("PRIVITTY_SYNC:".length)
-          )
-          console.log('🧲🧲🧲PRIVITTY_SYNC:␖🧲🧲🧲',syncJson);
-          
+          const syncJson = JSON.parse(Msg.text.slice('PRIVITTY_SYNC:'.length))
+          log.debug('handleMsgsChangedEvent: Received BCC-self PRIVITTY_SYNC', syncJson)
           await this.applyPrivittySyncData(syncJson)
-        } catch(e) {
-          console.warn("Invalid sync payload", e)
+        } catch (e) {
+          log.warn('handleMsgsChangedEvent: Invalid sync payload', e)
         }
         return
       }
 
-      this.callbackMap.set(sequenceNumber, (response: string) => {
-        this.handlePrivittyValidation(
-          response,
-          Msg,
-          responseObj.result.event.chatId,
-          responseObj.result.contextId
-        )
+      // ── Path B: Privitty PDU (any direction) ─────────────────────────────
+      // All encrypted Privitty PDUs — both incoming partner messages and
+      // BCC-self copies — are processed here regardless of isOutgoing or
+      // bcc_self, because on desktop they all arrive via MsgsChanged.
+      const isPrivittyResp = await this.sendPrivittyMessage('isPrivittyMessage', {
+        base64_data: Msg.text,
+      })
+      const isPrivittyParsed = JSON.parse(isPrivittyResp)
+      if (!isPrivittyParsed?.result?.is_valid) return
+
+      log.info('handleMsgsChangedEvent: Processing Privitty PDU, outgoing=' + Msg.isOutgoing)
+
+      const resp = await this.sendPrivittyMessage('processMessage', {
+        event_data: {
+          chat_id: String(chatId),
+          pdu: Msg.text,
+        },
       })
 
-      this.privitty_account_manager.sendJsonRpcRequest(
-        'isPrivittyMessage',
-        { base64_data: Msg.text },
-        sequenceNumber,
-      )
+      const json = JSON.parse(resp)
+      if (json?.error) {
+        log.warn('handleMsgsChangedEvent: processMessage error', json.error)
+        return
+      }
+
+      const pdu = json?.result?.data?.pdu
+      const targetChatId = Number(json?.result?.data?.chat_id)
+      if (pdu && targetChatId) {
+        this.sendMessageToPeer(pdu, targetChatId)
+      }
+
+    } catch (err) {
+      log.error('handleMsgsChangedEvent error', err)
     }
   }
 
-  async applyPrivittySyncData(syncJson:any) {
 
-  if(syncJson.type !== "privitty_sync")
-    return
+  // Mirrors Android's DC_EVENT_INCOMING_MSG handler in ApplicationContext.java.
+  async privittyHandleIncomingMsg(response: string) {
+    const responseObj = JSON.parse(response)
+    const contextId: number = responseObj.result.contextId
+    const chatId: number = responseObj.result.event.chatId
 
-  const action = syncJson.action
-  const data = syncJson.data
+    const Msg = await this.jsonrpcRemote.rpc.getMessage(
+      contextId,
+      responseObj.result.event.msgId
+    )
+    const chatInfo = await this.jsonrpcRemote.rpc.getBasicChatInfo(
+      contextId,
+      chatId
+    )
 
-  console.log("⚙️ Applying sync action:", action)
+    if (!Msg.showPadlock || chatInfo.isContactRequest) return
 
-  switch(action){
+    // ── Branch 1: text message (PDU or SYNC) ─────────────────────────────────
+    if (Msg.text && Msg.text.trim() !== '') {
+      if (Msg.text.startsWith('PRIVITTY_SYNC:')) {
+        try {
+          const syncJson = JSON.parse(Msg.text.slice('PRIVITTY_SYNC:'.length))
+          log.debug('Received PRIVITTY_SYNC payload')
+          await this.applyPrivittySyncData(syncJson)
+        } catch (e) {
+          log.warn('privittyHandleIncomingMsg: Invalid sync payload', e)
+        }
+        return
+      }
 
-    case "update_chat":
-      await this.sendPrivittyMessage(
-        "updateChat",
-        data
-      )
-      break
+      // Regular Privitty PDU — mirrors Android's prvIsPrivittyMessageString
+      // followed by prvProcessMessage.
+      const isPrivittyRaw = await this.sendPrivittyMessage('isPrivittyMessage', {
+        base64_data: Msg.text,
+      })
+      await this.handlePrivittyValidation(isPrivittyRaw, Msg, chatId)
+      return
+    }
 
-    case "delete_file":
-      await this.sendPrivittyMessage(
-        "deleteFile",
-        data
-      )
-      break
+    // ── Branch 2: forwarded .prv file ────────────────────────────────────────
+    // Mirrors Android's else-if (dcMsg.hasFile()) branch.
+    // Checks the file access status so the server can register it in its DB.
+    // Android waits up to 5 s (10 × 500 ms) for the file to download first.
+    if (Msg.file) {
+      const isPrvFile =
+        Msg.file.endsWith('.prv') || (Msg.filename ?? '').endsWith('.prv')
+      const isForwarded = Msg.isForwarded ?? false
+      const isIncoming = !Msg.isOutgoing
 
-    case "update_config":
-      await this.sendPrivittyMessage(
-        "updateConfig",
-        data
-      )
-      break
+      if (isPrvFile && isForwarded && isIncoming) {
+        const filePath = Msg.file
+        const chatIdStr = String(chatId)
 
-    default:
-      console.log("Unknown sync action")
+        // Fire-and-forget, same as Android's background thread
+        ;(async () => {
+          try {
+            if (!(await this.isChatProtected(chatIdStr))) return
+
+            // Wait up to 5 s for the file to be written to disk
+            const maxRetries = 10
+            let fileExists = false
+            for (let i = 0; i < maxRetries; i++) {
+              if (existsSync(filePath)) { fileExists = true; break }
+              await new Promise(r => setTimeout(r, 500))
+            }
+
+            if (!fileExists) {
+              log.warn('privittyHandleIncomingMsg: forwarded .prv not downloaded after retries', filePath)
+              return
+            }
+
+            const statusResp = await this.sendPrivittyMessage('getFileAccessStatus', {
+              event_data: { chat_id: chatIdStr, file_path: filePath },
+            })
+            const status = JSON.parse(statusResp)?.result?.data?.status ?? ''
+            if (status === 'not_found') {
+              log.info('privittyHandleIncomingMsg: .prv not in server DB yet — registers on first access', filePath)
+            } else {
+              log.info('privittyHandleIncomingMsg: .prv registered, status:', status)
+            }
+          } catch (e) {
+            log.warn('privittyHandleIncomingMsg: forwarded .prv check failed', e)
+          }
+        })()
+      }
+    }
   }
-}
+
+  async applyPrivittySyncData(syncJson: any) {
+    if (syncJson.type !== 'privitty_sync') return
+
+    const action = syncJson.action
+    const data = syncJson.data
+
+    log.debug('Applying sync action:', action)
+
+    switch (action) {
+      case 'update_chat':
+        await this.sendPrivittyMessage('updateChat', data)
+        break
+      case 'delete_file':
+        await this.sendPrivittyMessage('deleteFile', data)
+        break
+      case 'update_config':
+        await this.sendPrivittyMessage('updateConfig', data)
+        break
+      default:
+        log.warn('Unknown sync action:', action)
+    }
+  }
 
   async handlePrivittyValidation(
     response: string,
     msg: any,
-    chatId: number,
-    ctx: number
+    chatId: number
   ) {
-    let sequenceNumber = this.getGlobalSequence()
     const parsed = JSON.parse(response)
 
     if (!parsed?.result?.is_valid) return
 
-    console.log("📥📥📥 RECEIVED INCOMING MESSAGE 📥📥📥", msg.text);
-    this.callbackMap.set(sequenceNumber, (resp: string) => {
-      try {
-        const json = JSON.parse(resp)
-        const pdu =  json?.result?.data?.pdu
-        const targetChatId = Number(json?.result?.data?.chat_id)
+    log.info('Received incoming Privitty message')
 
-        if (!pdu || !targetChatId) {
-          console.error('Invalid processMessage response', json)
-          return
-        }
+    // Notify the renderer immediately so the chatlist can update without polling.
+    // The frontend's PrivittyChatContext listens on 'privittyMessageDetected'
+    // and marks the chat as Privitty-protected in its in-memory cache.
+    mainWindow.send('privittyMessageDetected', { chatId })
 
-        this.sendMessageToPeer(pdu, targetChatId)
-      } catch (err) {
-        console.error('Failed to handle processMessage response', err)
-      }
-    })
-        
-    await this.privitty_account_manager.sendJsonRpcRequest(
-      'processMessage',
-      {
+    try {
+      // The server requires params wrapped in event_data.
+      // The direction field has been removed — Android removed it from the
+      // library (commented out with "TODO: Remove from library") and it caused
+      // "Forwardee contact not found" for incoming revoke messages.
+      const resp = await this.sendPrivittyMessage('processMessage', {
         event_data: {
           chat_id: String(chatId),
           pdu: msg.text,
-          direction: String(0),
         },
-      },
-      sequenceNumber,
-    )
+      })
+
+      const json = JSON.parse(resp)
+
+      if (json?.error) {
+        log.warn('processMessage returned an error', json.error)
+        return
+      }
+
+      const pdu = json?.result?.data?.pdu
+      const targetChatId = Number(json?.result?.data?.chat_id)
+
+      if (pdu && targetChatId) {
+        this.sendMessageToPeer(pdu, targetChatId)
+      }
+    } catch (err) {
+      log.error('Failed to handle processMessage response', err)
+    }
   }
 
   async init() {
@@ -509,19 +668,12 @@ export default class DeltaChatController extends EventEmitter {
           log.error('jsonrpc-decode', error)
         }
         if (response.indexOf('"kind":"IncomingMsg"') !== -1) {
-          console.log('IncomingMsg =', response)
           this.privittyHandleIncomingMsg(response)
         }
-        if (response.indexOf('"kind":"MsgsChanged"')){
+        if (response.indexOf('"kind":"MsgsChanged"') !== -1) {
           this.handleMsgsChangedEvent(response)
         }
         mainWindow.send('json-rpc-message', response)
-
-        if (dispName == '' && response.indexOf('"kind":"Configured"') !== -1) {
-          const message = JSON.parse(response)
-          dispName = message.result.displayName
-          console.log('displayName assign =', dispName)
-        }
 
         if (response.indexOf('event') !== -1)
           try {
@@ -541,9 +693,7 @@ export default class DeltaChatController extends EventEmitter {
                 logCoreEvent.info(contextId, event.msg)
               } else if (event.kind.startsWith('Error')) {
                 logCoreEvent.error(contextId, event.msg)
-              } else if (
-                event.kind === 'ImapConnected' //&& !this._inner_is_privitty_vault_open
-              ) {
+              } else if (event.kind === 'ImapConnected') {
                 this.openPrivittyVault()
               } else if (app.rc['log-debug']) {
                 // in debug mode log all core events
@@ -563,53 +713,37 @@ export default class DeltaChatController extends EventEmitter {
       serverPath
     )
 
-    log.info('Before Creating PrivittyClient')
+    // PrivittyClient is created with the accounts root as a placeholder path.
+    // The actual per-account directory is set lazily in openPrivittyVault()
+    // once the selected account is known (triggered by ImapConnected).
+    // When the server emits its first JSON response (= fully initialised),
+    // we notify the renderer so it can run the Privitty chatlist scan.
     this._inner_privitty_account_manager = new PrivittyClient(
       response => {
-        log.info('Privitty Controller received message')
-        
-        // Always forward to the callback first
+        // Forward all messages to the IPC callback (frontend).
         try {
           this.onPrivittyData(response)
         } catch (error) {
           log.error('Error in onPrivittyData callback:', error)
         }
-        
-        // Then handle RPC responses
+        // Resolve any pending JSON-RPC requests by ID.
         try {
           const resp = JSON.parse(response.trim())
-          log.debug('Parsed privitty response')
-
           if (resp.id !== undefined && this.callbackMap.has(resp.id)) {
-            log.info('Handling RPC response with id:', resp.id)
             const resolve = this.callbackMap.get(resp.id)
-
             if (resolve) {
               resolve(response)
-            } else {
-              log.warn('No resolve function found for id:', resp.id)
             }
-
             this.callbackMap.delete(resp.id)
           }
         } catch (error) {
-          log.error('Failed to parse privitty response:', error)
+          log.error('Failed to parse privitty-server response:', error)
         }
       },
-      this.cwd,
-      serverPath
+      this.cwd
     )
-    log.info('HI')
+
     this.account_manager.start()
-    console.log('this.account_manager.start() ⛔️')
-
-    this.privitty_account_manager.start()
-    console.log('this.privitty_account_manager.start() ⛔️')
-
-    const version =
-      this.privitty_account_manager.sendJsonRpcRequestWOP('getVersion')
-
-    //todo? multiple instances, accounts is always writable
 
     const mainProcessTransport = new ElectronMainTransport(message => {
       message.id = `main-${message.id}`

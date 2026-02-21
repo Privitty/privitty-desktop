@@ -291,36 +291,31 @@ export async function init(cwd: string, logHandler: LogHandler) {
   })
 
   // Privitty IPC handlers
-  ipcMain.handle('privittyHandleMessage', async (_ev, response) => {
-    log.info('privittyHandleMessage IPC called')
-    return response
-  })
+  // Methods that query per-chat file-access data.  The privitty-server only
+  // knows about chats that have completed a Privitty peer-exchange; calling
+  // these for an unprotected chat would produce "Chat does not exist" errors.
+  // We guard with isChatProtected() first — mirroring Android's pattern of
+  // checking prvIsChatProtected() before invoking any file-access API.
+  const FILE_ACCESS_METHODS = new Set([
+    'getFileAccessStatus',
+    'getFileAccessStatusList',
+  ])
 
-  ipcMain.handle('privittyOpenVault', async () => {
-    log.info('Opening Privitty vault')
-    try {
-      await dcController.openPrivittyVault()
-      return { success: true }
-    } catch (error) {
-      log.error('Error opening Privitty vault:', error)
-      return { success: false, error: String(error) }
+  ipcMain.handle('privitty_Send_Message', async (_ev, method: string, params: any) => {
+    if (FILE_ACCESS_METHODS.has(method)) {
+      const chatId = String(params?.chat_id ?? params?.chatId ?? '')
+      if (chatId) {
+        const isProtected = await dcController.isChatProtected(chatId)
+        if (!isProtected) {
+          log.debug(
+            `privitty_Send_Message: chat ${chatId} is not Privitty-protected` +
+            ` — skipping ${method}`
+          )
+          return JSON.stringify({ success: true, data: null })
+        }
+      }
     }
-  })
-
-  ipcMain.handle('privittySendMessage', async (_ev, method: string, params: any) => {
-    log.info('Sending Privitty message:', method, params)
-    try {
-      const response = await dcController.sendMessage(method, params)
-      return { success: true, response }
-    } catch (error) {
-      log.error('Error sending Privitty message:', error)
-      return { success: false, error: String(error) }
-    }
-  })
-
-  ipcMain.handle('privitty_Send_Message', async (_ev, message, params) => {
-    console.log('Privitty message sent', message, params)
-    return dcController.sendPrivittyMessage(message, params)
+    return dcController.sendPrivittyMessage(method, params)
   })
 
   ipcMain.handle('get-desktop-settings', async _ev => {
