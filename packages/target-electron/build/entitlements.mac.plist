@@ -2,34 +2,45 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-<!-- no sandbox on non appstore build -->
-<key>com.apple.security.application-groups</key>
-<array>
-    <string>8Y86453UA8.chat.delta.desktop.electron</string>
-    <string>8Y86453UA8.group.chat.delta.desktop.electron</string>
-</array>
-<key>com.apple.security.files.user-selected.read-only</key>
-<true/>
-<key>com.apple.security.files.user-selected.read-write</key>
-<true/>
-<key>com.apple.security.device.audio-input</key>
-<true/>
-<key>com.apple.security.device.microphone</key>
-<true/>
-<key>com.apple.security.device.camera</key>
-<true/>
-<key>com.apple.security.network.client</key>
-<true/>
-<key>com.apple.security.network.server</key>
-<true/>
-<!-- Hardened Runtime -->
-<key>com.apple.security.cs.allow-dyld-environment-variables</key>
-<true/>
-<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-<true/>
-<key>com.apple.security.cs.allow-jit</key>
-<true/>
-<key>com.apple.security.cs.disable-library-validation</key>
-<true/>
+  <!--
+    Hardened Runtime entitlements for Developer ID (non-App-Store) distribution.
+    The com.apple.security.application-groups entitlement is intentionally omitted —
+    it is only needed for sandboxed App Store builds or shared data containers with
+    extensions.  Add it back (with YOUR team ID prefix) if you later add a
+    Notification Service Extension or app group sharing.
+  -->
+
+  <!-- File access — needed for file send/receive -->
+  <key>com.apple.security.files.user-selected.read-only</key>
+  <true/>
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+
+  <!-- Media hardware — for audio/video calls -->
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+  <key>com.apple.security.device.microphone</key>
+  <true/>
+  <key>com.apple.security.device.camera</key>
+  <true/>
+
+  <!-- Network — needed for messaging -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+
+  <!-- Hardened Runtime exceptions required by Electron -->
+  <!-- Electron uses DYLD env vars for source maps / devtools -->
+  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+  <true/>
+  <!-- Electron's V8 engine needs unsigned executable memory for JIT -->
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Electron dynamically loads third-party dylibs (e.g. fsevents) -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
 </dict>
 </plist>
