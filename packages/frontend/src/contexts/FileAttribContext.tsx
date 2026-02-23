@@ -7,6 +7,7 @@ export interface FileAttribute {
   allowedTime: string
   FileDirectory: string
   oneTimeKey: string
+  encryptedFilePath: string
 }
 
 interface FileAttributeContextType {
@@ -35,6 +36,7 @@ export const SharedDataProvider: React.FC<SharedDataProviderProps> = ({
     allowedTime: '',
     FileDirectory: '',
     oneTimeKey: '',
+    encryptedFilePath: ''
   })
 
   return (
@@ -64,6 +66,8 @@ export function useSharedDataOptional(): FileAttributeContextType {
         allowForward: false,
         allowedTime: '',
         FileDirectory: '',
+        oneTimeKey: '',
+        encryptedFilePath: ''
       },
       // no-op setter outside provider (typed as any)
       setSharedData: (() => {}) as any,

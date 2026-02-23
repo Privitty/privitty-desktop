@@ -168,6 +168,7 @@ export default function MenuAttachment({
         allowedTime: fileAttribute.allowedTime,
         FileDirectory: filePathName,
         oneTimeKey: oneTimeKey,
+        encryptedFilePath: fileName
       })
 
       // Don't delete the file immediately - it will be deleted after the message is sent

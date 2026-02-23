@@ -274,7 +274,9 @@ class ElectronRuntime implements Runtime {
   removeTempFile(path: string): Promise<void> {
     return ipcBackend.invoke('app.removeTempFile', path)
   }
-
+  deleteEncryptedFile(path: string): Promise<void> {
+    return ipcBackend.invoke('app.deleteEncryptedFile', path)
+  }
   private notificationCallback: (data: {
     accountId: number
     chatId: number
