@@ -206,10 +206,10 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDialogClose}>Cancel</button>
+              <button onClick={onDialogClose} style={{fontSize: '18px', fontWeight: '400', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer'}}>Cancel</button>
               <button
                 onClick={onConfirm}
-                style={{ backgroundColor: '#D93229', color: '#fff' }}
+                style={{fontSize: '18px', fontWeight: '400', backgroundColor: '#f26861', color: '#fff', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer' }}
               >
                 Revoke Access
               </button>
@@ -240,8 +240,8 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDenied}>Denied</button>
-              <button onClick={onAccept}>Accept</button>
+              <button onClick={onDenied} style={{fontSize: '18px', fontWeight: '400', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer'}}>Denied</button>
+              <button onClick={onAccept} style={{fontSize: '18px', fontWeight: '400', backgroundColor: '#6750A4', color: '#fff', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer'}}>Accept</button>
             </div>
           </DialogContent>
         </DialogBody>
@@ -390,9 +390,8 @@ export default function FileAccessStatusDialog({
   }
 
   const getDisplayFileName = (): string => {
-    if (fileName) return fileName
-    if (filePath) return basename(filePath)
-    return 'File'
+    const name = fileName || (filePath ? basename(filePath) : 'File')
+    return name.replace(/\.prv$/, '')
   }
 
   const UserCard = ({
@@ -423,7 +422,7 @@ export default function FileAccessStatusDialog({
           alignItems: 'center',
           padding: '12px 16px',
           borderBottom: '1px solid #e0e0e0',
-          backgroundColor: '#fff',
+          backgroundColor: 'transparent',
           opacity: isRevoked ? 0.6 : 1,
         }}
       >
@@ -434,7 +433,6 @@ export default function FileAccessStatusDialog({
             height: '40px',
             borderRadius: '50%',
             backgroundColor: '#4a4a4a',
-            color: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -453,7 +451,6 @@ export default function FileAccessStatusDialog({
             style={{
               fontSize: '15px',
               fontWeight: '500',
-              color: '#000',
               marginBottom: '4px',
             }}
           >
@@ -463,7 +460,6 @@ export default function FileAccessStatusDialog({
             <div
               style={{
                 fontSize: '13px',
-                color: '#666',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
@@ -549,10 +545,10 @@ export default function FileAccessStatusDialog({
             style={{
               padding: '16px 20px',
               borderBottom: '1px solid #e0e0e0',
-              backgroundColor: '#fafafa',
+              backgroundColor: 'transparent',
             }}
           >
-            <div style={{ fontSize: '15px', fontWeight: '500', color: '#000' }}>
+            <div style={{ fontSize: '15px', fontWeight: '500' }}>
               {getDisplayFileName()}
             </div>
           </div>
@@ -582,7 +578,7 @@ export default function FileAccessStatusDialog({
           )}
 
           {!loading && !error && (
-            <div style={{ backgroundColor: '#fafafa' }}>
+            <div style={{ backgroundColor: 'transparent' }}>
               {/* Shared section */}
               {sharedUsers.length > 0 && (
                 <div>
@@ -591,16 +587,15 @@ export default function FileAccessStatusDialog({
                       padding: '12px 20px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: '#666',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
                       borderBottom: '1px solid #e0e0e0',
-                      backgroundColor: '#fff',
+                      backgroundColor: 'transparent',
                     }}
                   >
                     Shared
                   </div>
-                  <div style={{ backgroundColor: '#fff' }}>
+                  <div style={{ backgroundColor: 'transparent' }}>
                     {sharedUsers.map((user, index) => (
                       <UserCard
                         key={`shared-${index}`}
@@ -625,18 +620,17 @@ export default function FileAccessStatusDialog({
                       padding: '12px 20px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: '#666',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
                       borderTop:
                         sharedUsers.length > 0 ? '1px solid #e0e0e0' : 'none',
                       borderBottom: '1px solid #e0e0e0',
-                      backgroundColor: '#fff',
+                      backgroundColor: 'transparent',
                     }}
                   >
                     Forwarded
                   </div>
-                  <div style={{ backgroundColor: '#fff' }}>
+                  <div style={{ backgroundColor: 'transparent' }}>
                     {forwardedUsers.map((user, index) => (
                       <UserCard
                         key={`forwarded-${index}`}
@@ -658,7 +652,6 @@ export default function FileAccessStatusDialog({
                   style={{
                     padding: '40px 20px',
                     textAlign: 'center',
-                    color: '#666',
                   }}
                 >
                   No access data available
