@@ -243,32 +243,6 @@ const ForwardedTitle = ({
   )
 }
 
-async function showFileRecall(message: T.Message): Promise<boolean> {
-  if (
-    message.file &&
-    message.fileName &&
-    message.fromId === C.DC_CONTACT_ID_SELF &&
-    !message.isForwarded
-  ) {
-    const response = await runtime.PrivittySendMessage('sendEvent', {
-      event_type: 'getFileAccessStatus',
-      event_data: {
-        chat_id: String(message.chatId),
-        file_path: message.file,
-      },
-    })
-    const jsonresp = JSON.parse(response)
-    if (jsonresp?.result?.data?.status === 'active') {
-      return Promise.resolve(true)
-    } else {
-      console.log('file cannot be recalled:')
-    }
-    return Promise.resolve(false)
-  } else {
-    return Promise.resolve(false)
-  }
-}
-
 async function showFileForward(message: T.Message): Promise<boolean> {
   if (message.file && message.fileName) {
     if (message.fromId === C.DC_CONTACT_ID_SELF) {
