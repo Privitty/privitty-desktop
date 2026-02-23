@@ -431,53 +431,6 @@ async function buildContextMenu(
       action: openForwardDialog.bind(null, openDialog, message),
       rightIcon: 'forward',
     },
-    // Recall message
-    showRecallMsg && {
-      label: tx('recall_message'),
-      action: async () => {
-        const response = await runtime.PrivittySendMessage('sendEvent', {
-          event_type: 'initAccessRevokeRequest',
-          event_data: {
-            chat_id: String(chat?.id),
-            file_path: message?.file,
-          },
-        })
-
-        // ✅ Parse ONLY ONCE
-        const parsed =
-          typeof response === 'string' ? JSON.parse(response) : response
-
-        const pdu: string | undefined = parsed?.result?.data?.pdu
-
-        if (!pdu) {
-          throw new Error('PDU not returned from initAccessRevokeRequest')
-        }
-
-        const MESSAGE_DEFAULT: T.MessageData = {
-          file: null,
-          filename: null,
-          viewtype: null,
-          html: null,
-          location: null,
-          overrideSenderName: null,
-          quotedMessageId: null,
-          quotedText: null,
-          text: null,
-        }
-        const messageR: Partial<T.MessageData> = {
-          text: pdu,
-          file: undefined,
-          filename: undefined,
-          quotedMessageId: null,
-          viewtype: 'Text',
-        }
-
-        await BackendRemote.rpc.sendMsg(accountId, chat?.id || 0, {
-          ...MESSAGE_DEFAULT,
-          ...messageR,
-        })
-      },
-    },
     // Send emoji reaction
     showSendReaction && {
       label: tx('react'),
@@ -512,11 +465,6 @@ async function buildContextMenu(
       },
       rightIcon: 'bookmark-filled',
     },
-    // Save attachment as
-    showAttachmentOptions && {
-      label: tx('save_as'),
-      action: onDownload.bind(null, message),
-    },
     // copy link
     link !== '' &&
       isLink && {
@@ -525,7 +473,7 @@ async function buildContextMenu(
         rightIcon: 'link',
       },
     // copy item (selection or all text)
-    text !== '' && copy_item,
+    text !== '' && !message.file && copy_item,
     // Copy image
     showCopyImage && {
       label: tx('menu_copy_image_to_clipboard'),
@@ -542,14 +490,6 @@ async function buildContextMenu(
           runtime.writeClipboardText(message.videochatUrl as string),
         rightIcon: 'link',
       },
-    // Open Attachment
-    showAttachmentOptions &&
-      showRecallMsg &&
-      message.viewType !== 'Webxdc' &&
-      isGenericAttachment(message.fileMime) && {
-        label: tx('open_attachment'),
-        action: openAttachmentInShell.bind(null, message),
-      },
     // Save Sticker to sticker collection
     message.viewType === 'Sticker' && {
       label: tx('add_to_sticker_collection'),
@@ -560,14 +500,6 @@ async function buildContextMenu(
           tx('saved')
         ),
     },
-    // Resend Message
-    showResend &&
-      showRecallMsg && {
-        label: tx('resend'),
-        action: () => {
-          BackendRemote.rpc.resendMessages(selectedAccountId(), [message.id])
-        },
-      },
     // Webxdc Info message: jump to app message
     Boolean(isWebxdcInfo && message.parentId) && {
       label: tx('show_app_in_chat'),
@@ -665,7 +597,7 @@ function getPrivittyStatusLabel(status: PrivittyStatus | null): string | null {
     case 'requested':
       return 'Access Requested'
     case 'expired':
-      return null // hidden; expiry label shown instead
+      return 'Access Expired' // hidden; expiry label shown instead
     case 'revoked':
       return 'Access revoked'
     case 'denied':
@@ -1641,20 +1573,20 @@ export default function Message(props: {
                   style={{
                     margin: 0,
                     fontSize: 12,
-                    color: privittyStatusColor,
+                    color: direction === 'outgoing' ? '#ffffff' : privittyStatusColor,
                   }}
                 >
                   {privittyStatusLabel}
                 </p>
               )}
               {/* "Access Until:" — shown for active and expired when expiry is set */}
-              {(privittyStatus === 'active' || privittyStatus === 'expired') &&
+              {(privittyStatus === 'active') &&
                 privittyExpiryTime != null && (
                   <p
                     style={{
                       margin: '2px 0 0',
                       fontSize: 12,
-                      color: '#666666',
+                      color: direction === 'outgoing' ? '#fff' : '#666666',
                     }}
                   >
                     Access Until: {formatExpiryTime(privittyExpiryTime)}
