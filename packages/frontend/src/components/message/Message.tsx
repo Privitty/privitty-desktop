@@ -13,8 +13,6 @@ import { C, T } from '@deltachat/jsonrpc-client'
 import MessageBody from './MessageBody'
 import MessageMetaData, { isMediaWithoutText } from './MessageMetaData'
 import {
-  onDownload,
-  openAttachmentInShell,
   openForwardDialog,
   openMessageInfo,
   setQuoteInDraft,
@@ -25,7 +23,6 @@ import {
   enterEditMessageMode,
 } from './messageFunctions'
 import Attachment from '../attachment/messageAttachment'
-import { isGenericAttachment, isImage } from '../attachment/Attachment'
 import { runtime } from '@deltachat-desktop/runtime-interface'
 import { AvatarFromContact } from '../Avatar'
 import { ConversationType } from './MessageList'
@@ -384,9 +381,7 @@ async function buildContextMenu(
     copy_item = false
   }
 
-  const showAttachmentOptions = !!message.file
   const showCopyImage = !!message.file && message.viewType === 'Image'
-  const showResend = message.sender.id === C.DC_CONTACT_ID_SELF
 
   // Do not show "reply" in read-only chats
   const showReply = chat.canSend
@@ -403,7 +398,6 @@ async function buildContextMenu(
   // Do not show "react" for system messages
   const showSendReaction = showReactionsUi(message, chat)
   const showForward: boolean = await showFileForward(message)
-  const showRecallMsg: boolean = await showFileRecall(message)
 
   // Only show in groups, don't show on info messages or outgoing messages
   const showReplyPrivately =
@@ -737,47 +731,6 @@ async function getPrivittyReplacementTextForFirstTwo(
 }
 
 function getPrivittyReplacementText(message: T.Message): string {
-  if (message.isPrivittyMessage) {
-    if (message.subject.indexOf('new_peer_add') !== -1) {
-      message.text =
-        'Establishing guaranteed full control over your shared data, please wait ...'
-    } else if (
-      message.subject.indexOf('new_group_add') !== -1 ||
-      message.subject.indexOf('new_group_concluded') !== -1
-    ) {
-      message.text =
-        'This group is Privitty secure—take control and revoke data anytime.'
-    } else if (
-      message.subject.indexOf('new_peer_complete') !== -1 ||
-      message.subject.indexOf('new_peer_conclude') !== -1
-    ) {
-      message.text =
-        'You are Privitty secure—take control and revoke data anytime.'
-    } else if (message.subject.indexOf('forward_add_request') !== -1) {
-      message.text = 'A file has been forwarded to you.'
-    } else if (message.subject.indexOf('OTSP_SENT') !== -1) {
-      message.text = 'You granted viewing access.'
-    } else if (
-      message.subject.indexOf('SPLITKEYS_REQUEST') !== -1 ||
-      message.subject.indexOf('SPLITKEYS_REQUESTING') !== -1
-    ) {
-      message.text = 'Requesting access from the owner ...'
-    } else if (message.subject.indexOf('SPLITKEYS_RESPONSE') !== -1) {
-      message.text = 'Granted access.'
-    } else if (message.subject.indexOf('SPLITKEYS_REVOKED') !== -1) {
-      message.text = 'You revoked access'
-    } else if (message.subject.indexOf('SPLITKEYS_DELETED') !== -1) {
-      message.text = 'Requesting for a deleted message'
-    } else if (message.subject.indexOf('SPLITKEYS_UNDO_REVOKED') !== -1) {
-      message.text = 'You Undo revoke'
-    } else if (
-      message.subject.indexOf('relay_message') !== -1 ||
-      message.subject.indexOf('relay_request') !== -1 ||
-      message.subject.indexOf('relay_response') !== -1
-    ) {
-      message.text = 'relay_message'
-    }
-  }
   return message.text || ''
 }
 
