@@ -378,6 +378,12 @@ class BrowserRuntime implements Runtime {
     })
   }
 
+  async deleteEncryptedFile(_path: string): Promise<void> {
+    return Promise.reject(
+      new Error('deleteEncryptedFile is only supported in Electron')
+    )
+  }
+
   activeNotifications: {
     [accountId: number]: { [chatId: number]: Notification[] }
   } = {}
