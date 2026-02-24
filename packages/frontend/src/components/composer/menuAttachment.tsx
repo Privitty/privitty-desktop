@@ -456,6 +456,7 @@ export default function MenuAttachment({
               ...message,
             }
           )
+          console.log('Message sent successfully with ID:', msgId)
         } else {
           runtime.showNotification({
             title: 'Privitty',
