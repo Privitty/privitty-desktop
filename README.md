@@ -69,7 +69,7 @@ Installers and builds are produced via CI or locally; see [PRIVITTY_BUILD.md](./
 ### macOS <a id="mac"></a>
 
 - **DMG:** Use the `.dmg` from [releases](https://github.com/Privitty/privitty-desktop/releases) (or your build output). Open and drag Privitty to Applications.
-- **Homebrew:** If a cask is published, `brew install --cask privitty` (or the name provided by Privitty).
+- **Homebrew:** If a cask is published, `brew install --cask privitty-chat`.
 
 ### Windows <a id="windows"></a>
 
