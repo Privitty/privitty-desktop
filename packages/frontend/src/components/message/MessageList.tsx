@@ -162,7 +162,6 @@ export default function MessageList({ accountId, chat, refComposer }: Props) {
     if (document.hasFocus() === false) return
 
     if (scheduler.isLocked('scroll') === true) {
-      //console.log('onScroll: locked, returning')
       return
     }
 

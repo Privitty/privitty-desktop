@@ -132,7 +132,6 @@ export default function MenuAttachment({
       const data = JSON.parse(encryptedFile)
       const fileName = data.result?.data?.prv_file_name
       const oneTimeKey = data.result?.data?.one_time_key
-      console.log('FileName 📇📇📇📇', fileName)
 
       //check if file exists
       if (!fileName || fileName === '') {
@@ -168,6 +167,7 @@ export default function MenuAttachment({
         allowedTime: fileAttribute.allowedTime,
         FileDirectory: filePathName,
         oneTimeKey: oneTimeKey,
+        encryptedFilePath: fileName
       })
 
       // Don't delete the file immediately - it will be deleted after the message is sent
@@ -201,7 +201,6 @@ export default function MenuAttachment({
       }) => {
         if (selectedValue) {
           fileAttribute = selectedValue
-          console.log('Selected value:', selectedValue)
           if (fileAttribute.allowDownload === true) {
             if (fileFilters[0].name === tx('file')) {
               fileFilters = [
@@ -379,35 +378,16 @@ export default function MenuAttachment({
     const result = await runtime.PrivittySendMessage('isChatProtected', {
       chat_id: String(selectedChat?.id),
     })
-
-    console.log(result)
     const accountid: number =
       (await BackendRemote.rpc.getSelectedAccountId()) || 0
     const basicChat = await BackendRemote.rpc.getBasicChatInfo(
       accountid,
       selectedChat?.id || 0
     )
-    console.log(
-      'accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
-      accountid,
-      'BasicChat =',
-      basicChat
-    )
 
     const resp = JSON.parse(result)
     try {
       if (resp.result.is_protected == false) {
-        console.log(
-          'accountid =⛔️⛔️⛔️⛔️⛔️⛔️⛔️',
-          accountid,
-          'BasicChat =',
-          basicChat,
-          'selectedChat?.id',
-          selectedChat?.id,
-          'basicChat.id',
-          basicChat.id
-        )
-
         // Get contact email dynamically
         let peerEmail // fallback
         let peerId
@@ -416,8 +396,6 @@ export default function MenuAttachment({
             accountid,
             selectedChat?.id || 0
           )
-          console.log('fullChat', fullChat)
-
           if (
             fullChat &&
             fullChat.contactIds &&
@@ -427,9 +405,6 @@ export default function MenuAttachment({
               accountid,
               fullChat.contactIds[0]
             )
-
-            console.log('contact', contact)
-
             if (contact && contact.address) {
               peerId = contact.id
               peerEmail = contact.address
@@ -440,8 +415,6 @@ export default function MenuAttachment({
           // Use fallback email if there's an error
         }
 
-        console.log('peerEmail ====== 📧📧', peerEmail)
-
         const addpeerResponse = await runtime.PrivittySendMessage('sendEvent', {
           event_type: 'initPeerAddRequest',
           event_data: {
@@ -451,7 +424,6 @@ export default function MenuAttachment({
             peer_id: String(peerId),
           },
         })
-        console.log('addpeerResponse =', addpeerResponse)
         const parsedResponse = JSON.parse(addpeerResponse)
 
         if (parsedResponse.result.success == true) {
@@ -484,7 +456,7 @@ export default function MenuAttachment({
               ...message,
             }
           )
-          console.log('✅ Message sent successfully with ID:', msgId)
+          console.log('Message sent successfully with ID:', msgId)
         } else {
           runtime.showNotification({
             title: 'Privitty',

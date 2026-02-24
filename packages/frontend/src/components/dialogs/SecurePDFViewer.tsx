@@ -50,7 +50,7 @@ export default function SecurePDFViewer(props: Props & DialogProps) {
   const [totalPages, setTotalPages] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [scale, setScale] = useState(1.5)
+  const [scale, setScale] = useState(1)
   const [pageLoading, setPageLoading] = useState(false)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -235,7 +235,7 @@ export default function SecurePDFViewer(props: Props & DialogProps) {
     if (pdf) {
       renderPage()
     }
-  }, [renderPage])
+  }, [pdf, renderPage])
 
   // Navigation functions
   const goToPreviousPage = useCallback(() => {

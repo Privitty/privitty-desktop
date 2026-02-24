@@ -194,41 +194,61 @@ export default function Attachment({
             // Handle .prv files (encrypted files)
             const isForwarded =
               Boolean(message.isForwarded) && message.viewType === 'File'
-
-            if (isForwarded) {
-              const response = await runtime.PrivittySendMessage('sendEvent', {
-                event_type: 'getFileAccessStatus',
-                event_data: {
-                  chat_id: String(message.chatId),
-                  file_path: message.file,
-                },
-              })
-              const fileAccessStatus = JSON.parse(response).result?.data?.status
-              if (fileAccessStatus == 'expired') {
-                const yes = await confirmDialog(
-                  openDialog,
-                  'This file is no longer accessible. You can request access from the owner to view it again.',
-                  'SEND REQUEST'
+            const response = await runtime.PrivittySendMessage('sendEvent', {
+              event_type: 'getFileAccessStatus',
+              event_data: {
+                chat_id: String(message.chatId),
+                file_path: message.file,
+              },
+            })
+            const fileAccessStatus = JSON.parse(response).result?.data?.status
+            if (!isForwarded) {
+              if (direction === 'outgoing') {
+                const response = await runtime.PrivittySendMessage(
+                  'sendEvent',
+                  {
+                    event_type: 'fileDecryptRequest',
+                    event_data: {
+                      chat_id: String(message.chatId),
+                      prv_file: filePathName,
+                    },
+                  }
                 )
-                if (yes) {
+
+                const newResponse = JSON.parse(response)
+                filePathName = String(newResponse.result?.data?.file_path)
+              } else {
+                // EXPIRED
+                if (fileAccessStatus === 'expired') {
+                  const yes = await confirmDialog(
+                    openDialog,
+                    'This file is no longer accessible. You can request access from the owner to view it again.',
+                    'SEND REQUEST'
+                  )
+                  // If user presses NO → do nothing
+                  if (!yes) return
+
+                  // If YES → send access request
                   const forwardAccessResp = await runtime.PrivittySendMessage(
                     'sendEvent',
                     {
-                      event_type: 'initForwardAccessRequest',
+                      event_type: 'initAccessGrantRequest',
                       event_data: {
                         chat_id: String(message.chatId),
                         file_path: message.file,
                       },
                     }
                   )
+
                   const parsed = JSON.parse(forwardAccessResp)
                   const pdu: string | undefined = parsed?.result?.data?.pdu
 
                   if (!pdu) {
                     throw new Error(
-                      'PDU not returned from initAccessRevokeRequest'
+                      'PDU not returned from initAccessGrantRequest'
                     )
                   }
+
                   const MESSAGE_DEFAULT: T.MessageData = {
                     file: null,
                     filename: null,
@@ -240,6 +260,7 @@ export default function Attachment({
                     quotedText: null,
                     text: null,
                   }
+
                   const messageR: Partial<T.MessageData> = {
                     text: pdu,
                     file: undefined,
@@ -256,25 +277,25 @@ export default function Attachment({
                       ...messageR,
                     }
                   )
+
+                  return
                 }
-                return
-              }
-              if (fileAccessStatus == 'active') {
-                const response = await runtime.PrivittySendMessage(
-                  'sendEvent',
-                  {
-                    event_type: 'forwardedFileDecryptRequest',
-                    event_data: {
-                      chat_id: String(message.chatId),
-                      prv_file: filePathName,
-                    },
-                  }
-                )
-                const newResponse = JSON.parse(response)
-                filePathName = String(newResponse.result?.data?.file_path)
-              }
-            } else if (message.fileName?.toLowerCase().endsWith('.prv')) {
-              const basicChat = await BackendRemote.rpc.getBasicChatInfo(
+
+                // REVOKED
+                if (fileAccessStatus === 'revoked') {
+                  console.log(message.viewType, direction)
+
+                  await confirmDialog(
+                    openDialog,
+                    'This file is no longer accessible. This file is revoked',
+                    'OK'
+                  )
+
+                  return
+                }
+                // ACTIVE
+                if (fileAccessStatus === 'active') {
+                  const basicChat = await BackendRemote.rpc.getBasicChatInfo(
                 selectedAccountId(),
                 message.chatId
               )
@@ -307,6 +328,101 @@ export default function Attachment({
 
               const newResponse = JSON.parse(decryptRequest)
               filePathName = String(newResponse.result?.data?.file_path)
+                }
+              }
+            } else if (isForwarded) {
+              // ACTIVE
+              if (fileAccessStatus === 'active') {
+                console.log('This is forwarded file', fileAccessStatus)
+                const response = await runtime.PrivittySendMessage(
+                  'sendEvent',
+                  {
+                    event_type: 'forwardedFileDecryptRequest',
+                    event_data: {
+                      chat_id: String(message.chatId),
+                      prv_file: filePathName,
+                    },
+                  }
+                )
+
+                const newResponse = JSON.parse(response)
+                filePathName = String(newResponse.result?.data?.file_path)
+              }
+
+              if (fileAccessStatus === 'expired') {
+                console.log('This is forwarded file', fileAccessStatus)
+                const yes = await confirmDialog(
+                  openDialog,
+                  'This file is no longer accessible. You can request access from the owner to view it again.',
+                  'SEND REQUEST'
+                )
+                // If user presses NO → do nothing
+                if (!yes) return
+
+                // If YES → send access request
+                const forwardAccessResp = await runtime.PrivittySendMessage(
+                  'sendEvent',
+                  {
+                    event_type: 'initForwardAccessRequest',
+                    event_data: {
+                      chat_id: String(message.chatId),
+                      file_path: message.file,
+                    },
+                  }
+                )
+
+                const parsed = JSON.parse(forwardAccessResp)
+                const pdu: string | undefined = parsed?.result?.data?.pdu
+
+                if (!pdu) {
+                  throw new Error(
+                    'PDU not returned from initForwardAccessRequest'
+                  )
+                }
+
+                const MESSAGE_DEFAULT: T.MessageData = {
+                  file: null,
+                  filename: null,
+                  viewtype: null,
+                  html: null,
+                  location: null,
+                  overrideSenderName: null,
+                  quotedMessageId: null,
+                  quotedText: null,
+                  text: null,
+                }
+
+                const messageR: Partial<T.MessageData> = {
+                  text: pdu,
+                  file: undefined,
+                  filename: undefined,
+                  quotedMessageId: null,
+                  viewtype: 'Text',
+                }
+
+                await BackendRemote.rpc.sendMsg(
+                  selectedAccountId(),
+                  message.chatId,
+                  {
+                    ...MESSAGE_DEFAULT,
+                    ...messageR,
+                  }
+                )
+
+                return
+              }
+
+              // REVOKED
+              if (fileAccessStatus === 'revoked') {
+                console.log('This is forwarded file', fileAccessStatus)
+                await confirmDialog(
+                  openDialog,
+                  'This file is no longer accessible. This file is revoked',
+                  'OK'
+                )
+
+                return
+              }
             }
 
             // Determine the correct viewer type based on file extension

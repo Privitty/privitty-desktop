@@ -25,16 +25,11 @@ export default function SecureImageViewer(props: Props & DialogProps) {
   const imageRef = useRef<HTMLImageElement>(null)
   const transformRef = useRef<any>(null)
 
-  useEffect(() => {
-    loadImage()
-  }, [filePath])
-
-  const loadImage = async () => {
+  const loadImage = React.useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
 
-      // Create a file URL for the image
       const url = `file://${filePath}`
       log.info('Loading image in secure viewer', { filePath, url })
 
@@ -45,7 +40,11 @@ export default function SecureImageViewer(props: Props & DialogProps) {
       setError(tx('error_loading_image'))
       setLoading(false)
     }
-  }
+  }, [filePath, tx])
+  
+  useEffect(() => {
+    loadImage()
+  }, [loadImage])
 
   const zoomIn = () => {
     if (transformRef.current) {

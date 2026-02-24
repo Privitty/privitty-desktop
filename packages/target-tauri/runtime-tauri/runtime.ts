@@ -647,6 +647,11 @@ class TauriRuntime implements Runtime {
   removeTempFile(path: string): Promise<void> {
     return invoke('remove_temp_file', { path })
   }
+  deleteEncryptedFile(_path: string): Promise<void> {
+    return Promise.reject(
+      new Error('deleteEncryptedFile is only supported in Electron')
+    )
+  }
   getWebxdcDiskUsage(
     _accountId: number
   ): Promise<{ total_size: number; data_size: number }> {

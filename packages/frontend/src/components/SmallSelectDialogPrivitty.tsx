@@ -23,10 +23,10 @@ export type SelectedValue = {
 type Props = {
   title: string
   initialSelectedValue: SelectedValue
-  values: SelectDialogOption[]
   onSave?: (selectedValue: SelectedValue) => void
   onSelect?: (selectedValue: SelectedValue) => void
   onCancel?: () => void
+  showAllowForward?: boolean
 } & DialogProps
 
 /** Format a Date for datetime-local input: YYYY-MM-DDTHH:mm */
@@ -60,6 +60,7 @@ export default function SmallSelectDialogPrivitty({
   onClose,
   onSelect,
   onCancel,
+  showAllowForward = true,
 }: Props) {
   const tx = useTranslationFunction()
   const [allowDownload, setAllowDownload] = useState<boolean>(false)
@@ -115,13 +116,15 @@ export default function SmallSelectDialogPrivitty({
               label='Allow Download'
             />
           </div>
-          <div style={{ marginBottom: 12 }}>
-            <Checkbox
-              checked={allowForward}
-              onChange={e => setAllowForward(e.target.checked)}
-              label='Allow Forward'
-            />
-          </div>
+          {showAllowForward && (
+            <div style={{ marginBottom: 12 }}>
+              <Checkbox
+                checked={allowForward}
+                onChange={e => setAllowForward(e.target.checked)}
+                label='Allow Forward'
+              />
+            </div>
+          )}
           <div style={{ marginBottom: 12 }}>
             <label
               htmlFor='expiry-datetime'

@@ -964,6 +964,8 @@ export function useDraft(
       allowForward: false,
       allowedTime: '',
       FileDirectory: '',
+      oneTimeKey:'',
+      encryptedFilePath: '',
     })
     saveDraft()
     inputRef.current?.focus()

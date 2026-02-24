@@ -21,10 +21,6 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const blobUrlRef = useRef<string | null>(null)
 
-  useEffect(() => {
-    loadVideo()
-  }, [filePath])
-
   // Cleanup blob URL on unmount
   useEffect(() => {
     return () => {
@@ -35,7 +31,7 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
     }
   }, [])
 
-  const loadVideo = async () => {
+  const loadVideo = React.useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -47,23 +43,20 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
         containsPrv: filePath.includes('.prv'),
       })
 
-      // Load file using Node.js fs (works on both Windows and macOS)
       let videoUrl: string
 
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs in Electron
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js fs/path in Electron
         const fs = require('fs')
         // eslint-disable-next-line @typescript-eslint/no-require-imports -- Node.js path in Electron
         const path = require('path')
 
-        // Normalize file path
         let normalizedPath = filePath.replace(/^file:\/\//, '')
         if (normalizedPath.startsWith('/')) {
           normalizedPath = normalizedPath.substring(1)
         }
         normalizedPath = path.resolve(normalizedPath)
 
-        // Check if file exists and read it
         if (!fs.existsSync(normalizedPath)) {
           throw new Error(`File does not exist: ${normalizedPath}`)
         }
@@ -71,14 +64,14 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
         const fileBuffer = fs.readFileSync(normalizedPath)
         const blob = new Blob([fileBuffer], { type: 'video/*' })
         const blobUrl = URL.createObjectURL(blob)
+
         videoUrl = blobUrl
         blobUrlRef.current = blobUrl
 
         log.info('Video loaded using Node.js fs', {
           fileSize: fileBuffer.length,
         })
-      } catch (_fsError) {
-        // Fallback: use file:// URL (works on macOS, may fail on Windows)
+      } catch {
         let normalizedFilePath = filePath
         if (!normalizedFilePath.startsWith('file://')) {
           normalizedFilePath = `file:///${normalizedFilePath.replace(/\\/g, '/')}`
@@ -94,7 +87,11 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
       setError(err instanceof Error ? err.message : 'Failed to load video')
       setLoading(false)
     }
-  }
+  }, [filePath])
+
+  useEffect(() => {
+    loadVideo()
+  }, [loadVideo])
 
   const handleVideoLoad = () => {
     setLoading(false)
@@ -151,7 +148,8 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
         )}
 
         {!error && (
-          <div className='video-container'>
+          <div className='video-container'
+          >
             <video
               ref={videoRef}
               src={videoUrl || ''}
@@ -165,16 +163,7 @@ export default function SecureVideoViewer(props: Props & DialogProps) {
               autoPlay
               muted
               preload='metadata'
-              style={{
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                MozUserSelect: 'none',
-                msUserSelect: 'none',
-                maxWidth: '100%',
-                maxHeight: '100%',
-                objectFit: 'contain',
-                backgroundColor: '#000',
-              }}
+              style={{ userSelect: 'none' }}
             />
           </div>
         )}

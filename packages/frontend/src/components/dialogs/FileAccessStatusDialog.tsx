@@ -10,6 +10,7 @@ import useDialog from '../../hooks/dialog/useDialog'
 import { selectedAccountId } from '../../ScreenController'
 import { BackendRemote } from '../../backend-com'
 import { T } from '@deltachat/jsonrpc-client'
+import SmallSelectDialogPrivitty, { SelectedValue } from '../SmallSelectDialogPrivitty'
 
 interface FileAccessUser {
   email: string
@@ -206,10 +207,31 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDialogClose}>Cancel</button>
+              <button
+                onClick={onDialogClose}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
               <button
                 onClick={onConfirm}
-                style={{ backgroundColor: '#D93229', color: '#fff' }}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  backgroundColor: '#f26861',
+                  color: '#fff',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
                 Revoke Access
               </button>
@@ -240,8 +262,34 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDenied}>Denied</button>
-              <button onClick={onAccept}>Accept</button>
+              <button
+                onClick={onDenied}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Denied
+              </button>
+              <button
+                onClick={onAccept}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  backgroundColor: '#6750A4',
+                  color: '#fff',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Accept
+              </button>
             </div>
           </DialogContent>
         </DialogBody>
@@ -307,29 +355,67 @@ export default function FileAccessStatusDialog({
     openDialog(AccessRequestDialog, {
       onAccept: async () => {
         closeAllDialogs()
-        try {
-          const eventType =
-            role === 'Forwardee'
-              ? 'initRevertRelayForwardAccessAccept'
-              : 'initAccessGrantAccept'
-          const response = await runtime.PrivittySendMessage('sendEvent', {
-            event_type: eventType,
-            event_data: {
-              chat_id: String(chatId),
-              file_path: filePath,
-              contact_id: contactId,
-              access_duration: 86400,
-            },
-          })
-          const pdu = JSON.parse(response)?.result?.data?.pdu
-          if (pdu) await sendPdu(pdu, accountId, chatId)
-        } catch (err) {
-          setError(
-            err instanceof Error ? err.message : 'Failed to accept access'
-          )
-        } finally {
-          await fetchFileAccessStatus()
-        }
+
+        await openDialog(SmallSelectDialogPrivitty, {
+          title: 'File Attributes',
+          showAllowForward: false,
+          initialSelectedValue: {
+            allowDownload: false,
+            allowForward: false,
+            allowedTime: '86400',
+          },
+          onSave: async (selectedValue: SelectedValue) => {
+            try {
+              const eventType =
+                role === 'Forwardee'
+                  ? 'initRevertRelayForwardAccessAccept'
+                  : 'initAccessGrantAccept'
+
+              const response = await runtime.PrivittySendMessage('sendEvent', {
+                event_type: eventType,
+                event_data: {
+                  chat_id: String(chatId),
+                  file_path: filePath,
+                  contact_id: contactId,
+                  access_duration: Number(selectedValue.allowedTime),
+                  allow_download: selectedValue.allowDownload,
+                  allow_forward: selectedValue.allowForward,
+                },
+              })
+
+              const parsed = JSON.parse(response).result?.data?.pdu
+
+              if (parsed) {
+                const MESSAGE_DEFAULT: T.MessageData = {
+                  file: null,
+                  filename: null,
+                  viewtype: null,
+                  html: null,
+                  location: null,
+                  overrideSenderName: null,
+                  quotedMessageId: null,
+                  quotedText: null,
+                  text: null,
+                }
+
+                const message: Partial<T.MessageData> = {
+                  text: parsed,
+                  viewtype: 'Text',
+                }
+
+                await BackendRemote.rpc.sendMsg(accountId, chatId || 0, {
+                  ...MESSAGE_DEFAULT,
+                  ...message,
+                })
+              }
+
+              await fetchFileAccessStatus()
+            } catch (err) {
+              console.error('Failed to accept access:', err)
+            }
+          },
+          onClose: () => closeAllDialogs(),
+        })
       },
       onDenied: async () => {
         closeAllDialogs()
@@ -390,9 +476,15 @@ export default function FileAccessStatusDialog({
   }
 
   const getDisplayFileName = (): string => {
-    if (fileName) return fileName
-    if (filePath) return basename(filePath)
-    return 'File'
+    let rawName = 'File'
+
+    if (typeof fileName === 'string' && fileName.trim()) {
+      rawName = fileName
+    } else if (filePath) {
+      rawName = basename(filePath)
+    }
+
+    return rawName.replace(/\.prv$/, '')
   }
 
   const UserCard = ({
@@ -423,7 +515,7 @@ export default function FileAccessStatusDialog({
           alignItems: 'center',
           padding: '12px 16px',
           borderBottom: '1px solid #e0e0e0',
-          backgroundColor: '#fff',
+          backgroundColor: 'transparent',
           opacity: isRevoked ? 0.6 : 1,
         }}
       >
@@ -434,7 +526,6 @@ export default function FileAccessStatusDialog({
             height: '40px',
             borderRadius: '50%',
             backgroundColor: '#4a4a4a',
-            color: '#fff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -453,7 +544,6 @@ export default function FileAccessStatusDialog({
             style={{
               fontSize: '15px',
               fontWeight: '500',
-              color: '#000',
               marginBottom: '4px',
             }}
           >
@@ -463,7 +553,6 @@ export default function FileAccessStatusDialog({
             <div
               style={{
                 fontSize: '13px',
-                color: '#666',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px',
@@ -549,10 +638,10 @@ export default function FileAccessStatusDialog({
             style={{
               padding: '16px 20px',
               borderBottom: '1px solid #e0e0e0',
-              backgroundColor: '#fafafa',
+              backgroundColor: 'transparent',
             }}
           >
-            <div style={{ fontSize: '15px', fontWeight: '500', color: '#000' }}>
+            <div style={{ fontSize: '15px', fontWeight: '500' }}>
               {getDisplayFileName()}
             </div>
           </div>
@@ -582,7 +671,7 @@ export default function FileAccessStatusDialog({
           )}
 
           {!loading && !error && (
-            <div style={{ backgroundColor: '#fafafa' }}>
+            <div style={{ backgroundColor: 'transparent' }}>
               {/* Shared section */}
               {sharedUsers.length > 0 && (
                 <div>
@@ -591,16 +680,15 @@ export default function FileAccessStatusDialog({
                       padding: '12px 20px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: '#666',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
                       borderBottom: '1px solid #e0e0e0',
-                      backgroundColor: '#fff',
+                      backgroundColor: 'transparent',
                     }}
                   >
                     Shared
                   </div>
-                  <div style={{ backgroundColor: '#fff' }}>
+                  <div style={{ backgroundColor: 'transparent' }}>
                     {sharedUsers.map((user, index) => (
                       <UserCard
                         key={`shared-${index}`}
@@ -625,18 +713,17 @@ export default function FileAccessStatusDialog({
                       padding: '12px 20px',
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: '#666',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
                       borderTop:
                         sharedUsers.length > 0 ? '1px solid #e0e0e0' : 'none',
                       borderBottom: '1px solid #e0e0e0',
-                      backgroundColor: '#fff',
+                      backgroundColor: 'transparent',
                     }}
                   >
                     Forwarded
                   </div>
-                  <div style={{ backgroundColor: '#fff' }}>
+                  <div style={{ backgroundColor: 'transparent' }}>
                     {forwardedUsers.map((user, index) => (
                       <UserCard
                         key={`forwarded-${index}`}
@@ -658,7 +745,6 @@ export default function FileAccessStatusDialog({
                   style={{
                     padding: '40px 20px',
                     textAlign: 'center',
-                    color: '#666',
                   }}
                 >
                   No access data available

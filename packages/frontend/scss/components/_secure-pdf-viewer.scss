@@ -9,696 +9,222 @@
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-
-  .secure-pdf-viewer-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 24px;
-    background: var(--color-bg-secondary);
-    border-bottom: 1px solid var(--color-border);
-    min-height: 60px;
-
-    .secure-pdf-viewer-title {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-
-      h2 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--color-text);
-        max-width: 400px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .page-info {
-        font-size: 14px;
-        color: var(--color-text-secondary);
-      }
-    }
-
-    .secure-pdf-viewer-controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-  }
-
-  .secure-pdf-viewer-content {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    background: var(--color-bg-secondary);
-
-    .page-loading-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-      gap: 12px;
-
-      .page-loading-spinner {
-        width: 32px;
-        height: 32px;
-        border: 3px solid var(--color-border);
-        border-top: 3px solid var(--color-accent);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-
-      span {
-        color: white;
-        font-size: 14px;
-        font-weight: 500;
-      }
-    }
-
-    .pdf-page-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100%;
-      padding: 20px;
-
-      .pdf-canvas {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-        border-radius: 4px;
-      }
-    }
-
-    .bottom-pagination-controls {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 5;
-
-      .pagination-controls {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: rgba(0, 0, 0, 0.8);
-        border-radius: 10px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-
-        .page-input-container {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          min-width: 80px;
-
-          .page-input {
-            width: 50px;
-            padding: 4px 6px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-            font-size: 12px;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-weight: 500;
-
-            &:focus {
-              outline: none;
-              border-color: var(--color-accent);
-              background: rgba(255, 255, 255, 0.2);
-            }
-
-            &::placeholder {
-              color: rgba(255, 255, 255, 0.6);
-            }
-
-            &::-webkit-inner-spin-button,
-            &::-webkit-outer-spin-button {
-              opacity: 1;
-              background: rgba(255, 255, 255, 0.1);
-            }
-          }
-
-          .page-separator {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 500;
-          }
-
-          .total-pages {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 500;
-            min-width: 25px;
-          }
-        }
-
-        // Style the IconButtons within pagination controls
-        button {
-          color: white !important;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
-          padding: 6px;
-          transition: all 0.2s ease;
-          min-width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          &:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-1px);
-          }
-
-          &:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.1);
-            transform: none;
-
-            svg {
-              opacity: 0.5;
-            }
-          }
-
-          svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
-          }
-        }
-      }
-    }
-  }
-
-  .secure-pdf-viewer-controls-bar {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 8px 24px;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
-    min-height: 48px;
-
-    .controls-container {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 6px 12px;
-      background: var(--color-bg);
-      border-radius: 8px;
-      border: 1px solid var(--color-border);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-
-      .zoom-controls {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: var(--color-bg-secondary);
-
-        .zoom-level {
-          font-size: 11px;
-          font-weight: 500;
-          color: var(--color-text);
-          min-width: 32px;
-          text-align: center;
-          padding: 0 4px;
-        }
-
-        button {
-          color: var(--color-text) !important;
-          background: transparent;
-          border: none;
-          border-radius: 4px;
-          padding: 4px;
-          transition: all 0.2s ease;
-          min-width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          &:hover:not(:disabled) {
-            background: var(--color-accent);
-            color: white !important;
-            transform: scale(1.05);
-          }
-
-          &:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            transform: none;
-
-            svg {
-              opacity: 0.5;
-            }
-          }
-
-          svg {
-            width: 14px;
-            height: 14px;
-            fill: currentColor;
-          }
-        }
-      }
-
-      .pagination-controls {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: var(--color-bg-secondary);
-
-        .page-input-container {
-          display: flex;
-          align-items: center;
-          gap: 2px;
-          min-width: 60px;
-
-          .page-input {
-            width: 36px;
-            padding: 2px 4px;
-            border: 1px solid var(--color-border);
-            border-radius: 3px;
-            font-size: 11px;
-            text-align: center;
-            background: var(--color-bg);
-            color: var(--color-text);
-            font-weight: 500;
-
-            &:focus {
-              outline: none;
-              border-color: var(--color-accent);
-              background: var(--color-bg);
-            }
-
-            &::placeholder {
-              color: var(--color-text-secondary);
-            }
-
-            &::-webkit-inner-spin-button,
-            &::-webkit-outer-spin-button {
-              opacity: 1;
-              background: var(--color-bg);
-            }
-          }
-
-          .page-separator {
-            font-size: 11px;
-            color: var(--color-text-secondary);
-            font-weight: 500;
-          }
-
-          .total-pages {
-            font-size: 11px;
-            color: var(--color-text-secondary);
-            font-weight: 500;
-            min-width: 20px;
-          }
-        }
-
-        button {
-          color: var(--color-text) !important;
-          background: transparent;
-          border: none;
-          border-radius: 4px;
-          padding: 4px;
-          transition: all 0.2s ease;
-          min-width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          &:hover:not(:disabled) {
-            background: var(--color-accent);
-            color: white !important;
-            transform: scale(1.05);
-          }
-
-          &:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-            transform: none;
-
-            svg {
-              opacity: 0.5;
-            }
-          }
-
-          svg {
-            width: 14px;
-            height: 14px;
-            fill: currentColor;
-          }
-        }
-      }
-    }
-  }
-
-  .secure-pdf-viewer-pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 12px 24px;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
-    min-height: 60px;
-
-    .pagination-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: var(--color-bg);
-      border-radius: 10px;
-      border: 1px solid var(--color-border);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-      .page-input-container {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        min-width: 80px;
-
-        .page-input {
-          width: 50px;
-          padding: 4px 6px;
-          border: 1px solid var(--color-border);
-          border-radius: 4px;
-          font-size: 12px;
-          text-align: center;
-          background: var(--color-bg);
-          color: var(--color-text);
-          font-weight: 500;
-
-          &:focus {
-            outline: none;
-            border-color: var(--color-accent);
-            background: var(--color-bg);
-          }
-
-          &::placeholder {
-            color: var(--color-text-secondary);
-          }
-
-          &::-webkit-inner-spin-button,
-          &::-webkit-outer-spin-button {
-            opacity: 1;
-            background: var(--color-bg);
-          }
-        }
-
-        .page-separator {
-          font-size: 12px;
-          color: var(--color-text-secondary);
-          font-weight: 500;
-        }
-
-        .total-pages {
-          font-size: 12px;
-          color: var(--color-text-secondary);
-          font-weight: 500;
-          min-width: 25px;
-        }
-      }
-
-      // Style the IconButtons within pagination controls
-      button {
-        color: var(--color-text) !important;
-        background: var(--color-bg);
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
-        padding: 6px;
-        transition: all 0.2s ease;
-        min-width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        &:hover:not(:disabled) {
-          background: var(--color-bg-secondary);
-          border-color: var(--color-accent);
-          transform: translateY(-1px);
-        }
-
-        &:disabled {
-          opacity: 0.3;
-          cursor: not-allowed;
-          background: var(--color-bg);
-          border-color: var(--color-border);
-          transform: none;
-
-          svg {
-            opacity: 0.5;
-          }
-        }
-
-        svg {
-          width: 18px;
-          height: 18px;
-          fill: currentColor;
-        }
-      }
-    }
-  }
-
-  .secure-pdf-viewer-footer {
-    padding: 12px 24px;
-    background: var(--color-bg-secondary);
-    border-top: 1px solid var(--color-border);
-    min-height: 40px;
-
-    .secure-notice {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--color-text-secondary);
-
-      .icon {
-        color: var(--color-accent);
-      }
-    }
-  }
-
-  .secure-pdf-viewer-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 16px;
-
-    .loading-spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--color-border);
-      border-top: 3px solid var(--color-accent);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    p {
-      font-size: 16px;
-      color: var(--color-text-secondary);
-      margin: 0;
-    }
-  }
-
-  .secure-pdf-viewer-error {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    gap: 16px;
-    text-align: center;
-    padding: 40px;
-
-    h3 {
-      font-size: 18px;
-      color: var(--color-text);
-      margin: 0;
-    }
-
-    p {
-      font-size: 14px;
-      color: var(--color-text-secondary);
-      margin: 0;
-      max-width: 400px;
-    }
-
-    .retry-button {
-      padding: 8px 16px;
-      background: var(--color-accent);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-
-      &:hover {
-        background: var(--color-accent-hover);
-      }
-    }
-  }
 }
 
+/* ================= HEADER ================= */
+
+.secure-pdf-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.secure-pdf-viewer-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.secure-pdf-viewer-title h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-info {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.secure-pdf-viewer-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ================= CONTENT ================= */
+
+.secure-pdf-viewer-content {
+  flex: 1;
+  position: relative;
+  background: var(--color-bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pdf-page-container {
+  padding: 20px;
+}
+
+.pdf-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+}
+
+/* ================= FLOATING PAGINATION ================= */
+
+.bottom-pagination-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+/* Fix for mask icons */
+.pagination-controls button {
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.pagination-controls button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.pagination-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Ensure mask icons render */
+.pagination-controls button .icon {
+  background-color: currentColor !important;
+}
+
+/* Page input */
+.page-input-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-input {
+  width: 50px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  text-align: center;
+  font-size: 12px;
+}
+
+.page-separator,
+.total-pages {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ================= FOOTER ================= */
+
+.secure-pdf-viewer-footer {
+  padding: 12px 24px;
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.secure-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.secure-notice .icon {
+  background-color: var(--color-accent);
+}
+
+/* ================= LOADING ================= */
+
+.secure-pdf-viewer-loading,
+.secure-pdf-viewer-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--color-border);
+  border-top: 3px solid var(--color-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ================= ANIMATION ================= */
+
 @keyframes spin {
-  0% {
+  from {
     transform: rotate(0deg);
   }
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
 
-// Responsive design
+/* ================= RESPONSIVE ================= */
+
 @media (max-width: 768px) {
   .secure-pdf-viewer-dialog {
     width: 95vw;
     height: 95vh;
+  }
 
-    .secure-pdf-viewer-header {
-      padding: 12px 16px;
+  .secure-pdf-viewer-header {
+    padding: 12px 16px;
+  }
 
-      .secure-pdf-viewer-title {
-        h2 {
-          font-size: 16px;
-          max-width: 200px;
-        }
-      }
+  .secure-pdf-viewer-title h2 {
+    font-size: 16px;
+    max-width: 200px;
+  }
 
-      .secure-pdf-viewer-controls {
-        gap: 8px;
+  .pagination-controls {
+    padding: 6px 12px;
+    gap: 6px;
+  }
 
-        .zoom-controls {
-          gap: 4px;
-          padding: 2px 4px;
+  .pagination-controls button {
+    width: 26px;
+    height: 26px;
+  }
 
-          .zoom-level {
-            min-width: 30px;
-            font-size: 11px;
-          }
-        }
-      }
-    }
-
-    .secure-pdf-viewer-content {
-      .pdf-page-container {
-        padding: 10px;
-      }
-    }
-
-    .secure-pdf-viewer-controls-bar {
-      padding: 6px 16px;
-      min-height: 40px;
-
-      .controls-container {
-        gap: 12px;
-        padding: 4px 8px;
-
-        .zoom-controls {
-          gap: 2px;
-          padding: 1px 4px;
-
-          .zoom-level {
-            min-width: 28px;
-            font-size: 10px;
-          }
-
-          button {
-            min-width: 20px;
-            height: 20px;
-            padding: 2px;
-
-            svg {
-              width: 12px;
-              height: 12px;
-            }
-          }
-        }
-
-        .pagination-controls {
-          gap: 2px;
-          padding: 1px 4px;
-
-          .page-input-container {
-            min-width: 50px;
-
-            .page-input {
-              width: 30px;
-              font-size: 10px;
-            }
-          }
-
-          button {
-            min-width: 20px;
-            height: 20px;
-            padding: 2px;
-
-            svg {
-              width: 12px;
-              height: 12px;
-            }
-          }
-        }
-      }
-    }
-
-    .secure-pdf-viewer-pagination {
-      padding: 8px 16px;
-      min-height: 50px;
-
-      .pagination-controls {
-        gap: 4px;
-        padding: 6px 12px;
-
-        .page-input-container {
-          min-width: 60px;
-
-          .page-input {
-            width: 40px;
-            font-size: 11px;
-          }
-        }
-
-        button {
-          min-width: 28px;
-          height: 28px;
-          padding: 4px;
-
-          svg {
-            width: 16px;
-            height: 16px;
-          }
-        }
-      }
-    }
-
-    .secure-pdf-viewer-footer {
-      padding: 8px 16px;
-    }
+  .page-input {
+    width: 40px;
+    font-size: 11px;
   }
 }

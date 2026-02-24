@@ -1,4 +1,8 @@
 .secure-video-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
   .secure-video-viewer-header {
     display: flex;
     justify-content: space-between;
@@ -18,31 +22,31 @@
   .secure-video-viewer-content {
     position: relative;
     flex: 1;
+    min-height: 0; // critical for flex children not overflowing
     display: flex;
     align-items: center;
     justify-content: center;
     background: #000;
     overflow: hidden;
 
-    .video-loading-overlay {
+    .video-loading-overlay,
+    .video-error-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
+      flex-direction: column;
+      color: #fff;
       z-index: 10;
+    }
 
+    .video-loading-overlay {
       .video-loading-spinner {
         width: 40px;
         height: 40px;
         border: 3px solid rgba(255, 255, 255, 0.3);
-        border-top: 3px solid white;
+        border-top: 3px solid #fff;
         border-radius: 50%;
         animation: spin 1s linear infinite;
         margin-bottom: 16px;
@@ -55,20 +59,8 @@
     }
 
     .video-error-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.8);
-      z-index: 10;
-
       .error-content {
         text-align: center;
-        color: white;
         padding: 20px;
 
         h3 {
@@ -86,7 +78,7 @@
         .retry-button {
           padding: 8px 16px;
           background: var(--color-accent);
-          color: white;
+          color: #fff;
           border: none;
           border-radius: 6px;
           font-size: 14px;
@@ -102,73 +94,22 @@
     }
 
     .video-container {
-      position: relative;
       width: 100%;
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 60px; // Add margin to ensure controls don't overlap footer
+    }
 
-      .secure-video {
-        max-width: 100%;
-        max-height: calc(100% - 60px); // Reserve space for controls
-        object-fit: contain;
-        border-radius: 4px;
-        display: block;
-
-        // Ensure controls are visible
-        &::-webkit-media-controls {
-          display: flex !important;
-          background: rgba(0, 0, 0, 0.7);
-          position: relative;
-          z-index: 5;
-        }
-
-        &::-webkit-media-controls-panel {
-          display: flex !important;
-          background: rgba(0, 0, 0, 0.8);
-          border-radius: 0 0 4px 4px;
-          padding: 8px;
-          position: relative;
-          z-index: 5;
-        }
-
-        &::-webkit-media-controls-play-button {
-          display: block !important;
-          background: var(--color-accent);
-          border-radius: 50%;
-          width: 32px;
-          height: 32px;
-        }
-
-        &::-webkit-media-controls-timeline {
-          display: block !important;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 2px;
-          height: 4px;
-        }
-
-        &::-webkit-media-controls-current-time-display,
-        &::-webkit-media-controls-time-remaining-display {
-          display: block !important;
-          color: white;
-          font-weight: 500;
-          font-size: 12px;
-        }
-
-        &::-webkit-media-controls-volume-slider {
-          display: block !important;
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 2px;
-        }
-
-        &::-webkit-media-controls-fullscreen-button {
-          display: block !important;
-          background: var(--color-accent);
-          border-radius: 4px;
-        }
-      }
+    .secure-video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain; // prevents cropping
+      object-position: center center;
+      border-radius: 4px;
+      background: #000;
+      display: block;
+      user-select: none;
     }
   }
 
@@ -192,10 +133,10 @@
 }
 
 @keyframes spin {
-  0% {
+  from {
     transform: rotate(0deg);
   }
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
