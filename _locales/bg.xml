@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <!-- common strings without special context -->
-    <string name="app_name">Delta Chat</string>
+    <string name="app_name">Privitty Chat</string>
     <string name="ok">OK</string>
     <string name="cancel">Отказ</string>
     <string name="clear_search">Изчистване на търсенето</string>
@@ -42,7 +42,7 @@
     <string name="unarchive">Деархивиране</string>
     <string name="mute">Изключване на звука</string>
     <string name="ephemeral_messages">Изчезващи съобщения</string>
-    <string name="ephemeral_messages_hint">Приложимо за всички членове на този чат, ако използват Delta Chat; в противен случай те пак могат да копират, записват и препращат съобщения или да използват други клиенти за електронна поща.</string>
+    <string name="ephemeral_messages_hint">Приложимо за всички членове на този чат, ако използват Privitty Chat; в противен случай те пак могат да копират, записват и препращат съобщения или да използват други клиенти за електронна поща.</string>
     <string name="save">Записване</string>
     <string name="chat">Чат</string>
     <string name="media">Медия</string>
@@ -318,7 +318,7 @@
     <string name="videochat_tap_to_open">Докоснете, за да отворите</string>
     <string name="videochat_instance">Сървър за видеочат</string>
     <string name="videochat_instance_placeholder">Вашият сървър за видеочат</string>
-    <!-- Do not translate "$ROOM", since it is a fixed token Delta Chat will replace with a generated room ID like "aOclju5eCky" -->
+    <!-- Do not translate "$ROOM", since it is a fixed token Privitty Chat will replace with a generated room ID like "aOclju5eCky" -->
     <string name="videochat_instance_example">Примери: https://meet.jit.si/$ROOM или basicwebrtc:https://вашият-сървър</string>
     <string name="videochat_instance_explain_2">Ако настройката е разрешена, можете да започвате видеочат от всеки чат. Изисква съвместимо приложение или браузър и от двете страни.</string>
     <string name="videochat_instance_from_qr">Да се използва ли \"%1$s\" за поканване на други към видеочатове?\n\nСлед като тази настройка бъде зададена, ще можете да започвате видеочат от всеки чат. Тя ще замени предишната настройка за видеочатове, ако има такава.</string>
@@ -482,9 +482,9 @@
     <string name="multidevice_title">Добавяне на допълнително устройство</string>
     <string name="multidevice_same_network_hint">Уверете се, че и двете устройства са свързани към една и съща Wi-Fi или друга мрежа</string>
     <string name="multidevice_this_creates_a_qr_code">Ще бъде създаден QR код, чрез сканиране на който другото устройство може да копира акаунта.</string>
-    <string name="multidevice_install_dc_on_other_device">Инсталирайте Delta Chat на другото Ви устройство (https://get.delta.chat)</string>
+    <string name="multidevice_install_dc_on_other_device">Инсталирайте Privitty Chat на другото Ви устройство (https://get.Privitty.chat)</string>
     <!-- "I Already Have a Profile / Add as Second Device” should be the same text as defined by the keys onboarding_alternative_logins and multidevice_receiver_title -->
-    <string name="multidevice_tap_scan_on_other_device">Стартирайте Delta Chat, докоснете \"Добавяне като допълнително устройство\" и сканирайте кода, показан тук</string>
+    <string name="multidevice_tap_scan_on_other_device">Стартирайте Privitty Chat, докоснете \"Добавяне като допълнително устройство\" и сканирайте кода, показан тук</string>
     <!-- Shown inside a "QR code card" with very limited space; please formulate the text as short as possible therefore. The placeholder will be replaced by name and/or address eg. "Scan to set up second device for Alice (alice@example.org)" -->
     <string name="multidevice_qr_subtitle">Сканирайте, за да установите допълнително устройство за %1$s</string>
     <string name="multidevice_receiver_title">Добавяне като допълнително устройство</string>
@@ -557,7 +557,7 @@
     <string name="login_header">Влизане във Вашия акаунт за електронна поща</string>
     <string name="login_explain">Влизане със съществуващ акаунт за електронна поща</string>
     <string name="login_subheader">За известните доставчици на електронна поща допълнителните настройки се попълват автоматично. Понякога е необходимо да се разреши IMAP в уеб настройките. Потърсете помощ от Вашия доставчик на електронна поща или приятели.</string>
-    <string name="login_no_servers_hint">Delta Chat няма сървъри, Вашите данни стоят на Вашето устройство.</string>
+    <string name="login_no_servers_hint">Privitty Chat няма сървъри, Вашите данни стоят на Вашето устройство.</string>
     <string name="login_inbox">Входящи</string>
     <string name="login_imap_login"> Име за влизане на IMAP</string>
     <string name="login_imap_server">IMAP сървър</string>
@@ -571,7 +571,7 @@
     <string name="login_smtp_security">Сигурност на SMTP връзката</string>
     <string name="login_auth_method">Метод за оторизация</string>
     <string name="login_info_oauth2_title">Да се продължи ли с опростената настройка?</string>
-    <string name="login_info_oauth2_text">Въведеният адрес за електронна поща поддържа опростена настройка (OAuth 2.0).\n\nНа следващата стъпка, моля позволете на Delta Chat да действа в качеството си на избраното от Вас приложение за чат върху електронна поща.\n\nDelta Chat няма сървъри, Вашите данни стоят на Вашето устройство.</string>
+    <string name="login_info_oauth2_text">Въведеният адрес за електронна поща поддържа опростена настройка (OAuth 2.0).\n\nНа следващата стъпка, моля позволете на Privitty Chat да действа в качеството си на избраното от Вас приложение за чат върху електронна поща.\n\nPrivitty Chat няма сървъри, Вашите данни стоят на Вашето устройство.</string>
     <string name="login_certificate_checks">Проверки на сертификатите</string>
     <string name="login_error_mail">Моля, въведете валиден адрес за електронна поща</string>
     <string name="login_error_server">Моля, въведете валиден адрес / IP адрес на сървър</string>
@@ -653,7 +653,7 @@
     <string name="pref_encryption">Криптиране</string>
     <string name="pref_manage_keys">Управление на ключове</string>
     <string name="pref_use_system_emoji">Да се използва Emoji на системата</string>
-    <string name="pref_use_system_emoji_explain">Изключване на вградената поддръжка за Emoji на Delta Chat</string>
+    <string name="pref_use_system_emoji_explain">Изключване на вградената поддръжка за Emoji на Privitty Chat</string>
     <string name="pref_show_system_contacts">Прочитане на системната адресна книга</string>
     <string name="pref_show_system_contacts_explain">Да се предлага създаване на чатове с контакти от адресната книга. За някои доставчици е необходимо първо да се настрои криптиране от край до край.</string>
     <string name="pref_chats">Чатове</string>
@@ -688,10 +688,10 @@
     <string name="pref_watch_sent_folder">Да бъде наблюдавана папката \"Изпратени\"</string>
     <string name="pref_send_copy_to_self">Изпращане на копие до себе си</string>
     <string name="pref_send_copy_to_self_explain">Изисква се, когато този акант се използва на повече от едно устройство.</string>
-    <string name="pref_auto_folder_moves">Автоматично преместване в папката DeltaChat</string>
+    <string name="pref_auto_folder_moves">Автоматично преместване в папката PrivittyChat</string>
     <string name="pref_auto_folder_moves_explain">Разговорите са преместени, за да се избегне претрупване на папката \"Входящи\"</string>
-    <string name="pref_only_fetch_mvbox_title">Да се извлича само от папката DeltaChat</string>
-    <string name="pref_only_fetch_mvbox_explain">Другите папки да не бъдат взимани под внимание. Изисква Вашият сървър да премества чат съобщенията в папката DeltaChat.</string>
+    <string name="pref_only_fetch_mvbox_title">Да се извлича само от папката PrivittyChat</string>
+    <string name="pref_only_fetch_mvbox_explain">Другите папки да не бъдат взимани под внимание. Изисква Вашият сървър да премества чат съобщенията в папката PrivittyChat.</string>
     <string name="pref_show_emails">Да се показват класически e-mail съобщения</string>
     <string name="pref_show_emails_no">Не, само чатове</string>
     <string name="pref_show_emails_accepted_contacts">За приетите контакти</string>

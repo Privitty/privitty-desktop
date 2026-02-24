@@ -390,8 +390,15 @@ export default function FileAccessStatusDialog({
   }
 
   const getDisplayFileName = (): string => {
-    const name = fileName || (filePath ? basename(filePath) : 'File')
-    return name.replace(/\.prv$/, '')
+    let rawName = 'File'
+
+    if (typeof fileName === 'string' && fileName.trim()) {
+      rawName = fileName
+    } else if (filePath) {
+      rawName = basename(filePath)
+    }
+
+    return rawName.replace(/\.prv$/, '')
   }
 
   const UserCard = ({
