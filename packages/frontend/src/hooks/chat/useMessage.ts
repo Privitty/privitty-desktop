@@ -7,6 +7,7 @@ import { getLogger } from '../../../../shared/logger'
 import type { T } from '@deltachat/jsonrpc-client'
 //import { ContextMenuContext } from '../../contexts/ContextMenuContext'
 import { useSharedDataOptional } from '../../contexts/FileAttribContext'
+import { runtime } from '@deltachat-desktop/runtime-interface'
 
 export type JumpToMessage = (params: {
   // "not from a different account" because apparently
@@ -171,6 +172,18 @@ export default function useMessage() {
             ...message,
           })
         }
+        // DELETE ENCRYPTED .prv FILE AFTER SUCCESSFUL SEND
+        // (File is in user's folder, use deleteEncryptedFile not removeTempFile)
+        if (sharedData?.encryptedFilePath) {
+          try {
+            if (await runtime.checkFileExists(sharedData.encryptedFilePath)) {
+              await runtime.deleteEncryptedFile(sharedData.encryptedFilePath)
+              log.debug('Encrypted file deleted after send:', sharedData.encryptedFilePath)
+            }
+          } catch (err) {
+            log.error('Failed to delete encrypted file after send:', err)
+          }
+        }
       } else {
         msgId = await BackendRemote.rpc.sendMsg(accountId, chatId, {
           ...MESSAGE_DEFAULT,
@@ -194,6 +207,7 @@ export default function useMessage() {
         allowedTime: '',
         FileDirectory: '',
         oneTimeKey: '',
+        encryptedFilePath: ''
       })
     },
     [jumpToMessage, sharedData, setSharedData]

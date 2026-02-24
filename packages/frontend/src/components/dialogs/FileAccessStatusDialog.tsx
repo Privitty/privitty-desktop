@@ -10,6 +10,7 @@ import useDialog from '../../hooks/dialog/useDialog'
 import { selectedAccountId } from '../../ScreenController'
 import { BackendRemote } from '../../backend-com'
 import { T } from '@deltachat/jsonrpc-client'
+import SmallSelectDialogPrivitty, { SelectedValue } from '../SmallSelectDialogPrivitty'
 
 interface FileAccessUser {
   email: string
@@ -206,10 +207,31 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDialogClose} style={{fontSize: '18px', fontWeight: '400', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer'}}>Cancel</button>
+              <button
+                onClick={onDialogClose}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
               <button
                 onClick={onConfirm}
-                style={{fontSize: '18px', fontWeight: '400', backgroundColor: '#f26861', color: '#fff', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer' }}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  backgroundColor: '#f26861',
+                  color: '#fff',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
               >
                 Revoke Access
               </button>
@@ -240,8 +262,34 @@ export default function FileAccessStatusDialog({
             <div
               style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}
             >
-              <button onClick={onDenied} style={{fontSize: '18px', fontWeight: '400', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer'}}>Denied</button>
-              <button onClick={onAccept} style={{fontSize: '18px', fontWeight: '400', backgroundColor: '#6750A4', color: '#fff', padding: '14px 22px', borderRadius: '12px', border: 'none', cursor: 'pointer'}}>Accept</button>
+              <button
+                onClick={onDenied}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Denied
+              </button>
+              <button
+                onClick={onAccept}
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '400',
+                  backgroundColor: '#6750A4',
+                  color: '#fff',
+                  padding: '14px 22px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                Accept
+              </button>
             </div>
           </DialogContent>
         </DialogBody>
@@ -307,29 +355,67 @@ export default function FileAccessStatusDialog({
     openDialog(AccessRequestDialog, {
       onAccept: async () => {
         closeAllDialogs()
-        try {
-          const eventType =
-            role === 'Forwardee'
-              ? 'initRevertRelayForwardAccessAccept'
-              : 'initAccessGrantAccept'
-          const response = await runtime.PrivittySendMessage('sendEvent', {
-            event_type: eventType,
-            event_data: {
-              chat_id: String(chatId),
-              file_path: filePath,
-              contact_id: contactId,
-              access_duration: 86400,
-            },
-          })
-          const pdu = JSON.parse(response)?.result?.data?.pdu
-          if (pdu) await sendPdu(pdu, accountId, chatId)
-        } catch (err) {
-          setError(
-            err instanceof Error ? err.message : 'Failed to accept access'
-          )
-        } finally {
-          await fetchFileAccessStatus()
-        }
+
+        await openDialog(SmallSelectDialogPrivitty, {
+          title: 'File Attributes',
+          showAllowForward: false,
+          initialSelectedValue: {
+            allowDownload: false,
+            allowForward: false,
+            allowedTime: '86400',
+          },
+          onSave: async (selectedValue: SelectedValue) => {
+            try {
+              const eventType =
+                role === 'Forwardee'
+                  ? 'initRevertRelayForwardAccessAccept'
+                  : 'initAccessGrantAccept'
+
+              const response = await runtime.PrivittySendMessage('sendEvent', {
+                event_type: eventType,
+                event_data: {
+                  chat_id: String(chatId),
+                  file_path: filePath,
+                  contact_id: contactId,
+                  access_duration: Number(selectedValue.allowedTime),
+                  allow_download: selectedValue.allowDownload,
+                  allow_forward: selectedValue.allowForward,
+                },
+              })
+
+              const parsed = JSON.parse(response).result?.data?.pdu
+
+              if (parsed) {
+                const MESSAGE_DEFAULT: T.MessageData = {
+                  file: null,
+                  filename: null,
+                  viewtype: null,
+                  html: null,
+                  location: null,
+                  overrideSenderName: null,
+                  quotedMessageId: null,
+                  quotedText: null,
+                  text: null,
+                }
+
+                const message: Partial<T.MessageData> = {
+                  text: parsed,
+                  viewtype: 'Text',
+                }
+
+                await BackendRemote.rpc.sendMsg(accountId, chatId || 0, {
+                  ...MESSAGE_DEFAULT,
+                  ...message,
+                })
+              }
+
+              await fetchFileAccessStatus()
+            } catch (err) {
+              console.error('Failed to accept access:', err)
+            }
+          },
+          onClose: () => closeAllDialogs(),
+        })
       },
       onDenied: async () => {
         closeAllDialogs()

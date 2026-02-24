@@ -163,7 +163,8 @@ export async function openAttachmentInShell(
         }
       )
       log.debug('fileAccessResponse', fileAccessResponse)
-      if (fileAccessResponse.result?.data?.success === 'false') {
+      const parsed = JSON.parse(fileAccessResponse)
+      if (parsed.result?.data?.success === 'false') {
         //if (JSON.parse(fileAccessResponse).status === 'false') {
         // Check if the decrypted file is a supported media type that should be opened in secure viewer
         const decryptedFileExtension = extname(filePathName).toLowerCase()

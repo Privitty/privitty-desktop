@@ -274,7 +274,9 @@ class ElectronRuntime implements Runtime {
   removeTempFile(path: string): Promise<void> {
     return ipcBackend.invoke('app.removeTempFile', path)
   }
-
+  deleteEncryptedFile(path: string): Promise<void> {
+    return ipcBackend.invoke('app.deleteEncryptedFile', path)
+  }
   private notificationCallback: (data: {
     accountId: number
     chatId: number
@@ -431,10 +433,20 @@ class ElectronRuntime implements Runtime {
       ipcBackend.send(
         'handleLogMessage',
         ...args.map(arg => {
-          // filter args to be make sure electron doesn't give an object clone error (Error: An object could not be cloned)
-          if (typeof arg === 'object') {
-            // make sure objects are clean of unsupported types
-            return JSON.parse(JSON.stringify(arg))
+          // Filter args to make sure electron doesn't give an object clone error
+          // (Error: An object could not be cloned). Also guard against circular
+          // references that would make JSON.stringify() throw.
+          if (typeof arg === 'object' && arg !== null) {
+            try {
+              // make sure objects are clean of unsupported types
+              return JSON.parse(JSON.stringify(arg))
+            } catch (_err) {
+              // Fall back to a simple, serializable description
+              return {
+                __log_replacement__: true,
+                type: (arg as any).constructor?.name ?? 'Object',
+              }
+            }
           } else if (typeof arg === 'function') {
             return arg.toString()
           } else {

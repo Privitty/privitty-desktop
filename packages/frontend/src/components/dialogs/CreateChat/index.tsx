@@ -863,7 +863,6 @@ const callInitAddMemberToGroup = async (
       ...MESSAGE_DEFAULT,
       ...message,
     })
-    console.log('✅ Message sent successfully with ID:', msgId)
   } else {
     runtime.showNotification({
       title: 'Privitty',

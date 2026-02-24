@@ -7,6 +7,7 @@ export interface FileAttribute {
   allowedTime: string
   FileDirectory: string
   oneTimeKey: string
+  encryptedFilePath: string
 }
 
 interface FileAttributeContextType {
@@ -28,13 +29,13 @@ interface SharedDataProviderProps {
 export const SharedDataProvider: React.FC<SharedDataProviderProps> = ({
   children,
 }) => {
-  console.log('SharedDataProvider rendered')
   const [sharedData, setSharedData] = useState<FileAttribute>({
     allowDownload: false,
     allowForward: false,
     allowedTime: '',
     FileDirectory: '',
     oneTimeKey: '',
+    encryptedFilePath: ''
   })
 
   return (
@@ -46,7 +47,6 @@ export const SharedDataProvider: React.FC<SharedDataProviderProps> = ({
 
 // Custom hook for consuming context
 export function useSharedData() {
-  console.log('useSharedData called')
   const context = useContext(FileAttributeContext)
   if (context === undefined) {
     throw new Error('useSharedData must be used within a FileAttributeProvider')
@@ -64,6 +64,8 @@ export function useSharedDataOptional(): FileAttributeContextType {
         allowForward: false,
         allowedTime: '',
         FileDirectory: '',
+        oneTimeKey: '',
+        encryptedFilePath: ''
       },
       // no-op setter outside provider (typed as any)
       setSharedData: (() => {}) as any,
@@ -71,35 +73,3 @@ export function useSharedDataOptional(): FileAttributeContextType {
   }
   return context
 }
-
-// // Usage in ComponentA (setting data)
-// const ComponentA: React.FC = () => {
-//   const { setSharedData } = useSharedData();
-
-//   const handleClick = () => {
-//     setSharedData({
-//       id: 1,
-//       name: 'Example',
-//       value: { anything: 'you want' }
-//     });
-//   };
-
-//   return <button onClick={handleClick}>Share Data</button>;
-// };
-
-// // Usage in ComponentB (getting data)
-// const ComponentB: React.FC = () => {
-//   const { sharedData } = useSharedData();
-
-//   return <div>{sharedData?.name}</div>;
-// };
-
-// // Wrap your app with the provider
-// function App() {
-//   return (
-//     <SharedDataProvider>
-//       <ComponentA />
-//       <ComponentB />
-//     </SharedDataProvider>
-//   );
-// }

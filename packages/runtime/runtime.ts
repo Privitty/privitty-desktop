@@ -158,6 +158,10 @@ export interface Runtime {
     sourcePath: string
   ): Promise<string>
   removeTempFile(path: string): Promise<void>
+  /**
+   * Deletes an encrypted .prv file from the user's folder (outside temp).
+   */
+  deleteEncryptedFile(path: string): Promise<void>
   getWebxdcDiskUsage(accountId: number): Promise<{
     total_size: number
     data_size: number

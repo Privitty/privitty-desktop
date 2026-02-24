@@ -362,7 +362,9 @@ export async function init(cwd: string, logHandler: LogHandler) {
     return copyFileToInternalTmpDir(name, pathToFile)
   })
   ipcMain.handle('app.removeTempFile', (_ev, path) => removeTempFile(path))
-
+  ipcMain.handle('app.deleteEncryptedFile', (_ev, path) =>
+    deleteEncryptedFile(path)
+  )
   ipcMain.handle('electron.shell.openExternal', (_ev, url) =>
     shell.openExternal(url)
   )
@@ -512,4 +514,48 @@ async function removeTempFile(path: string) {
     throw new Error('Path is outside of the temp folder')
   }
   await rm(path)
+}
+/**
+ * Safely deletes an encrypted .prv file from the user's folder (outside temp).
+ * Used after a message with an encrypted attachment is successfully sent.
+ * Validates path to prevent accidental deletion of arbitrary user files.
+ */
+async function deleteEncryptedFile(filePath: string): Promise<void> {
+  if (!filePath || typeof filePath !== 'string') {
+    log.error('deleteEncryptedFile: invalid or empty path')
+    throw new Error('Invalid file path')
+  }
+
+  // Must end with .prv (case-insensitive for cross-platform)
+  const normalizedPath = filePath.replace(/\\/g, '/')
+  if (!normalizedPath.toLowerCase().endsWith('.prv')) {
+    log.error('deleteEncryptedFile: path does not end with .prv', filePath)
+    throw new Error('Only .prv encrypted files can be deleted')
+  }
+
+  // Reject paths with traversal attempts
+  if (filePath.includes('..')) {
+    log.error('deleteEncryptedFile: path contains ..', filePath)
+    throw new Error('Invalid path: traversal not allowed')
+  }
+
+  try {
+    const resolvedPath = path.resolve(filePath)
+    const stat = await fs.stat(resolvedPath)
+
+    if (!stat.isFile()) {
+      log.error('deleteEncryptedFile: path is not a file', resolvedPath)
+      throw new Error('Path is not a file')
+    }
+
+    await fs.unlink(resolvedPath)
+    log.debug('deleteEncryptedFile: deleted', resolvedPath)
+  } catch (err: any) {
+    if (err?.code === 'ENOENT') {
+      log.debug('deleteEncryptedFile: file already gone', filePath)
+      return // Idempotent: treat missing file as success
+    }
+    log.error('deleteEncryptedFile: failed', filePath, err)
+    throw err
+  }
 }

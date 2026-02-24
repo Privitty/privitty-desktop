@@ -192,7 +192,7 @@ const ForwardedTitle = ({
       openDialog(FileAccessStatusDialog, {
         chatId: message.chatId,
         filePath: message.file,
-        fileName: message.fileName || undefined,
+        fileName: fileName || undefined,
       })
     }
   }
@@ -260,8 +260,6 @@ async function showFileForward(message: T.Message): Promise<boolean> {
         console.log('file cannot be forwarded:')
       }
     } else {
-      console.log('file cannot be forwarded: ELSE')
-
       const response = await runtime.PrivittySendMessage('sendEvent', {
         event_type: 'getFileAccessStatus',
         event_data: {
@@ -434,14 +432,21 @@ async function buildContextMenu(
       rightIcon: 'bookmark-filled',
     },
     // copy link
-    link !== '' && !message.file &&
+    link !== '' &&
+      !message.file &&
       isLink && {
         label: tx('menu_copy_link_to_clipboard'),
         action: () => runtime.writeClipboardText(link),
         rightIcon: 'link',
       },
     // copy item (selection or all text)
-    text !== '' && !message.file && copy_item,
+    text !== '' && !message.file && copy_item && {
+      label: 'Copy Text', 
+      action: () => {
+        runtime.writeClipboardText(text as string)
+      },
+      rightIcon: 'copy',
+    },
     // Copy image
     showCopyImage && {
       label: tx('menu_copy_image_to_clipboard'),
@@ -544,14 +549,16 @@ async function checkIsPrivittyMessage(
  * higher-level Privitty control messages (which have `is_valid === true`)
  * and from normal chat messages (which don't go through this flow).
  */
-async function isPduMessage(message: T.Message): Promise<boolean> {
-  if (!message.text || message.text.trim() === '') {
+async function isPduMessage({
+  text,
+}: {
+  text?: string | null
+}): Promise<boolean> {
+  if (!text || text.trim() === '') {
     return false
   }
 
-  const isPrivitty = await checkIsPrivittyMessage(message.text)
-
-  return isPrivitty
+  return checkIsPrivittyMessage(text)
 }
 
 /**
@@ -612,15 +619,23 @@ function formatExpiryTime(rawMs: number): string {
  * Returns null if the message is not a Privitty message or if it's beyond the first two.
  */
 async function getPrivittyReplacementTextForFirstTwo(
-  message: T.Message,
+  {
+    id,
+    text,
+    chatId,
+  }: {
+    id: number
+    text?: string | null
+    chatId: number
+  },
   accountId: number
 ): Promise<string | null> {
-  if (!message.text || message.text.trim() === '') {
+  if (!text || text.trim() === '') {
     return null
   }
 
   // Check if this message is a Privitty message
-  const isPrivitty = await checkIsPrivittyMessage(message.text)
+  const isPrivitty = await checkIsPrivittyMessage(text)
   if (!isPrivitty) {
     return null
   }
@@ -629,38 +644,36 @@ async function getPrivittyReplacementTextForFirstTwo(
     // Get all messages in the chat up to and including this message
     const messageListItems = await BackendRemote.rpc.getMessageListItems(
       accountId,
-      message.chatId,
+      chatId,
       false,
       true
     )
 
-    // Filter to get only message items (not day markers) with text
+    // Filter to get only actual message items
     const messagesWithText = messageListItems.filter(
       item => item.kind === 'message'
     )
 
-    // Get message IDs up to and including the current message
+    // Find current message index
     const currentMessageIndex = messagesWithText.findIndex(
-      item => item.kind === 'message' && item.msg_id === message.id
+      item => item.kind === 'message' && item.msg_id === id
     )
 
     if (currentMessageIndex === -1) {
       return null
     }
 
-    // Get messages before and including the current one
+    // Get message IDs up to current message
     const relevantMessageIds = messagesWithText
       .slice(0, currentMessageIndex + 1)
-      .map(item => (item.kind === 'message' ? item.msg_id : null))
-      .filter((id): id is number => id !== null)
+      .map(item => item.msg_id)
 
-    // Fetch messages to check which ones are Privitty messages
+    // Fetch messages
     const messagesRecord = await BackendRemote.rpc.getMessages(
       accountId,
       relevantMessageIds
     )
 
-    // Convert Record to array and filter for messages with kind === 'message'
     const messages = Object.values(messagesRecord)
       .filter(
         (msg): msg is T.MessageLoadResult & { kind: 'message' } =>
@@ -668,8 +681,9 @@ async function getPrivittyReplacementTextForFirstTwo(
       )
       .map(msg => msg as T.Message)
 
-    // Check each message to see if it's a Privitty message
+    // Collect Privitty messages
     const privittyMessages: T.Message[] = []
+
     for (const msg of messages) {
       if (msg.text && msg.text.trim() !== '') {
         const isPrivittyMsg = await checkIsPrivittyMessage(msg.text)
@@ -679,24 +693,20 @@ async function getPrivittyReplacementTextForFirstTwo(
       }
     }
 
-    // Find the index of current message in Privitty messages
-    const privittyIndex = privittyMessages.findIndex(
-      (msg: T.Message) => msg.id === message.id
-    )
+    const privittyIndex = privittyMessages.findIndex(msg => msg.id === id)
 
     if (privittyIndex === -1) {
-      // Current message is not a Privitty message
       return null
     }
 
-    // Determine text based on Privitty message order (0-indexed, so 0 = first, 1 = second)
     if (privittyIndex === 0) {
       return 'Establishing guaranteed full control over your shared data, please wait...'
-    } else if (privittyIndex === 1) {
+    }
+
+    if (privittyIndex === 1) {
       return 'You are Privitty secure -- take control and revoke data anytime.'
     }
 
-    // For Privitty messages beyond the second one, return null to use original text
     return null
   } catch (error) {
     console.error('Error determining Privitty replacement text:', error)
@@ -714,6 +724,24 @@ export default function Message(props: {
   conversationType: ConversationType
 }) {
   const { message, conversationType } = props
+  const {
+    id,
+    text,
+    chatId,
+    file,
+    fileName,
+    fileMime,
+    viewType,
+    hasLocation,
+    hasHtml,
+    isInfo,
+    isForwarded,
+    systemMessageType,
+    parentId,
+    sender,
+    overrideSenderName,
+    downloadState,
+  } = message
   const [waitingCount, setWaitingCount] = useState(0)
   // Synchronously hide on first render if the text looks like a raw Privitty
   // PDU (long, continuous base64 string with no spaces). This eliminates the
@@ -751,13 +779,13 @@ export default function Message(props: {
       if (cancelled) return
       ;(async () => {
         try {
-          const shouldHide = await isPduMessage(message)
+          const shouldHide = await isPduMessage({ text })
+
           if (!cancelled) {
             setHidePduMessage(shouldHide)
           }
         } catch (error) {
           console.error('Error determining if message is PDU:', error)
-          // On error keep the heuristic value — do NOT un-hide.
         }
       })()
     })
@@ -766,18 +794,13 @@ export default function Message(props: {
       cancelled = true
       unsubscribeReady()
     }
-  }, [message.id, message.text])
+  }, [id, text])
 
-  // 🔴 Fetch red-dot "requested access" status (only for .prv files)
+  // Fetch red-dot "requested access" status (only for .prv files)
   useEffect(() => {
-    const filePath = message.file
+    const filePath = file
 
-    if (
-      !filePath ||
-      filePath === '' ||
-      !message.chatId ||
-      !filePath.endsWith('.prv')
-    ) {
+    if (!filePath || filePath === '' || !chatId || !filePath.endsWith('.prv')) {
       return
     }
 
@@ -790,8 +813,8 @@ export default function Message(props: {
         const response = await runtime.PrivittySendMessage('sendEvent', {
           event_type: 'getFileAccessStatusList',
           event_data: {
-            chat_id: String(message.chatId),
-            file_path: message.file,
+            chat_id: String(chatId),
+            file_path: filePath,
           },
         })
 
@@ -824,7 +847,7 @@ export default function Message(props: {
     return () => {
       cancelled = true
     }
-  }, [message.id, message.file, message.chatId])
+  }, [id, file, chatId])
 
   // Fetch the human-readable replacement text for the first two Privitty
   // handshake messages. Must wait for server readiness — same reason as the
@@ -839,15 +862,15 @@ export default function Message(props: {
       ;(async () => {
         try {
           const replacementText = await getPrivittyReplacementTextForFirstTwo(
-            message,
+            { id, text, chatId },
             accountId
           )
+
           if (!cancelled) {
             setPrivittyReplacementText(replacementText)
           }
         } catch (error) {
           console.error('Error getting Privitty replacement text:', error)
-          // Leave as null on error — message stays hidden, which is safe.
         }
       })()
     })
@@ -856,11 +879,11 @@ export default function Message(props: {
       cancelled = true
       unsubscribeReady()
     }
-  }, [message.id, message.text, message.chatId, accountId])
+  }, [id, text, chatId, accountId])
 
   useEffect(() => {
     // Only fetch access status for Privitty-protected files (.prv extension)
-    if (!message.file || !message.file.endsWith('.prv')) return
+    if (!file || !file.endsWith('.prv')) return
 
     let cancelled = false
     let intervalId: NodeJS.Timeout | null = null
@@ -872,8 +895,8 @@ export default function Message(props: {
         const response = await runtime.PrivittySendMessage('sendEvent', {
           event_type: 'getFileAccessStatus',
           event_data: {
-            chat_id: String(message.chatId),
-            file_path: message.file,
+            chat_id: String(chatId),
+            file_path: file,
           },
         })
 
@@ -905,7 +928,7 @@ export default function Message(props: {
       if (!cancelled) {
         fetchStatus()
         // Poll for status changes after the initial fetch
-        intervalId = setInterval(fetchStatus, 20000)
+        intervalId = setInterval(fetchStatus, 59000)
       }
     })
 
@@ -916,9 +939,7 @@ export default function Message(props: {
         clearInterval(intervalId)
       }
     }
-  }, [message.id, message.file, message.chatId])
-
-  const { id, viewType, text, hasLocation, hasHtml } = message
+  }, [id, file, chatId])
   const direction = getDirection(message)
   const status = mapCoreMsgStatus2String(message.state)
 
@@ -1067,10 +1088,7 @@ export default function Message(props: {
         let messageWidth = 0
         // set message width which is used by reaction component
         // to adapt the number of visible reactions
-        if (
-          (message.fileMime) ||
-          window.innerWidth < 900
-        ) {
+        if (fileMime || window.innerWidth < 900) {
           // image messages have a defined width
           messageWidth = messageContainerRef.current.clientWidth
         } else {
@@ -1088,7 +1106,7 @@ export default function Message(props: {
     return () => {
       window.removeEventListener('resize', resizeHandler)
     }
-  }, [message.fileMime])
+  }, [fileMime])
 
   // Completely hide raw PDU messages in the UI
   // But don't hide Privitty messages that have replacement text (we want to show those)
@@ -1097,21 +1115,19 @@ export default function Message(props: {
   }
 
   // Info Message (or Privitty messages with replacement text)
-  if (message.isInfo || privittyReplacementText !== null) {
-    const isWebxdcInfo = message.systemMessageType === 'WebxdcInfoMessage'
-    const isProtectionBrokenMsg =
-      message.systemMessageType === 'ChatProtectionDisabled'
-    const isProtectionEnabledMsg =
-      message.systemMessageType === 'ChatProtectionEnabled'
+  if (isInfo || privittyReplacementText !== null) {
+    const isWebxdcInfo = systemMessageType === 'WebxdcInfoMessage'
+    const isProtectionBrokenMsg = systemMessageType === 'ChatProtectionDisabled'
+    const isProtectionEnabledMsg = systemMessageType === 'ChatProtectionEnabled'
 
     // Message can't be sent because of `Invalid unencrypted mail to <>`
     // which is sent by chatmail servers.
     const isInvalidUnencryptedMail =
-      message.systemMessageType === 'InvalidUnencryptedMail'
+      systemMessageType === 'InvalidUnencryptedMail'
 
     // Some info messages can be clicked by the user to receive further information
     const isInteractive =
-      (isWebxdcInfo && message.parentId) ||
+      (isWebxdcInfo && parentId) ||
       message.infoContactId != null ||
       isProtectionBrokenMsg ||
       isProtectionEnabledMsg ||
@@ -1165,12 +1181,9 @@ export default function Message(props: {
           onClick={onClick}
           {...rovingTabindexAttrs}
         >
-          {isWebxdcInfo && message.parentId && (
+          {isWebxdcInfo && parentId && (
             <img
-              src={runtime.getWebxdcIconURL(
-                selectedAccountId(),
-                message.parentId
-              )}
+              src={runtime.getWebxdcIconURL(selectedAccountId(), parentId)}
             />
           )}
           {privittyReplacementText !== null
@@ -1216,7 +1229,7 @@ export default function Message(props: {
         Here it's probably fine. So there is also no need
         to specify tabindex.*/}
         <AvatarFromContact
-          contact={message.sender}
+          contact={sender}
           onClick={onContactClick}
           // tabindexForInteractiveContents={tabindexForInteractiveContents}
         />
@@ -1226,7 +1239,7 @@ export default function Message(props: {
           onClick={() => joinVideoChat(accountId, id)}
         >
           {direction === 'incoming'
-            ? tx('videochat_contact_invited_hint', message.sender.displayName)
+            ? tx('videochat_contact_invited_hint', sender.displayName)
             : tx('videochat_you_invited_hint')}
           <button
             className='join-button'
@@ -1240,7 +1253,7 @@ export default function Message(props: {
         <div className='break' />
         <div className='meta-data-container'>
           <MessageMetaData
-            fileMime={message.fileMime || null}
+            fileMime={fileMime || null}
             direction={direction}
             status={status}
             isEdited={message.isEdited}
@@ -1274,8 +1287,6 @@ export default function Message(props: {
     )
   }
 
-  const { downloadState } = message
-
   if (downloadState !== 'Done') {
     content = (
       <div className={'download'}>
@@ -1303,11 +1314,10 @@ export default function Message(props: {
   /** Whether to show author name and avatar */
   const showAuthor =
     conversationType.hasMultipleParticipants ||
-    message?.overrideSenderName ||
+    overrideSenderName ||
     message?.originalMsgId
 
   const hasText = text !== null && text !== ''
-  const fileMime = message.fileMime || null
   const isWithoutText = isMediaWithoutText(fileMime, hasText, message.viewType)
   const showAttachment = (message: T.Message) =>
     message.file &&
@@ -1321,7 +1331,7 @@ export default function Message(props: {
       openDialog(FileAccessStatusDialog, {
         chatId: message.chatId,
         filePath: message.file,
-        fileName: message.fileName || undefined,
+        fileName: fileName || undefined,
       })
     }
   }
@@ -1338,7 +1348,7 @@ export default function Message(props: {
           [styles.withReactions]: message.reactions,
           'type-sticker': viewType === 'Sticker',
           error: status === 'error',
-          forwarded: message.isForwarded,
+          forwarded: isForwarded,
           'has-html': hasHtml,
         }
       )}
@@ -1347,7 +1357,7 @@ export default function Message(props: {
     >
       {showAuthor && direction === 'incoming' && (
         <Avatar
-          contact={message.sender}
+          contact={sender}
           onContactClick={onContactClick}
           // The avatar doesn't need to be a tab stop, because
           // the author name is a tab stop and clicking on it does the same.
@@ -1357,16 +1367,16 @@ export default function Message(props: {
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div
           className='msg-container'
-          style={{ borderColor: message.sender.color }}
+          style={{ borderColor: sender.color }}
           ref={messageContainerRef}
         >
-          {message.isForwarded ? (
+          {isForwarded ? (
             <ForwardedTitle
-              contact={message.sender}
+              contact={sender}
               onContactClick={onContactClick}
               direction={direction}
               conversationType={conversationType}
-              overrideSenderName={message.overrideSenderName}
+              overrideSenderName={overrideSenderName}
               tabIndex={tabindexForInteractiveContents}
               message={message}
               openDialog={openDialog}
@@ -1427,18 +1437,18 @@ export default function Message(props: {
               </div>
             </div>
           ) : null}
-          {!message.isForwarded && (
+          {!isForwarded && (
             <div
               className={classNames('author-wrapper', {
                 'can-hide':
-                  (!message.overrideSenderName && direction === 'outgoing') ||
+                  (!overrideSenderName && direction === 'outgoing') ||
                   !showAuthor,
               })}
             >
               <AuthorName
-                contact={message.sender}
+                contact={sender}
                 onContactClick={onContactClick}
-                overrideSenderName={message.overrideSenderName}
+                overrideSenderName={overrideSenderName}
                 tabIndex={tabindexForInteractiveContents}
               />
             </div>
@@ -1499,25 +1509,27 @@ export default function Message(props: {
                   style={{
                     margin: 0,
                     fontSize: 12,
-                    color: direction === 'outgoing' ? '#ffffff' : privittyStatusColor,
+                    color:
+                      direction === 'outgoing'
+                        ? '#ffffff'
+                        : privittyStatusColor,
                   }}
                 >
                   {privittyStatusLabel}
                 </p>
               )}
               {/* "Access Until:" — shown for active and expired when expiry is set */}
-              {(privittyStatus === 'active') &&
-                privittyExpiryTime != null && (
-                  <p
-                    style={{
-                      margin: '2px 0 0',
-                      fontSize: 12,
-                      color: direction === 'outgoing' ? '#fff' : '#666666',
-                    }}
-                  >
-                    Access Until: {formatExpiryTime(privittyExpiryTime)}
-                  </p>
-                )}
+              {privittyStatus === 'active' && privittyExpiryTime != null && (
+                <p
+                  style={{
+                    margin: '2px 0 0',
+                    fontSize: 12,
+                    color: direction === 'outgoing' ? '#fff' : '#666666',
+                  }}
+                >
+                  Access Until: {formatExpiryTime(privittyExpiryTime)}
+                </p>
+              )}
             </div>
           )}
         </div>
