@@ -83,9 +83,9 @@ export SIGNING_IDENTITY="Developer ID Application: Privitty Inc (ABCD123456)"
 ```bash
 cd packages/target-electron
 
-bash build/sign-mac.sh dist/PrivittyChat-1.0.0-universal.dmg
+bash build/sign-mac.sh dist/PrivittyChat-1.0.1-universal.dmg
 # or via npm:
-pnpm sign:mac dist/PrivittyChat-1.0.0-universal.dmg
+pnpm sign:mac dist/PrivittyChat-1.0.1-universal.dmg
 ```
 
 What the script does, step by step:
@@ -98,7 +98,7 @@ What the script does, step by step:
 6. Uploads to Apple for notarization (`xcrun notarytool`) and waits
 7. Staples the notarization ticket
 
-Output: `PrivittyChat-1.0.0-universal-signed.dmg` — ready for distribution.
+Output: `PrivittyChat-1.0.1-universal-signed.dmg` — ready for distribution.
 
 ---
 
@@ -110,7 +110,7 @@ Run in PowerShell on your Windows machine:
 
 ```powershell
 .\build\sign-win.ps1 `
-    -InstallerPath "dist\PrivittyChat-Setup-1.0.0.exe" `
+    -InstallerPath "dist\PrivittyChat-Setup-1.0.1.exe" `
     -CertPath "C:\certs\privitty.pfx" `
     -CertPassword "your-pfx-password"
 ```
@@ -119,15 +119,15 @@ Run in PowerShell on your Windows machine:
 
 ```powershell
 .\build\sign-win.ps1 `
-    -InstallerPath "dist\PrivittyChat-Setup-1.0.0.exe" `
+    -InstallerPath "dist\PrivittyChat-Setup-1.0.1.exe" `
     -UseHardwareToken
 ```
 
 Sign both files (installer + portable):
 
 ```powershell
-.\build\sign-win.ps1 -InstallerPath "dist\PrivittyChat-Setup-1.0.0.exe"    -CertPath ... -CertPassword ...
-.\build\sign-win.ps1 -InstallerPath "dist\PrivittyChat-Portable-1.0.0.exe" -CertPath ... -CertPassword ...
+.\build\sign-win.ps1 -InstallerPath "dist\PrivittyChat-Setup-1.0.1.exe"    -CertPath ... -CertPassword ...
+.\build\sign-win.ps1 -InstallerPath "dist\PrivittyChat-Portable-1.0.1.exe" -CertPath ... -CertPassword ...
 ```
 
 Output: Same `.exe` files, signed in-place.
@@ -173,7 +173,7 @@ This:
 2. Generates config with `UNIVERSAL_BUILD=true`
 3. Runs `electron-builder --mac dmg --universal`
 
-Output: `dist/PrivittyChat-1.0.0-universal.dmg`
+Output: `dist/PrivittyChat-1.0.1-universal.dmg`
 
 ---
 
@@ -198,7 +198,7 @@ Output: `dist/PrivittyChat-1.0.0-universal.dmg`
 The version is set in `packages/target-electron/package.json`:
 
 ```json
-{ "version": "1.0.0" }
+{ "version": "1.0.1" }
 ```
 
 Change it before tagging. The CI workflow also accepts a version override via `workflow_dispatch` so you can override without editing files.
