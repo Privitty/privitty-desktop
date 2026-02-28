@@ -3,7 +3,6 @@
   margin-right: 10px;
   position: relative;
   line-height: 1; // So that it doesn't change the message height.
-  top: 16px;
 }
 
 .emoji {
@@ -18,7 +17,7 @@
   }
 
   &.isFromSelf {
-    background-color: var(--messageOutgoingBg);
+    background-color: var(--messageIncomingBg);
   }
 
   &.showMore {
