@@ -440,13 +440,15 @@ async function buildContextMenu(
         rightIcon: 'link',
       },
     // copy item (selection or all text)
-    text !== '' && !message.file && copy_item && {
-      label: 'Copy Text', 
-      action: () => {
-        runtime.writeClipboardText(text as string)
+    text !== '' &&
+      !message.file &&
+      copy_item && {
+        label: 'Copy Text',
+        action: () => {
+          runtime.writeClipboardText(text as string)
+        },
+        rightIcon: 'copy',
       },
-      rightIcon: 'copy',
-    },
     // Copy image
     showCopyImage && {
       label: tx('menu_copy_image_to_clipboard'),
@@ -1387,13 +1389,15 @@ export default function Message(props: {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
+                marginTop: '-4px',
+                marginBottom: '4px',
               }}
             >
               <div style={{ color: '#FFF' }}>{message.viewType}</div>
 
               {/* Bell wrapper */}
               <div style={{ position: 'relative', display: 'inline-block' }}>
-                {/* 🔴 Red notification dot */}
+                {/* Red notification dot */}
                 {waitingCount > 0 && (
                   <div
                     style={{
