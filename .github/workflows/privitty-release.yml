@@ -92,8 +92,8 @@ jobs:
             node_modules/@parcel/watcher-win32-arm64 \
             node_modules/@parcel/watcher-win32-ia32 \
             node_modules/@parcel/watcher-win32-x64 \
-            node_modules/@privitty/deltachat-rpc-server-darwin-arm64 \
-            node_modules/@privitty/deltachat-rpc-server-darwin-x64 \
+            node_modules/@privitty/stdio-rpc-server-darwin-arm64 \
+            node_modules/@privitty/stdio-rpc-server-darwin-x64 \
             node_modules/@privitty/privitty-core-darwin-arm64 \
             node_modules/@privitty/privitty-core-darwin-x64 \
             node_modules/@privitty/privitty-core-linux-arm64 \
@@ -198,9 +198,9 @@ jobs:
           path: packages/target-electron/dist/*.exe
           retention-days: 45
 
-  # ── Linux: AppImage + deb, x64 + ia32 (no signing required) ─────────────
+  # ── Linux: AppImage + deb, x64 (no signing required) ────────────────────
   build-linux:
-    name: Linux – AppImage + deb, x64 + ia32
+    name: Linux – AppImage + deb, x64
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -246,26 +246,24 @@ jobs:
         working-directory: packages/target-electron
         run: node ../../bin/writeFlatDependencies.js packages/target-electron node_modules
 
-      - name: Build Linux packages (x64 + ia32)
+      - name: Build Linux packages (x64)
         working-directory: packages/target-electron
         run: |
           pnpm exec electron-builder \
             --config ./electron-builder.json5 \
             --linux dir AppImage deb \
-            --x64 --ia32 \
+            --x64 \
             --publish never
 
       - name: Create linux-unpacked tarballs for Flathub
         working-directory: packages/target-electron
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          for ARCH_DIR in linux-unpacked linux-ia32-unpacked; do
-            if [ -d "dist/$ARCH_DIR" ]; then
-              TARBALL="dist/PrivittyChat-${VERSION}-${ARCH_DIR}.tar.gz"
-              tar -czf "$TARBALL" -C dist "$ARCH_DIR"
-              echo "Created $TARBALL for Flathub manifest"
-            fi
-          done
+          if [ -d "dist/linux-unpacked" ]; then
+            TARBALL="dist/PrivittyChat-${VERSION}-linux-unpacked.tar.gz"
+            tar -czf "$TARBALL" -C dist linux-unpacked
+            echo "Created $TARBALL for Flathub manifest"
+          fi
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4

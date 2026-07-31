@@ -160,6 +160,7 @@ async function deleteNotNeededPrebuildsFromUnpackedASAR(
   // platform+arch. Mac: may have darwin-universal (lipo fat binary) for universal DMG.
   const currentPlatform = context.electronPlatformName
   const currentArch = convertArch(context.arch)
+  const isUniversalBuild = env.UNIVERSAL_BUILD === 'true'
 
   const toDelete = prebuilds.filter(name => {
     if (!name.startsWith('stdio-rpc-server-')) return false
@@ -169,6 +170,11 @@ async function deleteNotNeededPrebuildsFromUnpackedASAR(
     const pkgArch = parts[4]
 
     if (pkgOs !== currentPlatform) return true // delete: wrong OS
+
+    // Universal DMG: only the lipo fat-binary package may remain.
+    if (isUniversalBuild && isMacBuild) {
+      return pkgArch !== 'universal'
+    }
 
     if (pkgArch === currentArch) return false // keep: matches platform + arch
     if (isMacBuild && pkgArch === 'universal') return false // keep: universal DMG fat binary
@@ -199,6 +205,15 @@ async function deleteNotNeededPrebuildsFromUnpackedASAR(
   if (rpcServerPlatformPkgs.length !== 1 && !isMacBuild) {
     throw new Error(
       "prebuilds were not cleared correctly or prebuild is missing, there should only be one (unless it's mac)"
+    )
+  }
+  if (
+    isUniversalBuild &&
+    isMacBuild &&
+    rpcServerPlatformPkgs.length !== 1
+  ) {
+    throw new Error(
+      'universal mac build should contain exactly one stdio-rpc-server-darwin-universal package'
     )
   }
 }
