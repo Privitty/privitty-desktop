@@ -14,6 +14,13 @@ interface PeerCapabilities {
   remoteAccess: boolean
   shimVersion: number
   protocols: string[]
+  portfwdTargets?: LanReachTarget[]
+}
+
+interface LanReachTarget {
+  label: string
+  ip: string
+  port: number
 }
 
 interface PeerCapabilitiesResponse {
@@ -41,14 +48,14 @@ interface TunnelStatusResponse {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const SUPPORTED_PROTOCOLS = ['ssh', 'rdp', 'vnc'] as const
+const SUPPORTED_PROTOCOLS = ['ssh', 'rdp', 'vnc', 'portfwd'] as const
 type Protocol = (typeof SUPPORTED_PROTOCOLS)[number]
 
 function filterProtocols(advertised: string[]): Protocol[] {
-  if (!advertised.length) return [...SUPPORTED_PROTOCOLS]
+  if (!advertised.length) return ['ssh', 'rdp', 'vnc']
   const lower = new Set(advertised.map(p => p.toLowerCase()))
   const filtered = SUPPORTED_PROTOCOLS.filter(p => lower.has(p))
-  return filtered.length ? filtered : [...SUPPORTED_PROTOCOLS]
+  return filtered.length ? filtered : ['ssh', 'rdp', 'vnc']
 }
 
 function protocolLabel(p: string): string {
@@ -57,6 +64,8 @@ function protocolLabel(p: string): string {
       return 'RDP (Remote Desktop)'
     case 'vnc':
       return 'VNC (Virtual Desktop)'
+    case 'portfwd':
+      return 'LAN Reach (TCP Forward)'
     default:
       return 'SSH (Secure Shell)'
   }
@@ -68,6 +77,8 @@ function connectionHintText(protocol: string, port: number): string {
       return `Open your RDP client and connect to:\n127.0.0.1:${port}`
     case 'vnc':
       return `Open your VNC viewer and connect to:\n127.0.0.1:${port}`
+    case 'portfwd':
+      return `Point your engineering tool (e.g. GX Works) at:\n127.0.0.1:${port}`
     default:
       return `Connect your SSH client:\nssh -p ${port} user@127.0.0.1`
   }
@@ -83,7 +94,8 @@ export interface RemoteAccessDialogProps extends DialogProps {
 }
 
 type Phase =
-  | { kind: 'pick'; protocols: Protocol[] }
+  | { kind: 'pick'; protocols: Protocol[]; portfwdTargets: LanReachTarget[] }
+  | { kind: 'pick_target'; targets: LanReachTarget[]; localPort: string }
   | { kind: 'connecting'; protocol: Protocol; statusText: string }
   | { kind: 'active'; protocol: Protocol; port: number; sessionId: string | null }
   | { kind: 'closing' }
@@ -142,7 +154,8 @@ export default function RemoteAccessDialog({
       )
       if (abortRef.current) return
       const protocols = filterProtocols(caps?.capabilities?.protocols ?? [])
-      setPhase({ kind: 'pick', protocols })
+      const portfwdTargets = caps?.capabilities?.portfwdTargets ?? []
+      setPhase({ kind: 'pick', protocols, portfwdTargets })
     } catch (e: any) {
       if (!abortRef.current) {
         setPhase({ kind: 'error', msg: e?.message ?? 'Failed to load capabilities' })
@@ -152,6 +165,10 @@ export default function RemoteAccessDialog({
 
   const openTunnel = useCallback(
     async (protocol: Protocol) => {
+      if (protocol === 'portfwd') {
+        // Should go through pick_target first.
+        return
+      }
       setPhase({ kind: 'connecting', protocol, statusText: 'Sending tunnel offer…' })
 
       const WAIT_TIMEOUT_MS = 180_000
@@ -209,6 +226,87 @@ export default function RemoteAccessDialog({
           setPhase({
             kind: 'error',
             msg: e?.message ?? 'Tunnel connection failed',
+          })
+        }
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [accountId, chatId]
+  )
+
+  const openLanReach = useCallback(
+    async (target: LanReachTarget, localPort: number) => {
+      setPhase({
+        kind: 'connecting',
+        protocol: 'portfwd',
+        statusText: `Opening LAN Reach to ${target.ip}:${target.port}…`,
+      })
+
+      const WAIT_TIMEOUT_MS = 180_000
+      const POLL_INTERVAL_MS = 1_000
+      const deadline = Date.now() + WAIT_TIMEOUT_MS
+
+      try {
+        const offer = await rpc.privittySendLanReachOffer(
+          accountId,
+          chatId,
+          target.ip,
+          target.port,
+          localPort
+        )
+
+        setPhase({
+          kind: 'connecting',
+          protocol: 'portfwd',
+          statusText: 'Waiting for edge gateway…',
+        })
+
+        while (Date.now() < deadline) {
+          if (abortRef.current) return
+          await sleep(POLL_INTERVAL_MS)
+          if (abortRef.current) return
+
+          const status: TunnelStatusResponse = await rpc.privittyGetTunnelStatus(
+            accountId,
+            chatId
+          )
+          if (!status) continue
+
+          if (status.readyForClient) {
+            const port = status.localShimPort ?? offer.localPort
+            setPhase({
+              kind: 'active',
+              protocol: 'portfwd',
+              port,
+              sessionId: offer.sessionId ?? null,
+            })
+            return
+          }
+
+          if (status.irohLinked) {
+            setPhase({
+              kind: 'connecting',
+              protocol: 'portfwd',
+              statusText: 'Connected — waiting for bridge…',
+            })
+          } else if (status.bridgeRunning) {
+            setPhase({
+              kind: 'connecting',
+              protocol: 'portfwd',
+              statusText: 'Bridge starting…',
+            })
+          }
+        }
+
+        setPhase({
+          kind: 'error',
+          msg: 'Timed out waiting for LAN Reach tunnel (180 s). Is the edge online?',
+        })
+      } catch (e: any) {
+        if (!abortRef.current) {
+          setPhase({
+            kind: 'error',
+            msg: e?.message ?? 'LAN Reach connection failed',
           })
         }
       }
@@ -302,7 +400,24 @@ export default function RemoteAccessDialog({
               {phase.protocols.map(p => (
                 <button
                   key={p}
-                  onClick={() => openTunnel(p)}
+                  onClick={() => {
+                    if (p === 'portfwd') {
+                      if (!phase.portfwdTargets.length) {
+                        setPhase({
+                          kind: 'error',
+                          msg: 'No LAN Reach targets provisioned. Ask your Watchtower admin to whitelist a device first.',
+                        })
+                        return
+                      }
+                      setPhase({
+                        kind: 'pick_target',
+                        targets: phase.portfwdTargets,
+                        localPort: String(phase.portfwdTargets[0]?.port ?? 5007),
+                      })
+                    } else {
+                      openTunnel(p)
+                    }
+                  }}
                   style={{
                     padding: '10px 16px',
                     borderRadius: 6,
@@ -318,6 +433,79 @@ export default function RemoteAccessDialog({
                 </button>
               ))}
             </div>
+          </DialogContent>
+        </DialogBody>
+        <DialogFooter>
+          <button
+            className='delta-button-round delta-button-secondary'
+            onClick={onClose}
+          >
+            {tx('cancel')}
+          </button>
+        </DialogFooter>
+      </DialogWithHeader>
+    )
+  }
+
+  if (phase.kind === 'pick_target') {
+    return (
+      <DialogWithHeader title='LAN Reach — Choose Target' onClose={onClose}>
+        <DialogBody>
+          <DialogContent>
+            <p style={{ marginBottom: 12, fontSize: '0.85em', opacity: 0.72 }}>
+              Select a Watchtower-approved LAN device, then set the local shim port
+              for your engineering tool (e.g. GX Works).
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {phase.targets.map(t => (
+                <button
+                  key={`${t.ip}:${t.port}`}
+                  onClick={() => {
+                    const lp = Number(phase.localPort) || t.port
+                    openLanReach(t, lp)
+                  }}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: 6,
+                    border: '1px solid var(--colorDeltaBlue)',
+                    background: 'transparent',
+                    color: 'var(--colorDeltaBlue)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontWeight: 500,
+                  }}
+                >
+                  <div>{t.label || `${t.ip}:${t.port}`}</div>
+                  <div style={{ fontSize: '0.8em', opacity: 0.7, fontFamily: 'monospace' }}>
+                    {t.ip}:{t.port}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <label style={{ display: 'block', fontSize: '0.85em' }}>
+              Local port (tool connects to 127.0.0.1:&lt;port&gt;)
+              <input
+                type='number'
+                value={phase.localPort}
+                onChange={e =>
+                  setPhase(prev =>
+                    prev?.kind === 'pick_target'
+                      ? { ...prev, localPort: e.target.value }
+                      : prev
+                  )
+                }
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  marginTop: 6,
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  border: '1px solid var(--outlinePrimary, #ccc)',
+                  background: 'var(--bgPrimary)',
+                  color: 'var(--textPrimary)',
+                }}
+              />
+            </label>
           </DialogContent>
         </DialogBody>
         <DialogFooter>

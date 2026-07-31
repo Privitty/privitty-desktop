@@ -11,6 +11,7 @@ export interface PeerCapabilities {
   remoteAccess: boolean
   shimVersion: number
   protocols: string[]
+  portfwdTargets?: { label: string; ip: string; port: number }[]
 }
 
 export interface PeerCapabilitiesResponse {
