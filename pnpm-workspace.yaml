@@ -2,8 +2,8 @@ packages:
   - packages/*
 catalog:
   # deltachat specific
-  '@privitty/jsonrpc-client': 2.49.0
-  '@privitty/stdio-rpc-server': 2.49.0
+  '@privitty/jsonrpc-client': 2.50.0
+  '@privitty/stdio-rpc-server': 2.50.0
   '@webxdc/types': ^2.1.2
   'calls-webapp': 'github:deltachat/calls-webapp#build-for-deltachat-desktop'
 
