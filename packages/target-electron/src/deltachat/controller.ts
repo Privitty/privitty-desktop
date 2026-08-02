@@ -239,16 +239,32 @@ export default class DeltaChatController extends EventEmitter {
       log.warn('openPrivittyVault: privittyInitialize failed (non-fatal):', error)
     }
 
+    // Obtain the Delta Chat contact-invite URL for this account.
+    // Mirrors Android's generateInviteLink() → ctx.getSecurejoinQr(0).
+    // `chat_id = null` → 1:1 contact-invite (not a group invite).
+    // Non-fatal: if the DC context isn't ready the invite link is simply omitted.
+    let inviteLink: string | null = null
+    try {
+      inviteLink = await (this.jsonrpcRemote.rpc as any).getChatSecurejoinQrCode(
+        accountId,
+        null
+      )
+      log.info('openPrivittyVault: invite link generated', { inviteLink })
+    } catch (error) {
+      log.warn('openPrivittyVault: could not generate invite link (non-fatal):', error)
+    }
+
     // Initialise the global Privitty license manager.
     //
     // The license manager is a process-level singleton — there is NO accountId
     // parameter on any license JSONRPC method.  The correct signature is:
-    //   privittyLicenseInit(dataDir, licensePath, serverUrl)
+    //   privittyLicenseInit(dataDir, licensePath, serverUrl, inviteLink?)
     //
-    // dataDir  = <configPath>/license  (where privitty_license.db is stored)
+    // dataDir     = <configPath>/license  (where privitty_license.db is stored)
     // licensePath = <configPath>/license/privitty.lic if the JWT file is present,
     //               null otherwise (manager reads from the cached DB)
-    // serverUrl = production PLM endpoint for activation / sync
+    // serverUrl   = production PLM endpoint for activation / sync
+    // inviteLink  = OPENPGP4FPR contact invite URL forwarded to WatchTower
     {
       const licDir = join(getConfigPath(), 'license')
       const licFilePath = join(licDir, 'privitty.lic')
@@ -264,7 +280,8 @@ export default class DeltaChatController extends EventEmitter {
         await (this.jsonrpcRemote.rpc as any).privittyLicenseInit(
           licDir,       // dataDir — where privitty_license.db is stored
           licensePath,  // JWT file path, or null to use cached DB state
-          PLM_SERVER_URL
+          PLM_SERVER_URL,
+          inviteLink    // contact-invite URL so WatchTower can link this device
         )
         log.info('openPrivittyVault: license manager initialised', { licDir })
       } catch (error) {
@@ -294,6 +311,19 @@ export default class DeltaChatController extends EventEmitter {
             log.info('openPrivittyVault: license status after auto-activate', { statusCode })
           } catch (activateErr) {
             log.warn('openPrivittyVault: auto-activation failed (user can retry via dialog):', activateErr)
+          }
+        } else if (
+          (statusCode === 0 || statusCode === 1) &&
+          inviteLink !== null
+        ) {
+          // Device is already activated — push the invite link to PLM/WatchTower
+          // via a lightweight sync so the link status reflects correctly in WT.
+          try {
+            await (this.jsonrpcRemote.rpc as any).privittyLicenseSetInviteLink(inviteLink)
+            await (this.jsonrpcRemote.rpc as any).privittyLicenseSync()
+            log.info('openPrivittyVault: invite link synced to PLM for already-active device')
+          } catch (syncErr) {
+            log.warn('openPrivittyVault: invite link sync failed (non-fatal):', syncErr)
           }
         }
 

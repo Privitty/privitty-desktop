@@ -84,8 +84,26 @@ async function initAndActivateLicense(licPath: string): Promise<{ statusCode: nu
     return { statusCode: 5 /* NOT_INITIALIZED */ }
   }
 
-  // Initialise the global license manager with the JWT file and PLM server URL.
-  await rpc.privittyLicenseInit(licDir, licPath, PLM_SERVER_URL)
+  // Obtain the Delta Chat contact-invite URL for this account.
+  // Mirrors Android's generateInviteLink() → ctx.getSecurejoinQr(0).
+  // chat_id = null → 1:1 contact-invite (not a group invite).
+  // Non-fatal: if the DC context is not yet connected, the invite link
+  // will be picked up on the next ImapConnected event via openPrivittyVault.
+  let inviteLink: string | null = null
+  try {
+    const accountId: number =
+      (await dcController.jsonrpcRemote.rpc.getSelectedAccountId()) || 0
+    if (accountId !== 0) {
+      inviteLink = await rpc.getChatSecurejoinQrCode(accountId, null)
+      log.info('initAndActivateLicense: invite link generated', { inviteLink })
+    }
+  } catch (e) {
+    log.warn('initAndActivateLicense: could not generate invite link (non-fatal):', e)
+  }
+
+  // Initialise the global license manager with the JWT file, PLM server URL,
+  // and the contact-invite URL forwarded to WatchTower for device pairing.
+  await rpc.privittyLicenseInit(licDir, licPath, PLM_SERVER_URL, inviteLink)
   log.info('initAndActivateLicense: licenseInit completed', { licDir })
 
   // Check current status.
