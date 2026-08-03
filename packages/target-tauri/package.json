@@ -20,6 +20,7 @@
     "lint": "cd src-tauri && cargo clippy"
   },
   "dependencies": {
+    "@privitty/stdio-rpc-server": "catalog:",
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-log": "^2.4.0",
     "@tauri-apps/plugin-opener": "^2.2.6",
@@ -32,8 +33,8 @@
     "@tauri-apps/cli": "^2.7.0",
     "@tauri-apps/plugin-clipboard-manager": "^2.2.2",
     "@tauri-apps/plugin-dialog": "^2.2.1",
-    "@webxdc/types": "catalog:",
     "@types/node": "catalog:",
+    "@webxdc/types": "catalog:",
     "esbuild": "^0.25.0",
     "typescript": "^5.2.2"
   }

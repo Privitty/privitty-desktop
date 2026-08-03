@@ -220,9 +220,13 @@ export default class DeltaChatController extends EventEmitter {
    *
    * Triggered by the ImapConnected core event.
    */
-  async openPrivittyVault() {
+  async openPrivittyVault(contextId?: number) {
+    // Use the contextId from the ImapConnected event when available — that is
+    // the exact account that connected, which may differ from getSelectedAccountId()
+    // in multi-account setups.  Using the wrong account causes getChatSecurejoinQrCode
+    // to fail with "No self addr configured" even though IMAP is up.
     const accountId: number =
-      (await this.jsonrpcRemote.rpc.getSelectedAccountId()) || 0
+      contextId || (await this.jsonrpcRemote.rpc.getSelectedAccountId()) || 0
 
     if (accountId === 0) {
       log.warn('openPrivittyVault: no account selected — skipping')
@@ -239,19 +243,49 @@ export default class DeltaChatController extends EventEmitter {
       log.warn('openPrivittyVault: privittyInitialize failed (non-fatal):', error)
     }
 
-    // Obtain the Delta Chat contact-invite URL for this account.
-    // Mirrors Android's generateInviteLink() → ctx.getSecurejoinQr(0).
-    // `chat_id = null` → 1:1 contact-invite (not a group invite).
-    // Non-fatal: if the DC context isn't ready the invite link is simply omitted.
+    // Obtain the Delta Chat contact-invite URL.
+    // Mirrors Android's: isConfigured() == 1 → getSecurejoinQr(0)
+    //
+    // Prefer the account that just connected (contextId), but also check ALL
+    // configured accounts — the securejoin QR only needs the on-disk key pair,
+    // NOT active IMAP.  This means we get the link even if the triggering
+    // account is freshly configured and hasn't fully connected yet.
     let inviteLink: string | null = null
+    const accountsToTry: number[] = [accountId]
     try {
-      inviteLink = await (this.jsonrpcRemote.rpc as any).getChatSecurejoinQrCode(
-        accountId,
-        null
-      )
-      log.info('openPrivittyVault: invite link generated', { inviteLink })
-    } catch (error) {
-      log.warn('openPrivittyVault: could not generate invite link (non-fatal):', error)
+      const allIds: number[] = await (this.jsonrpcRemote.rpc as any).getAllAccountIds()
+      for (const id of allIds) {
+        if (!accountsToTry.includes(id)) accountsToTry.push(id)
+      }
+    } catch (_) { /* ignore — we'll still try the primary account */ }
+
+    for (const tryId of accountsToTry) {
+      try {
+        const configured: boolean = await (this.jsonrpcRemote.rpc as any).isConfigured(tryId)
+        if (!configured) continue
+        // Retry once after 3 s: on a freshly created chatmail account the
+        // Ed25519 key pair may not be on disk yet when ImapConnected fires.
+        let link: string | null = null
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
+          try {
+            link = await (this.jsonrpcRemote.rpc as any).getChatSecurejoinQrCode(tryId, null)
+            if (link) break
+          } catch (inner) {
+            log.info('openPrivittyVault: getChatSecurejoinQrCode attempt failed', { tryId, attempt, reason: (inner as any)?.message ?? inner })
+          }
+        }
+        if (link) {
+          inviteLink = link
+          log.info('openPrivittyVault: invite link generated', { accountId: tryId, inviteLink })
+          break
+        }
+      } catch (error) {
+        log.info('openPrivittyVault: could not generate invite link for account (trying next):', { tryId, error })
+      }
+    }
+    if (!inviteLink) {
+      log.warn('openPrivittyVault: no configured account has an invite link yet — will retry on next ImapConnected')
     }
 
     // Initialise the global Privitty license manager.
@@ -312,18 +346,24 @@ export default class DeltaChatController extends EventEmitter {
           } catch (activateErr) {
             log.warn('openPrivittyVault: auto-activation failed (user can retry via dialog):', activateErr)
           }
-        } else if (
-          (statusCode === 0 || statusCode === 1) &&
-          inviteLink !== null
-        ) {
-          // Device is already activated — push the invite link to PLM/WatchTower
-          // via a lightweight sync so the link status reflects correctly in WT.
+        } else if (statusCode === 0 || statusCode === 1) {
+          // Device is already activated — re-activate unconditionally so PLM
+          // and WatchTower always have an up-to-date record (PLM upserts on
+          // device_id, so no extra seat is consumed).
+          //
+          // If an invite link is available, set it first so WatchTower can
+          // link this device and show "Ready" for the invite status.
+          // We do NOT gate on inviteLink !== null: the device must appear in
+          // WatchTower's Connected Apps regardless of whether the securejoin
+          // QR is available at this moment.
           try {
-            await (this.jsonrpcRemote.rpc as any).privittyLicenseSetInviteLink(inviteLink)
-            await (this.jsonrpcRemote.rpc as any).privittyLicenseSync()
-            log.info('openPrivittyVault: invite link synced to PLM for already-active device')
+            if (inviteLink !== null) {
+              await (this.jsonrpcRemote.rpc as any).privittyLicenseSetInviteLink(inviteLink)
+            }
+            await (this.jsonrpcRemote.rpc as any).privittyLicenseActivate()
+            log.info('openPrivittyVault: re-activation pushed to PLM', { inviteLinkPresent: inviteLink !== null })
           } catch (syncErr) {
-            log.warn('openPrivittyVault: invite link sync failed (non-fatal):', syncErr)
+            log.warn('openPrivittyVault: re-activation failed (non-fatal):', syncErr)
           }
         }
 
@@ -455,7 +495,8 @@ export default class DeltaChatController extends EventEmitter {
               } else if (event.kind.startsWith('Error')) {
                 logCoreEvent.error(contextId, event.msg)
               } else if (event.kind === 'ImapConnected') {
-                this.openPrivittyVault()
+                log.info('ImapConnected: triggering openPrivittyVault', { contextId })
+                this.openPrivittyVault(contextId)
               } else if (app.rc['log-debug']) {
                 // in debug mode log all core events
                 const event_clone = Object.assign({}, event) as Partial<

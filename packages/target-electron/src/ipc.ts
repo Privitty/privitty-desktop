@@ -75,6 +75,47 @@ export function getDCJsonrpcRemote() {
  *
  * Returns the final status code (0 = ACTIVE, 99 = BYPASS/debug, etc.).
  */
+/**
+ * Iterate every DeltaChat account and return the first contact-invite URL
+ * from a *configured* (email-set-up) account.
+ *
+ * Mirrors Android's `dcContext.isConfigured() == 1 → getSecurejoinQr(0)`.
+ * Importantly, this works WITHOUT active IMAP — the securejoin QR only
+ * requires the key-pair that is written to disk during account setup.
+ *
+ * Returns null if no account is configured yet (first-run case).
+ */
+async function getInviteLinkFromAnyConfiguredAccount(rpc: any): Promise<string | null> {
+  try {
+    const allIds: number[] = await rpc.getAllAccountIds()
+    for (const id of allIds) {
+      try {
+        const configured: boolean = await rpc.isConfigured(id)
+        if (!configured) continue
+        // Retry once after 3 s — on a freshly created chatmail account
+        // the Ed25519 key pair may not be on disk yet.
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
+          try {
+            const link: string | null = await rpc.getChatSecurejoinQrCode(id, null)
+            if (link) {
+              log.info('getInviteLinkFromAnyConfiguredAccount: found link', { accountId: id, attempt })
+              return link
+            }
+          } catch (inner) {
+            log.info('getInviteLinkFromAnyConfiguredAccount: attempt failed', { id, attempt, reason: (inner as any)?.message ?? inner })
+          }
+        }
+      } catch (inner) {
+        log.info('getInviteLinkFromAnyConfiguredAccount: skipping account', { id, reason: (inner as any)?.message ?? inner })
+      }
+    }
+  } catch (e) {
+    log.warn('getInviteLinkFromAnyConfiguredAccount: failed to list accounts:', e)
+  }
+  return null
+}
+
 async function initAndActivateLicense(licPath: string): Promise<{ statusCode: number }> {
   const licDir = dirname(licPath)
   const rpc = dcController?.jsonrpcRemote?.rpc as any
@@ -84,26 +125,22 @@ async function initAndActivateLicense(licPath: string): Promise<{ statusCode: nu
     return { statusCode: 5 /* NOT_INITIALIZED */ }
   }
 
-  // Obtain the Delta Chat contact-invite URL for this account.
-  // Mirrors Android's generateInviteLink() → ctx.getSecurejoinQr(0).
-  // chat_id = null → 1:1 contact-invite (not a group invite).
-  // Non-fatal: if the DC context is not yet connected, the invite link
-  // will be picked up on the next ImapConnected event via openPrivittyVault.
-  let inviteLink: string | null = null
-  try {
-    const accountId: number =
-      (await dcController.jsonrpcRemote.rpc.getSelectedAccountId()) || 0
-    if (accountId !== 0) {
-      inviteLink = await rpc.getChatSecurejoinQrCode(accountId, null)
-      log.info('initAndActivateLicense: invite link generated', { inviteLink })
-    }
-  } catch (e) {
-    log.warn('initAndActivateLicense: could not generate invite link (non-fatal):', e)
+  // Mirror Android's ImportLicenseActivity flow:
+  //   1. Try to get the invite link from ANY configured account NOW (no IMAP needed)
+  //   2. Init the license manager with the link if we have it
+  //   3. Activate — device shows up in WatchTower with invite link "Ready" in one shot
+  //
+  // Android uses dcContext.isConfigured() == 1 → getSecurejoinQr(0).
+  // The securejoin QR only needs the key-pair on disk; active IMAP is NOT required.
+  // We iterate all accounts so this works regardless of which is "selected".
+  const inviteLinkForInit = await getInviteLinkFromAnyConfiguredAccount(rpc)
+  if (inviteLinkForInit) {
+    log.info('initAndActivateLicense: invite link obtained before init', { inviteLinkForInit })
+  } else {
+    log.info('initAndActivateLicense: no configured account yet — invite link will be pushed on first ImapConnected')
   }
 
-  // Initialise the global license manager with the JWT file, PLM server URL,
-  // and the contact-invite URL forwarded to WatchTower for device pairing.
-  await rpc.privittyLicenseInit(licDir, licPath, PLM_SERVER_URL, inviteLink)
+  await rpc.privittyLicenseInit(licDir, licPath, PLM_SERVER_URL, inviteLinkForInit ?? null)
   log.info('initAndActivateLicense: licenseInit completed', { licDir })
 
   // Check current status.

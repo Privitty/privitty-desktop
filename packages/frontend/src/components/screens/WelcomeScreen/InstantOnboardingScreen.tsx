@@ -151,6 +151,31 @@ export default function InstantOnboardingScreen({
       // Automatically create a "chatmail" account
       const chatId = await createInstantAccount(selectedAccountId)
 
+      // Push the Privitty invite link to PLM/WatchTower now that the
+      // chatmail account is fully configured and the Ed25519 key pair
+      // is on disk.  This is the most reliable moment — equivalent to
+      // Android's generateInviteLink() called right after lic.activate().
+      //
+      // We wait up to 6 s with a single retry in case key generation
+      // finishes just after the configure dialog closes.
+      ;(async () => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
+          try {
+            const rpc = BackendRemote.rpc as any
+            const link: string | null = await rpc.getChatSecurejoinQrCode(selectedAccountId, null)
+            if (link) {
+              await rpc.privittyLicenseSetInviteLink(link)
+              await rpc.privittyLicenseActivate()
+              // success — stop retrying
+              break
+            }
+          } catch (_e) {
+            // non-fatal — ImapConnected fallback will handle it
+          }
+        }
+      })()
+
       // We redirect the user to the main screen after the account got
       // successfully created
       resetInstantOnboarding()
