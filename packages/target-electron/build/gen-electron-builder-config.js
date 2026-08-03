@@ -252,13 +252,9 @@ build['win'] = {
   // Use a fixed prefix for Windows installer filenames
   artifactName: 'PrivittyChat-${version}-Setup.${arch}.${ext}', // specifying it inside of build['nsis'] does not work for unknown reasons.
   files: [...files, PREBUILD_FILTERS.NOT_MAC, PREBUILD_FILTERS.NOT_LINUX],
-  ...(shouldSign
-    ? {}
-    : {
-        sign: null,
-        signDlls: false,
-        signAndEditExecutable: false,
-      }),
+  // Disable signing when CSC_LINK is absent (unsigned CI builds).
+  // signAndEditExecutable is the correct electron-builder 26.x knob.
+  signAndEditExecutable: shouldSign,
 }
 
 build['portable'] = {
