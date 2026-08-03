@@ -162,6 +162,8 @@
 
   & > .file-icon {
     background: url('./images/file-gradient.svg') no-repeat center;
+    background-size: contain;
+    flex-shrink: 0;
     height: 44px;
     width: 56px;
     margin-inline-start: -13px;
@@ -192,6 +194,14 @@
 
       color: var(--messageAttachmentIconExtentionColor);
       font-family: monospace;
+    }
+
+    &.file-icon-image {
+      background-image: url('./images/image-gradient.svg');
+    }
+
+    &.file-icon-video {
+      background-image: url('./images/video-gradient.svg');
     }
   }
 

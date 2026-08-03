@@ -28,6 +28,29 @@ import AudioPlayer from '../AudioPlayer'
 import { T, C } from '@privitty/jsonrpc-client'
 import { selectedAccountId } from '../../ScreenController'
 import { extname } from 'path'
+import { getPrivittyFileGradientIconClass } from '../../utils/privittyFileTypeLabel'
+
+function FileAttachmentIcon({
+  attachment,
+  onDragStart,
+}: {
+  attachment: MessageTypeAttachmentSubset
+  onDragStart?: React.DragEventHandler<HTMLDivElement>
+}) {
+  const { fileMime, fileName } = attachment
+  const extension = getExtension(attachment)
+  const gradientIconClass = getPrivittyFileGradientIconClass(fileName)
+
+  return (
+    <div
+      className={classNames('file-icon', gradientIconClass)}
+      draggable='true'
+      onDragStart={onDragStart}
+      title={fileMime || 'null'}
+    >
+    </div>
+  )
+}
 
 type PrivittyStatus =
   | 'active'
@@ -635,10 +658,8 @@ export default function Attachment({
       </div>
     )
   } else {
-    const { fileName, fileBytes, fileMime }: MessageTypeAttachmentSubset =
-      message
+    const { fileName, fileBytes }: MessageTypeAttachmentSubset = message
 
-    const extension = getExtension(message)
     return (
       <button
         className={classNames(
@@ -653,18 +674,10 @@ export default function Attachment({
         onClick={onClickAttachment}
         tabIndex={tabindexForInteractiveContents}
       >
-        <div
-          className='file-icon'
-          draggable='true'
+        <FileAttachmentIcon
+          attachment={message}
           onDragStart={dragAttachmentOut.bind(null, message.file)}
-          title={fileMime || 'null'}
-        >
-          {extension ? (
-            <div className='file-extension'>
-              {fileMime === 'application/octet-stream' ? '' : extension}
-            </div>
-          ) : null}
-        </div>
+        />
         <div
           className='text-part'
           style={fileColors ? { color: fileColors.textColor } : undefined}
@@ -764,23 +777,14 @@ export function DraftAttachment({
       </div>
     )
   } else {
-    const { file, fileName, fileBytes, fileMime } = attachment
-    const extension = getExtension(attachment)
+    const { file, fileName, fileBytes } = attachment
 
     return (
       <div className={classNames('message-attachment-generic')}>
-        <div
-          className='file-icon'
-          draggable='true'
+        <FileAttachmentIcon
+          attachment={attachment}
           onDragStart={ev => file && dragAttachmentOut(file, ev)}
-          title={fileMime || 'null'}
-        >
-          {extension ? (
-            <div className='file-extension'>
-              {fileMime === 'application/octet-stream' ? '' : extension}
-            </div>
-          ) : null}
-        </div>
+        />
         <div className='text-part'>
           <div className='name'>{fileName}</div>
           <div className='size'>{filesize(fileBytes ?? 0)}</div>

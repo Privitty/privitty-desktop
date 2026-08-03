@@ -127,7 +127,7 @@ export default function SmallSelectDialogPrivitty({
             <Checkbox
               checked={allowDownload}
               onChange={e => setAllowDownload(e.target.checked)}
-              label='Allow Download'
+              label={<span style={{ marginLeft: '8px' }}>Allow Download</span>}
             />
           </div>
           {showAllowForward && (
@@ -135,7 +135,7 @@ export default function SmallSelectDialogPrivitty({
               <Checkbox
                 checked={allowForward}
                 onChange={e => setAllowForward(e.target.checked)}
-                label='Allow Forward'
+                label={<span style={{ marginLeft: '8px' }}>Allow Forward</span>}
               />
             </div>
           )}

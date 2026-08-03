@@ -74,6 +74,7 @@ $paddingVertical: 20px;
   flex: 1 1 auto;
   max-height: 90vh;
   overflow: overlay;
+  padding-bottom: $paddingVertical;
 
   &::-webkit-scrollbar-track {
     background: transparent;

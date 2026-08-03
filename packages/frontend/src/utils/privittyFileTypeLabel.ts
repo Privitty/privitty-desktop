@@ -18,16 +18,16 @@ export function getPrivittyFileTypeLabel(
   fileName: string | null | undefined
 ): string {
   const extension = getSecondToLastExtension(fileName || '')
-  if (!extension) return 'Documents File'
+  if (!extension) return 'Document'
 
-  if (extension === 'pdf') return 'PDF File'
+  if (extension === 'pdf') return 'PDF'
 
   if (
     ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico'].includes(
       extension
     )
   ) {
-    return 'Image File'
+    return 'Image'
   }
 
   if (
@@ -35,7 +35,7 @@ export function getPrivittyFileTypeLabel(
       extension
     )
   ) {
-    return 'Video File'
+    return 'Video'
   }
 
   if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(extension)) {
@@ -50,5 +50,20 @@ export function getPrivittyFileTypeLabel(
 
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) return 'ZIP File'
 
-  return 'Documents File'
+  return 'Document'
+}
+
+/** CSS modifier for `.file-icon` — mirrors {@link getPrivittyFileTypeLabel}. */
+export function getPrivittyFileGradientIconClass(
+  fileName: string | null | undefined
+): 'file-icon-image' | 'file-icon-video' | null {
+  switch (getPrivittyFileTypeLabel(fileName)) {
+    case 'Image':
+      return 'file-icon-image'
+    case 'Video':
+      return 'file-icon-video'
+    default:
+      // PDF and all other types use the default file-gradient.svg in CSS.
+      return null
+  }
 }
