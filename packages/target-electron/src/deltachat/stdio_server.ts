@@ -70,7 +70,6 @@ Error: ${err.message}
       while (buffer.includes('\n')) {
         const n = buffer.indexOf('\n')
         const message = buffer.substring(0, n)
-        console.log(`[RPC-RESPONSE] ${message}`)
         this.on_data(message)
         buffer = buffer.substring(n + 1)
       }
@@ -115,7 +114,6 @@ Error: ${err.message}
   }
 
   send(message: string) {
-    console.log(`[RPC-REQUEST] ${message}`)
     this.serverProcess?.stdin.write(message + '\n')
   }
 }
