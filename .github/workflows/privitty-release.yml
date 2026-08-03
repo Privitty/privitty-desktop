@@ -131,9 +131,9 @@ jobs:
           path: packages/target-electron/dist/*.dmg
           retention-days: 45
 
-  # ── Windows: NSIS installer + portable, x64 + ia32 (unsigned) ──────────
+  # ── Windows: NSIS installer + portable, x64 (unsigned) ───────────────────
   build-windows:
-    name: Windows – installer + portable, x64 + ia32 (unsigned)
+    name: Windows – installer + portable, x64 (unsigned)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -146,6 +146,20 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
+
+      # Use system NSIS so electron-builder does not download nsis-*.7z from
+      # GitHub (that CDN occasionally returns 500 in CI).
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Cache electron-builder tools
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\electron-builder\Cache
+          key: electron-builder-cache-win-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            electron-builder-cache-win-
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -171,6 +185,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: ''
+          WIN_CSC_LINK: ''
         run: node ./build/gen-electron-builder-config.js
 
       - name: Flatten node_modules (patch)
@@ -178,18 +193,29 @@ jobs:
         shell: bash
         run: node ../../bin/writeFlatDependencies.js packages/target-electron node_modules
 
-      - name: Build unsigned Windows installer (x64 + ia32)
+      - name: Build unsigned Windows installer (x64)
         working-directory: packages/target-electron
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: ''
+          WIN_CSC_LINK: ''
         run: |
-          pnpm exec electron-builder \
-            --config ./electron-builder.json5 \
-            --win nsis portable \
-            --x64 --ia32 \
-            --publish never
+          for attempt in 1 2 3; do
+            echo "electron-builder attempt $attempt/3"
+            if pnpm exec electron-builder \
+              --config ./electron-builder.json5 \
+              --win nsis portable \
+              --x64 \
+              --publish never; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "Build failed, retrying in 30s..."
+              sleep 30
+            fi
+          done
+          exit 1
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
