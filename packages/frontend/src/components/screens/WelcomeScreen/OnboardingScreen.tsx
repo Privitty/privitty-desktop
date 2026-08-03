@@ -37,9 +37,11 @@ export default function OnboardingScreen(props: Props) {
       <DialogHeader
         onClose={props.hasConfiguredAccounts ? props.onClose : undefined}
         title={
-          props.hasConfiguredAccounts
-            ? tx('add_account')
-            : tx('welcome_desktop')
+          <div style={{ width: '100%', textAlign: 'center' }}>
+            {props.hasConfiguredAccounts
+              ? tx('add_account')
+              : tx('welcome_desktop')}
+          </div>
         }
       />
       <DialogBody>

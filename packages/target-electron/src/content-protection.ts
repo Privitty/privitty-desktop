@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron'
+import { app, BrowserWindow } from 'electron'
 import { DesktopSettings } from './desktop_settings'
 import { platform } from 'os'
 import { getLogger } from '@deltachat-desktop/shared/logger'
@@ -13,10 +13,9 @@ function updateContentProtection(window: BrowserWindow, enabled: boolean) {
 }
 
 export function setContentProtection(window: BrowserWindow) {
-  // Always enable content protection to prevent screenshots/screen recording
-  // and persist the setting for future runs.
-  DesktopSettings.update({ contentProtectionEnabled: true })
-  updateContentProtection(window, true)
+  const enabled = app.isPackaged
+  DesktopSettings.update({ contentProtectionEnabled: enabled })
+  updateContentProtection(window, enabled)
 }
 
 export function updateContentProtectionOnAllActiveWindows(enabled: boolean) {

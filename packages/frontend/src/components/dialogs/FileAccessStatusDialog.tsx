@@ -218,12 +218,13 @@ export default function FileAccessStatusDialog({
       const peerContactId: number = await (
         BackendRemote.rpc as any
       ).privittyGetContactIdByAddr(accountId, contactEmail)
-      await (BackendRemote.rpc as any).privittyRevokeFileAccess(
+      const revokeResponse = await (BackendRemote.rpc as any).privittyRevokeFileAccess(
         accountId,
         chatId,
         fileId,
         peerContactId
       )
+      console.log('Revoke response:', revokeResponse)
       await fetchFileAccessStatus()
       notifyBubbleRefresh()
     } catch (err) {
