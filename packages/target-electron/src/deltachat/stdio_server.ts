@@ -24,6 +24,13 @@ export class StdioServer {
         RUST_LOG: process.env.RUST_LOG,
         // remove color from errors, see https://github.com/deltachat/deltachat-desktop/issues/4832
         NO_COLOR: '1',
+        // Identify this process as an operator (app) so the core's peer-type
+        // guards work correctly.  Without this, local_peer_type() defaults to
+        // "edge", which causes send_lan_reach_offer / send_tunnel_offer to bail
+        // with "edge devices cannot send TunnelOffer" and causes incoming
+        // PeerCapabilities from Edge to be silently discarded (treated as
+        // edge-to-edge peering instead of being stored for the operator UI).
+        PRIVITTY_PEER_TYPE: 'app',
       },
     })
 
