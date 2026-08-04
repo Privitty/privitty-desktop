@@ -95,7 +95,7 @@ export interface RemoteAccessDialogProps extends DialogProps {
 
 type Phase =
   | { kind: 'pick'; protocols: Protocol[]; portfwdTargets: LanReachTarget[] }
-  | { kind: 'pick_target'; targets: LanReachTarget[]; localPort: string }
+  | { kind: 'pick_target'; targets: LanReachTarget[]; selectedIdx: number; localPort: string }
   | { kind: 'connecting'; protocol: Protocol; statusText: string }
   | { kind: 'active'; protocol: Protocol; port: number; sessionId: string | null }
   | { kind: 'closing' }
@@ -412,6 +412,7 @@ export default function RemoteAccessDialog({
                       setPhase({
                         kind: 'pick_target',
                         targets: phase.portfwdTargets,
+                        selectedIdx: 0,
                         localPort: String(phase.portfwdTargets[0]?.port ?? 5007),
                       })
                     } else {
@@ -448,44 +449,67 @@ export default function RemoteAccessDialog({
   }
 
   if (phase.kind === 'pick_target') {
+    const selectedTarget = phase.targets[phase.selectedIdx]
+    const canConnect = !!selectedTarget && Number(phase.localPort) > 0
     return (
       <DialogWithHeader title='LAN Reach — Choose Target' onClose={onClose}>
         <DialogBody>
           <DialogContent>
             <p style={{ marginBottom: 12, fontSize: '0.85em', opacity: 0.72 }}>
-              Select a Watchtower-approved LAN device, then set the local shim port
-              for your engineering tool (e.g. GX Works).
+              Select a WatchTower-approved LAN device, then confirm the local port
+              your engineering tool (e.g. GX Works) will connect to.
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-              {phase.targets.map(t => (
-                <button
+
+            {/* Target selection */}
+            <p style={{ marginBottom: 6, fontWeight: 600, fontSize: '0.85em' }}>
+              LAN device:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+              {phase.targets.map((t, idx) => (
+                <label
                   key={`${t.ip}:${t.port}`}
-                  onClick={() => {
-                    const lp = Number(phase.localPort) || t.port
-                    openLanReach(t, lp)
-                  }}
                   style={{
-                    padding: '10px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    padding: '10px 14px',
                     borderRadius: 6,
-                    border: '1px solid var(--colorDeltaBlue)',
-                    background: 'transparent',
-                    color: 'var(--colorDeltaBlue)',
+                    border: `1px solid ${idx === phase.selectedIdx ? 'var(--colorDeltaBlue)' : 'var(--outlinePrimary, #ccc)'}`,
+                    background: idx === phase.selectedIdx ? 'var(--bgChatlistItem)' : 'transparent',
                     cursor: 'pointer',
-                    textAlign: 'left',
-                    fontWeight: 500,
                   }}
                 >
-                  <div>{t.label || `${t.ip}:${t.port}`}</div>
-                  <div style={{ fontSize: '0.8em', opacity: 0.7, fontFamily: 'monospace' }}>
-                    {t.ip}:{t.port}
+                  <input
+                    type='radio'
+                    name='lan-target'
+                    checked={idx === phase.selectedIdx}
+                    onChange={() =>
+                      setPhase(prev =>
+                        prev?.kind === 'pick_target'
+                          ? { ...prev, selectedIdx: idx, localPort: String(t.port) }
+                          : prev
+                      )
+                    }
+                    style={{ accentColor: 'var(--colorDeltaBlue)' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 500 }}>{t.label || `${t.ip}:${t.port}`}</div>
+                    <div style={{ fontSize: '0.8em', opacity: 0.7, fontFamily: 'monospace' }}>
+                      {t.ip}:{t.port}
+                    </div>
                   </div>
-                </button>
+                </label>
               ))}
             </div>
-            <label style={{ display: 'block', fontSize: '0.85em' }}>
-              Local port (tool connects to 127.0.0.1:&lt;port&gt;)
+
+            {/* Local port */}
+            <label style={{ display: 'block', fontSize: '0.85em', marginBottom: 16 }}>
+              <span style={{ fontWeight: 600 }}>Local port</span>
+              <span style={{ opacity: 0.65 }}> — your tool connects to 127.0.0.1:&lt;port&gt;</span>
               <input
                 type='number'
+                min={1}
+                max={65535}
                 value={phase.localPort}
                 onChange={e =>
                   setPhase(prev =>
@@ -514,6 +538,17 @@ export default function RemoteAccessDialog({
             onClick={onClose}
           >
             {tx('cancel')}
+          </button>
+          <button
+            className='delta-button-round delta-button-primary'
+            disabled={!canConnect}
+            onClick={() => {
+              if (selectedTarget) {
+                openLanReach(selectedTarget, Number(phase.localPort))
+              }
+            }}
+          >
+            Connect
           </button>
         </DialogFooter>
       </DialogWithHeader>

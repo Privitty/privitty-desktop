@@ -1,6 +1,7 @@
 import { app as rawApp, Menu, Tray, nativeImage, NativeImage } from 'electron'
 import { globalShortcut } from 'electron'
-import { join, dirname } from 'path'
+import { join, dirname, resolve } from 'path'
+import { existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 
 import * as mainWindow from '../../frontend/src/components/windows/main.js'
@@ -20,28 +21,61 @@ const log = getLogger('main/tray')
 
 let has_unread = false
 
+function loadNativeImage(path: string): NativeImage | null {
+  if (!existsSync(path)) {
+    log.warn('Tray icon file not found', { path })
+    return null
+  }
+  const image = nativeImage.createFromPath(path)
+  if (image.isEmpty()) {
+    log.warn('Tray icon failed to load (empty image)', { path })
+    return null
+  }
+  return image
+}
+
+function resolveTrayIconPath(baseName: string): string[] {
+  const trayIconFolder = resolve(htmlDistDir(), 'images/tray')
+  if (process.platform === 'win32') {
+    return [
+      join(trayIconFolder, `${baseName}.ico`),
+      join(trayIconFolder, `${baseName}.png`),
+    ]
+  }
+  if (process.platform === 'darwin') {
+    return [join(trayIconFolder, 'tray-icon-mac.png')]
+  }
+  return [join(trayIconFolder, `${baseName}.png`)]
+}
+
+function TrayImage(): NativeImage | null {
+  if (process.platform === 'darwin') {
+    const macPath = resolveTrayIconPath('tray-icon-mac')[0]
+    const image = loadNativeImage(macPath)
+    if (!image) return null
+    const resized = image.resize({ width: 24 })
+    resized.setTemplateImage(true)
+    return resized
+  }
+
+  const baseName = has_unread ? 'privittychat-unread' : 'privittychat'
+  for (const path of resolveTrayIconPath(baseName)) {
+    const image = loadNativeImage(path)
+    if (image) return image
+  }
+
+  log.error(
+    'No tray icon could be loaded. Run `pnpm validate:images` and `pnpm -w build:electron`.',
+    { trayIconFolder: resolve(htmlDistDir(), 'images/tray') }
+  )
+  return null
+}
+
 export function set_has_unread(new_has_unread: boolean) {
   has_unread = new_has_unread
   if (tray) {
-    tray.setImage(TrayImage())
-  }
-}
-
-function TrayImage(): string | NativeImage {
-  const trayIconFolder = join(htmlDistDir(), 'images/tray')
-  if (process.platform === 'darwin') {
-    const image = nativeImage
-      .createFromPath(join(trayIconFolder, 'tray-icon-mac.png'))
-      .resize({ width: 24 })
-    image.setTemplateImage(true)
-    return image
-  } else {
-    const iconFormat = process.platform === 'win32' ? '.ico' : '.png'
-
-    return `${join(
-      trayIconFolder,
-      (has_unread ? 'privittychat-unread' : 'privittychat') + iconFormat
-    )}`
+    const image = TrayImage()
+    if (image) tray.setImage(image)
   }
 }
 
@@ -167,8 +201,10 @@ function getTrayMenu() {
   return contextMenu
 }
 
-function TrayIcon() {
-  return new Tray(TrayImage())
+function TrayIcon(): Tray | null {
+  const image = TrayImage()
+  if (!image) return null
+  return new Tray(image)
 }
 
 function renderTrayIcon() {
@@ -177,9 +213,15 @@ function renderTrayIcon() {
     destroyTrayIcon()
   }
 
-  // Add tray icon
   log.info('add icon tray')
-  tray = TrayIcon()
+  try {
+    tray = TrayIcon()
+  } catch (err) {
+    log.error('Failed to create tray icon, continuing without tray', err)
+    tray = null
+    return
+  }
+  if (!tray) return
 
   tray.setToolTip('Privitty Chat')
 
