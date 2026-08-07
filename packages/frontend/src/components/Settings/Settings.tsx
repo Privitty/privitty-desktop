@@ -30,7 +30,7 @@ type SettingsView =
 export default function Settings({ onClose }: DialogProps) {
   const { openDialog, closeDialog, openDialogIds } = useDialog()
 
-  const settingsStore = useSettingsStore()[0]!
+  const settingsStore = useSettingsStore()[0]
   const tx = useTranslationFunction()
   const [settingsMode, setSettingsMode] = useState<SettingsView>('main')
 
@@ -58,8 +58,11 @@ export default function Settings({ onClose }: DialogProps) {
 
   useEffect(() => {
     if (window.__settingsOpened) {
-      throw new Error(
-        'Settings window was already open - this should not happen, please file a bug'
+      // The flag can be left stale if Settings crashed before its cleanup
+      // ran (e.g. a null-pointer during a previous render). Reset it and
+      // continue rather than crashing again in a loop.
+      console.warn(
+        'Settings: __settingsOpened was already true on mount — resetting (likely a crash-recovery scenario)'
       )
     }
     window.__settingsOpened = true
@@ -67,6 +70,21 @@ export default function Settings({ onClose }: DialogProps) {
       window.__settingsOpened = false
     }
   }, [])
+
+  // Show a loading state while the settings store is still being fetched.
+  // This avoids passing null down to Profile and other child components.
+  if (settingsStore === null) {
+    return (
+      <Dialog onClose={onClose} fixed width={400} dataTestid='settings-dialog'>
+        <DialogHeader
+          title={tx('menu_settings')}
+          onClose={onClose}
+          dataTestid='settings'
+        />
+        <DialogBody>{tx('loading')}</DialogBody>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog onClose={onClose} fixed width={400} dataTestid='settings-dialog'>

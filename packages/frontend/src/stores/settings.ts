@@ -11,7 +11,6 @@ export interface SettingsStoreState {
   selfContact: Type.Contact
   settings: {
     [P in (typeof settingsKeys)[number]]: {
-      sentbox_watch: string
       mvbox_move: string
       addr: string
       displayname: string
@@ -21,7 +20,6 @@ export interface SettingsStoreState {
       bcc_self: string
       delete_device_after: string
       delete_server_after: string
-      webrtc_instance: string
       download_limit: string
       only_fetch_mvbox: string
       media_quality: string
@@ -34,7 +32,6 @@ export interface SettingsStoreState {
 }
 
 const settingsKeys = [
-  'sentbox_watch',
   'mvbox_move',
   'addr',
   'displayname',
@@ -44,7 +41,6 @@ const settingsKeys = [
   'bcc_self',
   'delete_device_after',
   'delete_server_after',
-  'webrtc_instance',
   'download_limit',
   'only_fetch_mvbox',
   'media_quality',

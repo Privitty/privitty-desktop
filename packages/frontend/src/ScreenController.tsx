@@ -136,12 +136,23 @@ export default class ScreenController extends Component {
       await this.unSelectAccount()
       this.selectedAccountId = accountId
       ;(window.__selectedAccountId as number) = accountId
-      // forcing to load settings here so when we for example switch to Settings
-      // from context menu they're already present and we avoid crashing
-      SettingsStoreInstance.effect.load()
+      // Await the settings load so the store is populated before
+      // changeScreen(Screens.Main) makes the UI interactive. Previously this
+      // was fire-and-forget, which created a race where the user could open
+      // Settings before the store finished loading (causing a null crash).
+      await SettingsStoreInstance.effect.load().catch(err => {
+        log.warn('Failed to pre-load settings store during account selection:', err)
+      })
     } else {
       log.info('account is already selected')
       // do not return here as this can be the state transition between unconfigured to configured
+      // Reload settings in case the store was cleared (e.g. account switch) but
+      // the selectedAccountId hasn't changed.
+      if (SettingsStoreInstance.getState() === null) {
+        await SettingsStoreInstance.effect.load().catch(err => {
+          log.warn('Failed to reload settings store for same account:', err)
+        })
+      }
     }
 
     const account = await BackendRemote.rpc.getAccountInfo(

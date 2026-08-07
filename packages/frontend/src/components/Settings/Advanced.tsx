@@ -48,7 +48,7 @@ export default function Advanced({ settingsStore }: Props) {
 
       <SettingsSeparator />
       <SettingsHeading>{tx('pref_experimental_features')}</SettingsHeading>
-      <ExperimentalFeatures settingsStore={settingsStore} />
+      <ExperimentalFeatures />
       <SettingsSeparator />
 
       <SettingsHeading>{tx('pref_encryption')}</SettingsHeading>
