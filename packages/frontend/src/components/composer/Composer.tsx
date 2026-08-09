@@ -43,8 +43,9 @@ import { enterKeySendsKeyboardShortcuts } from '../KeyboardShortcutHint'
 import { AppPicker } from '../AppPicker'
 import { AppInfo, AppStoreUrl } from '../AppPicker'
 import OutsideClickHelper from '../OutsideClickHelper'
-import { basename, dirname } from 'path'
+import { basename } from 'path'
 
+import { cleanupLocalDraftAttachmentFile } from '../../utils/cleanupDraftAttachmentFile'
 import { useHasChanged2 } from '../../hooks/useHasChanged'
 import { ScreenContext } from '../../contexts/ScreenContext'
 import {
@@ -393,7 +394,6 @@ const Composer = forwardRef<
           response.blob
         )
         await addFileToDraft(path, appInfo.cache_relname, 'File')
-        await runtime.removeTempFile(path)
         setShowAppPicker(false)
       }
 
@@ -439,8 +439,6 @@ const Composer = forwardRef<
             file_content.split(';base64,')[1]
           )
           await addFileToDraft(path, fileName, msgType)
-          // delete file again after it was sucessfuly added
-          await runtime.removeTempFile(path)
         } catch (err) {
           log.error('Failed to paste file.', err)
         }
@@ -898,37 +896,42 @@ export function useDraft(
     if (chatId === null || !canSend) {
       return
     }
-    const accountId = selectedAccountId()
 
+    const accountId = selectedAccountId()
     const draft = draftRef.current
     const oldChatId = chatId
-    if (
-      (draft.text && draft.text.length > 0) ||
-      (draft.file && draft.file != '') ||
-      !!draft.quote
-    ) {
-      const fileName =
-        draft.fileName ?? (draft.file ? basename(draft.file) : null)
+
+    const hasText = !!draft.text?.length
+    const hasFile = !!draft.file
+    const hasQuote = !!draft.quote
+
+    if (hasText || hasFile || hasQuote) {
+      const fileName = hasFile ? (draft.fileName ?? basename(draft.file)) : null
+      const sourceAttachmentPath = hasFile ? draft.file : null
+
       await BackendRemote.rpc.miscSetDraft(
         accountId,
         chatId,
         draft.text,
-        draft.file !== '' ? draft.file : null,
-        fileName ?? null,
+        hasFile ? draft.file : null,
+        fileName,
         draft.quote?.kind === 'WithMessage' ? draft.quote.messageId : null,
         draft.viewType
       )
+
+      if (sourceAttachmentPath) {
+        await cleanupLocalDraftAttachmentFile(sourceAttachmentPath)
+      }
     } else {
       await BackendRemote.rpc.removeDraft(accountId, chatId)
     }
 
     if (oldChatId !== chatId) {
-      log.debug('switched chat no reloading of draft required')
       return
     }
-    const newDraft = chatId
-      ? await BackendRemote.rpc.getDraft(accountId, chatId)
-      : null
+
+    const newDraft = await BackendRemote.rpc.getDraft(accountId, chatId)
+
     if (newDraft) {
       _setDraftStateButKeepTextareaValue(old => ({
         ...old,
@@ -941,18 +944,12 @@ export function useDraft(
         quote: newDraft.quote,
         vcardContact: newDraft.vcardContact,
       }))
-      // don't load text to prevent bugging back
     } else {
       clearDraftStateButKeepTextareaValue()
     }
+
     inputRef.current?.setState({ loadingDraft: false })
-  }, [
-    chatId,
-    clearDraftStateButKeepTextareaValue,
-    canSend,
-    inputRef,
-    sharedData,
-  ])
+  }, [chatId, clearDraftStateButKeepTextareaValue, canSend, inputRef])
 
   const updateDraftText = (text: string, InputChatId: number) => {
     if (chatId !== InputChatId) {
@@ -974,13 +971,35 @@ export function useDraft(
   }, [inputRef, saveDraft])
 
   const removeFile = useCallback(async () => {
-    // If there's an encrypted file in the draft, delete it when removing
+    const currentFile = draftRef.current.file
+    const encryptedPath = sharedData.encryptedFilePath
 
-    // Encrypted temp files are cleaned up by the OS; no explicit delete needed.
+    if (!currentFile && !encryptedPath) {
+      inputRef.current?.focus()
+      return
+    }
 
-    draftRef.current.file = ''
+    log.debug('Removing draft attachment', {
+      chatId,
+      accountId,
+      file: currentFile,
+      encryptedPath,
+    })
+
+    const pathsToCleanup = new Set<string>()
+    // Prefer the original encrypted path; currentFile may already be a DC blob path.
+    if (encryptedPath) {
+      pathsToCleanup.add(encryptedPath)
+    } else if (currentFile) {
+      pathsToCleanup.add(currentFile)
+    }
+
+    draftRef.current.file = null
+    draftRef.current.fileName = null
+    draftRef.current.fileBytes = 0
+    draftRef.current.fileMime = null
     draftRef.current.viewType = 'Text'
-    // reset shared data when removing attachment from draft
+
     setSharedData({
       allowDownload: false,
       allowForward: false,
@@ -989,9 +1008,40 @@ export function useDraft(
       oneTimeKey: '',
       encryptedFilePath: '',
     })
-    saveDraft()
+
+    _setDraftStateButKeepTextareaValue(old => ({
+      ...old,
+      file: null,
+      fileName: null,
+      fileBytes: 0,
+      fileMime: null,
+      viewType: 'Text',
+    }))
+
+    for (const path of pathsToCleanup) {
+      await cleanupLocalDraftAttachmentFile(path)
+    }
+
+    try {
+      await saveDraft()
+      log.debug('Draft attachment removed successfully', { chatId })
+    } catch (error) {
+      log.error('Failed to remove draft attachment', {
+        chatId,
+        file: currentFile,
+        error,
+      })
+    }
+
     inputRef.current?.focus()
-  }, [inputRef, saveDraft, sharedData, setSharedData])
+  }, [
+    accountId,
+    chatId,
+    inputRef,
+    saveDraft,
+    setSharedData,
+    sharedData.encryptedFilePath,
+  ])
 
   const addFileToDraft = useCallback(
     async (file: string, fileName: string, viewType: T.Viewtype) => {
