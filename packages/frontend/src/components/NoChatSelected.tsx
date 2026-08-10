@@ -35,38 +35,68 @@ export default function NoChatSelected() {
         <div className={styles.welcomeGrid}>
           <div className={styles.welcomeCard}>
             <div className={styles.cardIcon}>
-              <Icon icon='file' size={40} />
+              <Icon icon='key' size={40} />
             </div>
-            <h3>Revoke File Anytime Anywhere</h3>
+            <h3>Machine Identity</h3>
             <p>
-              Shared the wrong document? Instantly wipe access to any file sent
-              across any device.
+              Every Privitty Edge creates a permanent OpenPGP-verified identity
+              on first activation. No IP addresses or shared credentials.
             </p>
           </div>
 
           <div className={styles.welcomeCard}>
             <div className={styles.cardIcon}>
-              <Icon icon='link' size={40} />
+              <Icon icon='file' size={40} />
             </div>
-            <h3>Trace Your Message</h3>
-            <p>Monitor the lifecycle of your communication.</p>
-
-            <div className={styles.status}>
-              <span className={styles.statusItem}>
-                <Icon icon='active' size={20} /> Sent & Encrypted
-              </span>
-              <span className={styles.statusItem}>
-                <Icon icon='eye-open' size={20} /> Forwarded to which recipients
-              </span>
-            </div>
+            <h3>Controlled File Transfer</h3>
+            <p>
+              Securely share PLC, HMI, and recipe files with view, download,
+              forward, expiry, and revoke controls.
+            </p>
           </div>
 
-          <div className={`${styles.welcomeCard} ${styles.small}`}>
+          <div className={styles.welcomeCard}>
+            <div className={styles.cardIcon}>
+              <Icon icon='devices' size={40} />
+            </div>
+            <h3>E2EE Remote Sessions</h3>
+            <p>
+              Identity-verified SSH, RDP, and VNC over end-to-end encryption. No
+              inbound firewall ports required.
+            </p>
+          </div>
+
+          <div className={styles.welcomeCard}>
             <div className={styles.cardIcon}>
               <Icon icon='blocked' size={40} />
             </div>
-            <h3>Forward Control</h3>
-            <p>Total containment of your communication.</p>
+            <h3>True Revoke & Panic</h3>
+            <p>
+              Instantly revoke file access, terminate remote sessions, and log
+              events with a single click.
+            </p>
+          </div>
+
+          <div className={styles.welcomeCard}>
+            <div className={styles.cardIcon}>
+              <Icon icon='device' size={40} />
+            </div>
+            <h3>Software Only (~20 MB)</h3>
+            <p>
+              Lightweight Windows service for MELIPC and Windows IoT Enterprise.
+              No additional hardware needed.
+            </p>
+          </div>
+
+          <div className={styles.welcomeCard}>
+            <div className={styles.cardIcon}>
+              <Icon icon='network' size={40} />
+            </div>
+            <h3>MES/SCADA Integration</h3>
+            <p>
+              Local JSON-RPC API and SSE stream enable automated, secure file
+              ingestion into MES and SCADA workflows.
+            </p>
           </div>
         </div>
       </div>

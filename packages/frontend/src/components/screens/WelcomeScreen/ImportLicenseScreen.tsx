@@ -22,23 +22,15 @@ import {
   FooterActionButton,
   FooterActions,
 } from '../../Dialog'
+import Button from '../../Button'
 import { QrReader, QrCodeScanRef } from '../../QrReader'
+
+import styles from './ImportLicenseScreen.module.scss'
 
 // Accept any HTTPS URL whose path starts with /v1/license/
 const LICENSE_URL_RE = /^https?:\/\/[^/]+\/v1\/license\//i
 
 type Step = 'idle' | 'scanning' | 'working' | 'success' | 'error'
-
-// ── Android colour tokens ─────────────────────────────────────────────────────
-const C = {
-  bg: '#F8F5FF',
-  title: '#1e1b4b',
-  subtitle: '#6b7280',
-  primary: '#7F66C5',
-  primaryText: '#ffffff',
-  success: '#16a34a',
-  error: '#dc2626',
-} as const
 
 type Props = {
   onBack: () => void
@@ -128,21 +120,7 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
       <DialogHeader title='Import License' onClickBack={onBack} />
       <DialogBody>
         <DialogContent>
-          <div
-            style={{
-              background: C.bg,
-              borderRadius: 12,
-              padding: '32px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 0,
-              minHeight: 260,
-              justifyContent: 'center',
-            }}
-          >
-            {content}
-          </div>
+          <div className={styles.card}>{content}</div>
         </DialogContent>
       </DialogBody>
       {footer && <DialogFooter>{footer}</DialogFooter>}
@@ -162,7 +140,7 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
             setStep('error')
           }}
         />
-        <p style={{ margin: '10px 0 0', fontSize: 12, color: C.subtitle, textAlign: 'center' }}>
+        <p className={styles.subtitleSmall}>
           Point your camera at the Privitty license QR code.
         </p>
       </>,
@@ -181,20 +159,8 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
   if (step === 'working') {
     return card(
       <>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            border: `4px solid ${C.primary}`,
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
-        <p style={{ margin: '16px 0 0', fontSize: 14, color: C.subtitle, textAlign: 'center' }}>
-          {statusText}
-        </p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <div className={styles.spinner} />
+        <p className={styles.subtitleWithTopMargin}>{statusText}</p>
       </>
     )
   }
@@ -203,26 +169,20 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
   if (step === 'success') {
     return card(
       <>
-        <span style={{ fontSize: 56, color: C.success, lineHeight: 1 }}>✓</span>
-        <p
-          style={{
-            margin: '8px 0 0',
-            fontSize: 22,
-            fontWeight: 700,
-            color: C.title,
-            textAlign: 'center',
-          }}
-        >
-          License Imported
-        </p>
+        <span className={styles.successIcon}>✓</span>
+        <p className={styles.stateTitle}>License Imported</p>
         {customerName && customerName !== 'Unknown' && (
-          <p style={{ margin: '6px 0 32px', fontSize: 14, color: C.subtitle, textAlign: 'center' }}>
+          <p className={styles.subtitleCompact}>
             Licensed to: {customerName}
           </p>
         )}
-        <button onClick={onDone} style={primaryBtn}>
+        <Button
+          styling='primary'
+          className={styles.actionButton}
+          onClick={onDone}
+        >
           Done
-        </button>
+        </Button>
       </>
     )
   }
@@ -231,33 +191,16 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
   if (step === 'error') {
     return card(
       <>
-        <span style={{ fontSize: 56, color: C.error, lineHeight: 1 }}>✕</span>
-        <p
-          style={{
-            margin: '8px 0 0',
-            fontSize: 22,
-            fontWeight: 700,
-            color: C.title,
-            textAlign: 'center',
-          }}
+        <span className={styles.errorIcon}>✕</span>
+        <p className={styles.stateTitle}>Import Failed</p>
+        <p className={styles.errorText}>{errorMsg}</p>
+        <Button
+          styling='primary'
+          className={styles.actionButton}
+          onClick={handleRetry}
         >
-          Import Failed
-        </p>
-        <p
-          style={{
-            margin: '6px 0 32px',
-            fontSize: 14,
-            color: C.subtitle,
-            textAlign: 'center',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-          }}
-        >
-          {errorMsg}
-        </p>
-        <button onClick={handleRetry} style={primaryBtn}>
           Try Again
-        </button>
+        </Button>
       </>
     )
   }
@@ -265,76 +208,28 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
   // ── State: idle (default — matches Android layoutIdle exactly) ────────────
   return card(
     <>
-      <p
-        style={{
-          margin: '0 0 12px',
-          fontSize: 22,
-          fontWeight: 700,
-          color: C.title,
-          textAlign: 'center',
-        }}
-      >
-        Import License
-      </p>
-      <p
-        style={{
-          margin: '0 0 32px',
-          fontSize: 14,
-          color: C.subtitle,
-          textAlign: 'center',
-          lineHeight: 1.5,
-        }}
-      >
+      <p className={styles.title}>Import License</p>
+      <p className={styles.subtitle}>
         Paste the license link sent to you by email,
         <br />
         or scan the QR code provided by your administrator.
       </p>
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 12,
-          width: '100%',
-          maxWidth: 320,
-        }}
-      >
-        <button onClick={handlePasteUrl} style={primaryBtn}>
+      <div className={styles.actions}>
+        <Button
+          styling='primary'
+          className={styles.actionButton}
+          onClick={handlePasteUrl}
+        >
           Paste License URL
-        </button>
-        <button onClick={() => setStep('scanning')} style={secondaryBtn}>
+        </Button>
+        <Button
+          className={`${styles.actionButton} ${styles.secondaryButton}`}
+          onClick={() => setStep('scanning')}
+        >
           Scan QR Code
-        </button>
+        </Button>
       </div>
     </>
   )
-}
-
-// ── Shared button styles ──────────────────────────────────────────────────────
-
-const actionBtnBase: React.CSSProperties = {
-  width: '100%',
-  minHeight: 48,
-  padding: '12px 24px',
-  fontSize: 15,
-  fontWeight: 600,
-  borderRadius: 8,
-  cursor: 'pointer',
-  letterSpacing: 0.3,
-  boxSizing: 'border-box',
-}
-
-const primaryBtn: React.CSSProperties = {
-  ...actionBtnBase,
-  background: '#7F66C5',
-  color: '#ffffff',
-  border: '1.5px solid #7F66C5',
-}
-
-const secondaryBtn: React.CSSProperties = {
-  ...actionBtnBase,
-  background: 'transparent',
-  color: '#7F66C5',
-  border: '1.5px solid #7F66C5',
 }

@@ -19,12 +19,12 @@
   h1 {
     font-size: 48px;
     font-weight: 700;
-    color: #6750a4;
+    color: var(--colorPrimary);
   }
 
   p {
     margin-top: 12px;
-    color: #6b6b6b;
+    color: var(--textSecondary);
     font-size: 16px;
   }
 }
@@ -36,9 +36,17 @@
 }
 
 .welcomeCard {
-  background: #f3efff;
+  background: var(--bp4DialogBgSecondary);
   border-radius: 18px;
-  padding: 28px;
+  padding: 18px;
+
+  h3 {
+    color: var(--globalText);
+  }
+
+  p {
+    color: var(--textSecondary);
+  }
 }
 
 .small {
@@ -46,8 +54,8 @@
 }
 
 .highlight {
-  background: #6750a4;
-  color: white;
+  background: var(--colorPrimary);
+  color: var(--buttonPrimaryText);
 }
 
 .cardIcon {
@@ -62,6 +70,7 @@
 .statusItem {
   display: block;
   margin-top: 6px;
+  color: var(--textSecondary);
 }
 
 .dashboardBtn {
@@ -69,8 +78,8 @@
   padding: 10px 20px;
   border-radius: 25px;
   border: none;
-  background: white;
-  color: #6750a4;
+  background: var(--bgPrimary);
+  color: var(--colorPrimary);
   font-weight: 600;
   cursor: pointer;
 }

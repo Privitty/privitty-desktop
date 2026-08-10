@@ -382,8 +382,10 @@ export async function init(cwd: string, logHandler: LogHandler) {
       // Check access to the file with the F_OK flag (default, checks for existence)
       await fs.access(filePath)
       return true // No error means the file exists
-    } catch (error) {
-      log.error('Error checking file existence:', error)
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') {
+        log.error('Error checking file existence:', error)
+      }
     }
     return false
   })

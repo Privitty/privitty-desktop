@@ -15,6 +15,10 @@ type Props = {
 export default function Profile({ settingsStore }: Props) {
   const tx = useTranslationFunction()
 
+  // if (!settingsStore) {
+  //   return null
+  // }
+
   const initials = avatarInitial(
     settingsStore.settings?.displayname || '',
     settingsStore.selfContact.address
