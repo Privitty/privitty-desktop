@@ -109,6 +109,7 @@ export default function MenuAttachment({
   }
 
   const openPrivittyProcess = async () => {
+    let didSave = false
     const smallDialogID = await openDialog(SmallSelectDialogPrivitty, {
       initialSelectedValue: {
         allowDownload: false,
@@ -121,6 +122,7 @@ export default function MenuAttachment({
         allowForward: boolean
         allowedTime: string
       }) => {
+        didSave = true
         if (selectedValue) {
           fileAttribute = selectedValue
           if (fileAttribute.allowDownload === true) {
@@ -162,20 +164,18 @@ export default function MenuAttachment({
             }
           }
         }
-        closeDialog(smallDialogID)
-        await addFilenameFileMod()
       },
       title: 'File Attributes',
-      onClose: async (isConfirmed: boolean) => {
+      onClose: () => {
         closeDialog(smallDialogID)
-        if (!isConfirmed) {
-          return
+        if (didSave) {
+          setTimeout(() => {
+            void addFilenameFileMod()
+          }, 0)
         }
       },
       onCancel: () => {
-        console.log('Dialog cancelled')
-        closeDialog(smallDialogID)
-        return
+        didSave = false
       },
     })
   }
