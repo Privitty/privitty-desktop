@@ -60,10 +60,8 @@ export function useRemoteAccess(chatId: number | null): UseRemoteAccessResult {
 
     const accountId = selectedAccountId()
     try {
-      const caps: PeerCapabilitiesResponse = await rpc.privittyGetPeerCapabilities(
-        accountId,
-        chatId
-      )
+      const caps: PeerCapabilitiesResponse =
+        await rpc.privittyGetPeerCapabilities(accountId, chatId)
       if (!mountedRef.current) return
 
       const available = caps?.remoteAccessAvailable ?? false
@@ -108,9 +106,13 @@ export function useRemoteAccess(chatId: number | null): UseRemoteAccessResult {
     const accountId = selectedAccountId()
 
     const unsubs = [
-      onDCEvent(accountId, 'PrivittyPeerCapabilitiesReceived' as any, (ev: any) => {
-        if (ev.chatId === chatId) refresh()
-      }),
+      onDCEvent(
+        accountId,
+        'PrivittyPeerCapabilitiesReceived' as any,
+        (ev: any) => {
+          if (ev.chatId === chatId) refresh()
+        }
+      ),
       onDCEvent(accountId, 'PrivittyTunnelActive' as any, (ev: any) => {
         if (ev.chatId === chatId) {
           setTunnelActive(true)

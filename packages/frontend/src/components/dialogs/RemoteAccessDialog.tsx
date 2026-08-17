@@ -1,5 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { DialogBody, DialogContent, DialogFooter, DialogWithHeader } from '../Dialog'
+import {
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogWithHeader,
+} from '../Dialog'
 import type { DialogProps } from '../../contexts/DialogContext'
 import { selectedAccountId } from '../../ScreenController'
 import { BackendRemote, onDCEvent } from '../../backend-com'
@@ -95,9 +100,19 @@ export interface RemoteAccessDialogProps extends DialogProps {
 
 type Phase =
   | { kind: 'pick'; protocols: Protocol[]; portfwdTargets: LanReachTarget[] }
-  | { kind: 'pick_target'; targets: LanReachTarget[]; selectedIdx: number; localPort: string }
+  | {
+      kind: 'pick_target'
+      targets: LanReachTarget[]
+      selectedIdx: number
+      localPort: string
+    }
   | { kind: 'connecting'; protocol: Protocol; statusText: string }
-  | { kind: 'active'; protocol: Protocol; port: number; sessionId: string | null }
+  | {
+      kind: 'active'
+      protocol: Protocol
+      port: number
+      sessionId: string | null
+    }
   | { kind: 'closing' }
   | { kind: 'error'; msg: string }
 
@@ -148,17 +163,18 @@ export default function RemoteAccessDialog({
       }
 
       // Load available protocols from capabilities
-      const caps: PeerCapabilitiesResponse = await rpc.privittyGetPeerCapabilities(
-        accountId,
-        chatId
-      )
+      const caps: PeerCapabilitiesResponse =
+        await rpc.privittyGetPeerCapabilities(accountId, chatId)
       if (abortRef.current) return
       const protocols = filterProtocols(caps?.capabilities?.protocols ?? [])
       const portfwdTargets = caps?.capabilities?.portfwdTargets ?? []
       setPhase({ kind: 'pick', protocols, portfwdTargets })
     } catch (e: any) {
       if (!abortRef.current) {
-        setPhase({ kind: 'error', msg: e?.message ?? 'Failed to load capabilities' })
+        setPhase({
+          kind: 'error',
+          msg: e?.message ?? 'Failed to load capabilities',
+        })
       }
     }
   }
@@ -169,14 +185,22 @@ export default function RemoteAccessDialog({
         // Should go through pick_target first.
         return
       }
-      setPhase({ kind: 'connecting', protocol, statusText: 'Sending tunnel offer…' })
+      setPhase({
+        kind: 'connecting',
+        protocol,
+        statusText: 'Sending tunnel offer…',
+      })
 
       const WAIT_TIMEOUT_MS = 180_000
       const POLL_INTERVAL_MS = 1_000
       const deadline = Date.now() + WAIT_TIMEOUT_MS
 
       try {
-        const offer = await rpc.privittySendTunnelOffer(accountId, chatId, protocol)
+        const offer = await rpc.privittySendTunnelOffer(
+          accountId,
+          chatId,
+          protocol
+        )
 
         setPhase({
           kind: 'connecting',
@@ -189,10 +213,8 @@ export default function RemoteAccessDialog({
           await sleep(POLL_INTERVAL_MS)
           if (abortRef.current) return
 
-          const status: TunnelStatusResponse = await rpc.privittyGetTunnelStatus(
-            accountId,
-            chatId
-          )
+          const status: TunnelStatusResponse =
+            await rpc.privittyGetTunnelStatus(accountId, chatId)
           if (!status) continue
 
           if (status.readyForClient) {
@@ -213,7 +235,11 @@ export default function RemoteAccessDialog({
               statusText: 'Connected — waiting for bridge…',
             })
           } else if (status.bridgeRunning) {
-            setPhase({ kind: 'connecting', protocol, statusText: 'Bridge starting…' })
+            setPhase({
+              kind: 'connecting',
+              protocol,
+              statusText: 'Bridge starting…',
+            })
           }
         }
 
@@ -266,10 +292,8 @@ export default function RemoteAccessDialog({
           await sleep(POLL_INTERVAL_MS)
           if (abortRef.current) return
 
-          const status: TunnelStatusResponse = await rpc.privittyGetTunnelStatus(
-            accountId,
-            chatId
-          )
+          const status: TunnelStatusResponse =
+            await rpc.privittyGetTunnelStatus(accountId, chatId)
           if (!status) continue
 
           if (status.readyForClient) {
@@ -413,7 +437,9 @@ export default function RemoteAccessDialog({
                         kind: 'pick_target',
                         targets: phase.portfwdTargets,
                         selectedIdx: 0,
-                        localPort: String(phase.portfwdTargets[0]?.port ?? 5007),
+                        localPort: String(
+                          phase.portfwdTargets[0]?.port ?? 5007
+                        ),
                       })
                     } else {
                       openTunnel(p)
@@ -456,15 +482,22 @@ export default function RemoteAccessDialog({
         <DialogBody>
           <DialogContent>
             <p style={{ marginBottom: 12, fontSize: '0.85em', opacity: 0.72 }}>
-              Select a WatchTower-approved LAN device, then confirm the local port
-              your engineering tool (e.g. GX Works) will connect to.
+              Select a WatchTower-approved LAN device, then confirm the local
+              port your engineering tool (e.g. GX Works) will connect to.
             </p>
 
             {/* Target selection */}
             <p style={{ marginBottom: 6, fontWeight: 600, fontSize: '0.85em' }}>
               LAN device:
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                marginBottom: 16,
+              }}
+            >
               {phase.targets.map((t, idx) => (
                 <label
                   key={`${t.ip}:${t.port}`}
@@ -475,7 +508,10 @@ export default function RemoteAccessDialog({
                     padding: '10px 14px',
                     borderRadius: 6,
                     border: `1px solid ${idx === phase.selectedIdx ? 'var(--colorDeltaBlue)' : 'var(--outlinePrimary, #ccc)'}`,
-                    background: idx === phase.selectedIdx ? 'var(--bgChatlistItem)' : 'transparent',
+                    background:
+                      idx === phase.selectedIdx
+                        ? 'var(--bgChatlistItem)'
+                        : 'transparent',
                     cursor: 'pointer',
                   }}
                 >
@@ -486,15 +522,27 @@ export default function RemoteAccessDialog({
                     onChange={() =>
                       setPhase(prev =>
                         prev?.kind === 'pick_target'
-                          ? { ...prev, selectedIdx: idx, localPort: String(t.port) }
+                          ? {
+                              ...prev,
+                              selectedIdx: idx,
+                              localPort: String(t.port),
+                            }
                           : prev
                       )
                     }
                     style={{ accentColor: 'var(--colorDeltaBlue)' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 500 }}>{t.label || `${t.ip}:${t.port}`}</div>
-                    <div style={{ fontSize: '0.8em', opacity: 0.7, fontFamily: 'monospace' }}>
+                    <div style={{ fontWeight: 500 }}>
+                      {t.label || `${t.ip}:${t.port}`}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '0.8em',
+                        opacity: 0.7,
+                        fontFamily: 'monospace',
+                      }}
+                    >
                       {t.ip}:{t.port}
                     </div>
                   </div>
@@ -503,9 +551,14 @@ export default function RemoteAccessDialog({
             </div>
 
             {/* Local port */}
-            <label style={{ display: 'block', fontSize: '0.85em', marginBottom: 16 }}>
+            <label
+              style={{ display: 'block', fontSize: '0.85em', marginBottom: 16 }}
+            >
               <span style={{ fontWeight: 600 }}>Local port</span>
-              <span style={{ opacity: 0.65 }}> — your tool connects to 127.0.0.1:&lt;port&gt;</span>
+              <span style={{ opacity: 0.65 }}>
+                {' '}
+                — your tool connects to 127.0.0.1:&lt;port&gt;
+              </span>
               <input
                 type='number'
                 min={1}
@@ -569,10 +622,10 @@ export default function RemoteAccessDialog({
                 gap: 16,
               }}
             >
-              <div className='progress-icon' style={{ fontSize: 32 }}>⏳</div>
-              <p style={{ fontWeight: 600 }}>
-                {protocolLabel(phase.protocol)}
-              </p>
+              <div className='progress-icon' style={{ fontSize: 32 }}>
+                ⏳
+              </div>
+              <p style={{ fontWeight: 600 }}>{protocolLabel(phase.protocol)}</p>
               <p style={{ opacity: 0.72, fontSize: '0.9em' }}>
                 {phase.statusText}
               </p>
@@ -594,7 +647,10 @@ export default function RemoteAccessDialog({
   if (phase.kind === 'active') {
     const hint = connectionHintText(phase.protocol, phase.port)
     return (
-      <DialogWithHeader title={`Remote Access — ${phase.protocol.toUpperCase()} Active`} onClose={onClose}>
+      <DialogWithHeader
+        title={`Remote Access — ${phase.protocol.toUpperCase()} Active`}
+        onClose={onClose}
+      >
         <DialogBody>
           <DialogContent>
             <p
@@ -680,7 +736,10 @@ export default function RemoteAccessDialog({
         </DialogContent>
       </DialogBody>
       <DialogFooter>
-        <button className='delta-button-round delta-button-primary' onClick={onClose}>
+        <button
+          className='delta-button-round delta-button-primary'
+          onClick={onClose}
+        >
           {tx('ok')}
         </button>
       </DialogFooter>

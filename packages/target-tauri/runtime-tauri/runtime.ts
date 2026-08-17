@@ -151,13 +151,15 @@ class TauriRuntime implements Runtime {
   importLicenseFromUrl(
     _url: string
   ): Promise<{ customerName: string; licensePath: string }> {
-    return Promise.reject(new Error('License import not supported in Tauri runtime'))
+    return Promise.reject(
+      new Error('License import not supported in Tauri runtime')
+    )
   }
 
-  importLicenseFromFile(
-    _filePath: string
-  ): Promise<{ licensePath: string }> {
-    return Promise.reject(new Error('License file import not supported in Tauri runtime'))
+  importLicenseFromFile(_filePath: string): Promise<{ licensePath: string }> {
+    return Promise.reject(
+      new Error('License file import not supported in Tauri runtime')
+    )
   }
 
   constructor() {

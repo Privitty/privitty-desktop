@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 import AbsolutePositioningHelper from '../AbsolutePositioningHelper'
 import OutsideClickHelper from '../OutsideClickHelper'
@@ -25,13 +25,13 @@ export const ReactionsBarContext =
 export const ReactionsBarProvider = ({ children }: PropsWithChildren<{}>) => {
   const [barArgs, setBarArgs] = useState<ShowReactionBar | null>(null)
 
-  const showReactionsBar = (args: ShowReactionBar) => {
+  const showReactionsBar = useCallback((args: ShowReactionBar) => {
     setBarArgs(args)
-  }
+  }, [])
 
-  const hideReactionsBar = () => {
+  const hideReactionsBar = useCallback(() => {
     setBarArgs(null)
-  }
+  }, [])
 
   const value: ReactionsBarValue = {
     showReactionsBar,
@@ -40,16 +40,21 @@ export const ReactionsBarProvider = ({ children }: PropsWithChildren<{}>) => {
   }
 
   useEffect(() => {
+    window.__isReactionsBarShown = barArgs !== null
+    window.__hideReactionsBar = hideReactionsBar
+
     const hideOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && barArgs !== null) {
+      if ((event.key === 'Escape' || event.key === 'Esc') && barArgs !== null) {
         hideReactionsBar()
       }
     }
     window.addEventListener('keyup', hideOnEscape)
     return () => {
+      window.__isReactionsBarShown = false
+      window.__hideReactionsBar = undefined
       window.removeEventListener('keyup', hideOnEscape)
     }
-  }, [barArgs])
+  }, [barArgs, hideReactionsBar])
 
   return (
     <ReactionsBarContext.Provider value={value}>

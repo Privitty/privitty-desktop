@@ -163,7 +163,10 @@ export default function InstantOnboardingScreen({
           if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
           try {
             const rpc = BackendRemote.rpc as any
-            const link: string | null = await rpc.getChatSecurejoinQrCode(selectedAccountId, null)
+            const link: string | null = await rpc.getChatSecurejoinQrCode(
+              selectedAccountId,
+              null
+            )
             if (link) {
               await rpc.privittyLicenseSetInviteLink(link)
               await rpc.privittyLicenseActivate()

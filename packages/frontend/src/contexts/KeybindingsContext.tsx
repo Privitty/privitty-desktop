@@ -13,6 +13,7 @@ import Settings from '../components/Settings'
 
 import type { PropsWithChildren } from 'react'
 import About from '../components/dialogs/About'
+import GlobalEscapeHandler from '../components/GlobalEscapeHandler'
 
 export const KeybindingsContext = createContext(null)
 
@@ -67,6 +68,7 @@ export const KeybindingsContextProvider = ({
 
   return (
     <KeybindingsContext.Provider value={null}>
+      <GlobalEscapeHandler />
       {children}
     </KeybindingsContext.Provider>
   )

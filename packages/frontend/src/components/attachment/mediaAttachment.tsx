@@ -163,31 +163,6 @@ const getMediaActions = (
   message: T.Message,
   accountId: number
 ) => {
-  const supportedExtensions = [
-    '.pdf',
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif',
-    '.bmp',
-    '.webp',
-    '.svg',
-    '.mp4',
-    '.avi',
-    '.mov',
-    '.wmv',
-    '.flv',
-    '.webm',
-    '.mkv',
-    '.m4v',
-  ]
-
-  const isSupportedMedia =
-    message.fileName?.toLowerCase().endsWith('.prv') ||
-    supportedExtensions.some(ext =>
-      message.fileName?.toLowerCase().endsWith(ext)
-    )
-
   return {
     openContextMenu: makeContextMenu(
       contextMenuFactory.bind(
@@ -408,9 +383,6 @@ export function VideoAttachment({
     const hasSupportedFormat = isVideo(fileMime)
     const isBroken = !file || !hasSupportedFormat
     const isEncrypted = message.fileName?.toLowerCase().endsWith('.prv')
-
-    console.log('FILE ==== 🔴🔴🔴', file)
-    console.log('FILE ==== 🔴🔴🔴', fileMime)
 
     return (
       <button

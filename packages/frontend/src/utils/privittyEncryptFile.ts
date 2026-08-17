@@ -47,7 +47,10 @@ export async function encryptFileForChat(
     : 0
 
   try {
-    const basicChat = await BackendRemote.rpc.getBasicChatInfo(accountId, chatId)
+    const basicChat = await BackendRemote.rpc.getBasicChatInfo(
+      accountId,
+      chatId
+    )
 
     let encryptedPath: string
 

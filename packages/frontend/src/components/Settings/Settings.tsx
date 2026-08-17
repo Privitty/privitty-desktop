@@ -35,11 +35,18 @@ export default function Settings({ onClose }: DialogProps) {
   const [settingsMode, setSettingsMode] = useState<SettingsView>('main')
 
   useEffect(() => {
+    window.__settingsInSubView = settingsMode !== 'main'
+    return () => {
+      window.__settingsInSubView = false
+    }
+  }, [settingsMode])
+
+  useEffect(() => {
     const handler = (evt: KeyboardEvent) => {
       if (
         settingsMode !== 'main' &&
         window.__settingsOpened &&
-        evt.key === 'Escape'
+        (evt.key === 'Escape' || evt.key === 'Esc')
       ) {
         evt.preventDefault()
         if (openDialogIds.length > 1) {

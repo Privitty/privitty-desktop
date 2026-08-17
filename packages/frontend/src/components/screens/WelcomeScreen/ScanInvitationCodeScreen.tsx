@@ -114,7 +114,9 @@ export default function ScanInvitationCodeScreen({
   const handleLoadLicenseFile = useCallback(async () => {
     if (processingQrCode.current) return
     const files = await runtime.showOpenFileDialog({
-      filters: [{ name: 'License files', extensions: ['lic', 'jwt', 'json', 'txt'] }],
+      filters: [
+        { name: 'License files', extensions: ['lic', 'jwt', 'json', 'txt'] },
+      ],
       properties: ['openFile'],
     })
     if (!files || files.length === 0) return
@@ -176,7 +178,9 @@ export default function ScanInvitationCodeScreen({
         </DialogBody>
         <DialogFooter>
           <FooterActions>
-            <FooterActionButton onClick={() => onLicenseDone ? onLicenseDone() : onScanDone('')}>
+            <FooterActionButton
+              onClick={() => (onLicenseDone ? onLicenseDone() : onScanDone(''))}
+            >
               Continue
             </FooterActionButton>
           </FooterActions>
@@ -193,7 +197,11 @@ export default function ScanInvitationCodeScreen({
           <DialogContent>
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div
-                style={{ fontSize: 13, color: '#d32f2f', whiteSpace: 'pre-wrap' }}
+                style={{
+                  fontSize: 13,
+                  color: '#d32f2f',
+                  whiteSpace: 'pre-wrap',
+                }}
               >
                 {licenseError}
               </div>

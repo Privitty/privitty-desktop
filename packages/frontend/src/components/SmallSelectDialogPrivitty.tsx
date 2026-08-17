@@ -335,13 +335,7 @@ export default function SmallSelectDialogPrivitty({
 
   const handleMinuteSelect = (minute: number) => {
     if (
-      isTimeSelectionDisabled(
-        hour12,
-        minute,
-        meridiem,
-        selectedDate,
-        minDate
-      )
+      isTimeSelectionDisabled(hour12, minute, meridiem, selectedDate, minDate)
     ) {
       return
     }
@@ -434,10 +428,7 @@ export default function SmallSelectDialogPrivitty({
             </div>
           )}
           <div className={styles.expirySection}>
-            <label
-              htmlFor='expiry-datetime'
-              className={styles.expiryLabel}
-            >
+            <label htmlFor='expiry-datetime' className={styles.expiryLabel}>
               Expiry date and time
             </label>
             <div className={styles.pickerWrap} ref={pickerRef}>
@@ -502,7 +493,11 @@ export default function SmallSelectDialogPrivitty({
                           </span>
                         ))}
                       </div>
-                      <div className={styles.daysGrid} role='grid' aria-label='Calendar'>
+                      <div
+                        className={styles.daysGrid}
+                        role='grid'
+                        aria-label='Calendar'
+                      >
                         {monthDays.map(day => {
                           const inCurrentMonth =
                             day.getMonth() === viewMonth.getMonth()
@@ -543,10 +538,16 @@ export default function SmallSelectDialogPrivitty({
                         <span className={styles.timeHeaderValue}>
                           {String(selectedDate.getMinutes()).padStart(2, '0')}
                         </span>
-                        <span className={styles.timeHeaderValue}>{meridiem}</span>
+                        <span className={styles.timeHeaderValue}>
+                          {meridiem}
+                        </span>
                       </div>
                       <div className={styles.timeColumns}>
-                        <div className={styles.timeColumn} role='listbox' aria-label='Select hour'>
+                        <div
+                          className={styles.timeColumn}
+                          role='listbox'
+                          aria-label='Select hour'
+                        >
                           {HOURS_12.map(hour => {
                             const disabled = isTimeSelectionDisabled(
                               hour,
@@ -575,7 +576,11 @@ export default function SmallSelectDialogPrivitty({
                             )
                           })}
                         </div>
-                        <div className={styles.timeColumn} role='listbox' aria-label='Select minute'>
+                        <div
+                          className={styles.timeColumn}
+                          role='listbox'
+                          aria-label='Select minute'
+                        >
                           {MINUTES.map(minute => {
                             const disabled = isTimeSelectionDisabled(
                               hour12,
@@ -584,7 +589,8 @@ export default function SmallSelectDialogPrivitty({
                               selectedDate,
                               minDate
                             )
-                            const selected = selectedDate.getMinutes() === minute
+                            const selected =
+                              selectedDate.getMinutes() === minute
 
                             return (
                               <button

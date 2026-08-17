@@ -85,7 +85,9 @@ export function getDCJsonrpcRemote() {
  *
  * Returns null if no account is configured yet (first-run case).
  */
-async function getInviteLinkFromAnyConfiguredAccount(rpc: any): Promise<string | null> {
+async function getInviteLinkFromAnyConfiguredAccount(
+  rpc: any
+): Promise<string | null> {
   try {
     const allIds: number[] = await rpc.getAllAccountIds()
     for (const id of allIds) {
@@ -97,31 +99,51 @@ async function getInviteLinkFromAnyConfiguredAccount(rpc: any): Promise<string |
         for (let attempt = 0; attempt < 2; attempt++) {
           if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
           try {
-            const link: string | null = await rpc.getChatSecurejoinQrCode(id, null)
+            const link: string | null = await rpc.getChatSecurejoinQrCode(
+              id,
+              null
+            )
             if (link) {
-              log.info('getInviteLinkFromAnyConfiguredAccount: found link', { accountId: id, attempt })
+              log.info('getInviteLinkFromAnyConfiguredAccount: found link', {
+                accountId: id,
+                attempt,
+              })
               return link
             }
           } catch (inner) {
-            log.info('getInviteLinkFromAnyConfiguredAccount: attempt failed', { id, attempt, reason: (inner as any)?.message ?? inner })
+            log.info('getInviteLinkFromAnyConfiguredAccount: attempt failed', {
+              id,
+              attempt,
+              reason: (inner as any)?.message ?? inner,
+            })
           }
         }
       } catch (inner) {
-        log.info('getInviteLinkFromAnyConfiguredAccount: skipping account', { id, reason: (inner as any)?.message ?? inner })
+        log.info('getInviteLinkFromAnyConfiguredAccount: skipping account', {
+          id,
+          reason: (inner as any)?.message ?? inner,
+        })
       }
     }
   } catch (e) {
-    log.warn('getInviteLinkFromAnyConfiguredAccount: failed to list accounts:', e)
+    log.warn(
+      'getInviteLinkFromAnyConfiguredAccount: failed to list accounts:',
+      e
+    )
   }
   return null
 }
 
-async function initAndActivateLicense(licPath: string): Promise<{ statusCode: number }> {
+async function initAndActivateLicense(
+  licPath: string
+): Promise<{ statusCode: number }> {
   const licDir = dirname(licPath)
   const rpc = dcController?.jsonrpcRemote?.rpc as any
 
   if (!rpc) {
-    log.warn('initAndActivateLicense: JSONRPC not ready, will activate on next ImapConnected')
+    log.warn(
+      'initAndActivateLicense: JSONRPC not ready, will activate on next ImapConnected'
+    )
     return { statusCode: 5 /* NOT_INITIALIZED */ }
   }
 
@@ -135,12 +157,21 @@ async function initAndActivateLicense(licPath: string): Promise<{ statusCode: nu
   // We iterate all accounts so this works regardless of which is "selected".
   const inviteLinkForInit = await getInviteLinkFromAnyConfiguredAccount(rpc)
   if (inviteLinkForInit) {
-    log.info('initAndActivateLicense: invite link obtained before init', { inviteLinkForInit })
+    log.info('initAndActivateLicense: invite link obtained before init', {
+      inviteLinkForInit,
+    })
   } else {
-    log.info('initAndActivateLicense: no configured account yet — invite link will be pushed on first ImapConnected')
+    log.info(
+      'initAndActivateLicense: no configured account yet — invite link will be pushed on first ImapConnected'
+    )
   }
 
-  await rpc.privittyLicenseInit(licDir, licPath, PLM_SERVER_URL, inviteLinkForInit ?? null)
+  await rpc.privittyLicenseInit(
+    licDir,
+    licPath,
+    PLM_SERVER_URL,
+    inviteLinkForInit ?? null
+  )
   log.info('initAndActivateLicense: licenseInit completed', { licDir })
 
   // Check current status.
@@ -158,7 +189,10 @@ async function initAndActivateLicense(licPath: string): Promise<{ statusCode: nu
       await rpc.privittyLicenseActivate()
       log.info('initAndActivateLicense: privittyLicenseActivate succeeded')
     } catch (activateErr) {
-      log.warn('initAndActivateLicense: privittyLicenseActivate failed:', activateErr)
+      log.warn(
+        'initAndActivateLicense: privittyLicenseActivate failed:',
+        activateErr
+      )
     }
     statusCode = await rpc.privittyLicenseGetStatus()
     log.info('initAndActivateLicense: status after activation', { statusCode })
@@ -166,7 +200,10 @@ async function initAndActivateLicense(licPath: string): Promise<{ statusCode: nu
 
   // Push the new status to the renderer.
   const accountId = await dcController.jsonrpcRemote.rpc.getSelectedAccountId()
-  mainWindow.send('privittyLicenseStatus', { accountId: accountId ?? 0, statusCode })
+  mainWindow.send('privittyLicenseStatus', {
+    accountId: accountId ?? 0,
+    statusCode,
+  })
 
   return { statusCode }
 }
@@ -392,26 +429,29 @@ export async function init(cwd: string, logHandler: LogHandler) {
 
   // ── Privitty license import (mirrors Android ImportLicenseActivity) ────────
 
-  ipcMain.handle('privitty-import-license-file', async (_ev, filePath: string) => {
-    const raw = await fs.readFile(filePath, 'utf-8')
-    const jwt = raw.trim()
-    // Basic sanity check: a JWT has exactly 3 base64url parts separated by dots.
-    if (jwt.split('.').length !== 3) {
-      throw new Error(
-        'File does not appear to be a valid license JWT.\n' +
-          'Expected a file containing a single JWT (three base64 parts separated by dots).'
-      )
-    }
-    const licDir = join(getConfigPath(), 'license')
-    await fs.mkdir(licDir, { recursive: true })
-    const licPath = join(licDir, 'privitty.lic')
-    await fs.writeFile(licPath, jwt, 'utf-8')
-    log.info('License JWT imported from file to', licPath)
+  ipcMain.handle(
+    'privitty-import-license-file',
+    async (_ev, filePath: string) => {
+      const raw = await fs.readFile(filePath, 'utf-8')
+      const jwt = raw.trim()
+      // Basic sanity check: a JWT has exactly 3 base64url parts separated by dots.
+      if (jwt.split('.').length !== 3) {
+        throw new Error(
+          'File does not appear to be a valid license JWT.\n' +
+            'Expected a file containing a single JWT (three base64 parts separated by dots).'
+        )
+      }
+      const licDir = join(getConfigPath(), 'license')
+      await fs.mkdir(licDir, { recursive: true })
+      const licPath = join(licDir, 'privitty.lic')
+      await fs.writeFile(licPath, jwt, 'utf-8')
+      log.info('License JWT imported from file to', licPath)
 
-    // Immediately init and activate — no restart required.
-    const { statusCode } = await initAndActivateLicense(licPath)
-    return { licensePath: licPath, statusCode }
-  })
+      // Immediately init and activate — no restart required.
+      const { statusCode } = await initAndActivateLicense(licPath)
+      return { licensePath: licPath, statusCode }
+    }
+  )
 
   // Check whether the Privitty license JWT file exists at the global path.
   // Used by WelcomeScreen to decide whether to show the ImportLicenseScreen.
@@ -449,9 +489,7 @@ export async function init(cwd: string, logHandler: LogHandler) {
     const body = await new Promise<string>((resolve, reject) => {
       const req = https.request(url, { method: 'GET' }, res => {
         if (res.statusCode && (res.statusCode < 200 || res.statusCode >= 300)) {
-          reject(
-            new Error(`License server returned HTTP ${res.statusCode}`)
-          )
+          reject(new Error(`License server returned HTTP ${res.statusCode}`))
           res.resume()
           return
         }
@@ -477,7 +515,9 @@ export async function init(cwd: string, logHandler: LogHandler) {
       )
     }
     if (!data.license_jwt) {
-      throw new Error(data.error ?? 'Unexpected server response (no license_jwt).')
+      throw new Error(
+        data.error ?? 'Unexpected server response (no license_jwt).'
+      )
     }
 
     // Persist the JWT to <configPath>/license/privitty.lic

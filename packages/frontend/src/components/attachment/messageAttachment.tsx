@@ -12,7 +12,6 @@ import {
   isImage,
   isVideo,
   isAudio,
-  getExtension,
   dragAttachmentOut,
   MessageTypeAttachmentSubset,
 } from './Attachment'
@@ -38,7 +37,6 @@ function FileAttachmentIcon({
   onDragStart?: React.DragEventHandler<HTMLDivElement>
 }) {
   const { fileMime, fileName } = attachment
-  const extension = getExtension(attachment)
   const gradientIconClass = getPrivittyFileGradientIconClass(fileName)
 
   return (
@@ -47,8 +45,7 @@ function FileAttachmentIcon({
       draggable='true'
       onDragStart={onDragStart}
       title={fileMime || 'null'}
-    >
-    </div>
+    ></div>
   )
 }
 
