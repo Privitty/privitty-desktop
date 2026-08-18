@@ -218,13 +218,9 @@ export default function FileAccessStatusDialog({
       const peerContactId: number = await (
         BackendRemote.rpc as any
       ).privittyGetContactIdByAddr(accountId, contactEmail)
-      const revokeResponse = await (BackendRemote.rpc as any).privittyRevokeFileAccess(
-        accountId,
-        chatId,
-        fileId,
-        peerContactId
-      )
-      console.log('Revoke response:', revokeResponse)
+      const _revokeResponse = await (
+        BackendRemote.rpc as any
+      ).privittyRevokeFileAccess(accountId, chatId, fileId, peerContactId)
       await fetchFileAccessStatus()
       notifyBubbleRefresh()
     } catch (err) {
@@ -263,10 +259,7 @@ export default function FileAccessStatusDialog({
             try {
               const fileId: T.I64 = await (
                 BackendRemote.rpc as any
-              ).privittyGetFileIdByPath(
-                accountId,
-                filePath.replace(/\\/g, '/')
-              )
+              ).privittyGetFileIdByPath(accountId, filePath.replace(/\\/g, '/'))
               const peerContactId: number = await (
                 BackendRemote.rpc as any
               ).privittyGetContactIdByAddr(accountId, requestee.contactId)
@@ -356,11 +349,21 @@ export default function FileAccessStatusDialog({
     switch (normalized) {
       case 'expired':
         return (
-          <Icon icon='error' size={16} className={styles.statusIcon} aria-hidden />
+          <Icon
+            icon='error'
+            size={16}
+            className={styles.statusIcon}
+            aria-hidden
+          />
         )
       case 'denied':
         return (
-          <Icon icon='error' size={16} className={styles.statusIcon} aria-hidden />
+          <Icon
+            icon='error'
+            size={16}
+            className={styles.statusIcon}
+            aria-hidden
+          />
         )
       case 'requested':
       case 'waiting_owner_action':
@@ -392,7 +395,10 @@ export default function FileAccessStatusDialog({
     if (normalized === 'relay_to_owner') {
       return 'Forwardee Requested Access'
     }
-    if (normalized === 'relay_to_recipient' || normalized === 'relay_to_recepient') {
+    if (
+      normalized === 'relay_to_recipient' ||
+      normalized === 'relay_to_recepient'
+    ) {
       return 'Owner Responded'
     }
     return null
@@ -401,11 +407,7 @@ export default function FileAccessStatusDialog({
   const UserRow = ({ requestee }: { requestee: FileAccessRequestee }) => {
     const displayName = requestee.name || requestee.contactId || 'Unknown'
     const initial = avatarInitial(displayName, requestee.contactId)
-    const showYou = shouldShowYouBadge(
-      requestee,
-      isPeer2Mode,
-      selfAccountAddr
-    )
+    const showYou = shouldShowYouBadge(requestee, isPeer2Mode, selfAccountAddr)
     const isOwnerRow = requestee.isOwner && !requestee.isForwarded
     const statusDisplayText = getFileAccessStatusDisplayText(
       requestee.status,
@@ -423,21 +425,23 @@ export default function FileAccessStatusDialog({
         statusDisplayText === 'Access Requested')
 
     const accessBlocked = isAccessBlockedForPermissions(requestee.status)
-    const allowDownload =
-      !accessBlocked && requestee.allowDownload === true
-    const allowForward =
-      !accessBlocked && requestee.allowForward === true
+    const allowDownload = !accessBlocked && requestee.allowDownload === true
+    const allowForward = !accessBlocked && requestee.allowForward === true
 
     const requiresOwnerAction =
       !isPeer2Mode &&
       !isAccessPermanentlyBlocked(requestee.status) &&
       isAccessRequestedStatus(requestee.status)
 
-    const showRevoke =
-      !isPeer2Mode && canRevokeAccess(requestee.status)
+    const showRevoke = !isPeer2Mode && canRevokeAccess(requestee.status)
 
     return (
-      <div className={classNames(styles.userRow, requestee.status?.toLowerCase() === 'revoked' && styles.revoked)}>
+      <div
+        className={classNames(
+          styles.userRow,
+          requestee.status?.toLowerCase() === 'revoked' && styles.revoked
+        )}
+      >
         <div className={styles.userMain}>
           <div className={styles.avatar}>{initial}</div>
           <div className={styles.userInfo}>
@@ -470,9 +474,7 @@ export default function FileAccessStatusDialog({
                         !allowForward && styles.permissionIconDisabled
                       )}
                       aria-label={
-                        allowForward
-                          ? 'Forward allowed'
-                          : 'Forward not allowed'
+                        allowForward ? 'Forward allowed' : 'Forward not allowed'
                       }
                     />
                   )}
@@ -572,7 +574,9 @@ export default function FileAccessStatusDialog({
           )}
 
           {loading && (
-            <div className={styles.centerMessage}>{tx('loading') || 'Loading...'}</div>
+            <div className={styles.centerMessage}>
+              {tx('loading') || 'Loading...'}
+            </div>
           )}
           {error && <div className={styles.errorMessage}>{error}</div>}
 

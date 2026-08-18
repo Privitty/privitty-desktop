@@ -36,7 +36,7 @@ import useChat from '../../hooks/chat/useChat'
 
 import type { EmojiData, BaseEmoji } from 'emoji-mart/index'
 import { VisualVCardComponent } from '../message/VCard'
-import { KeybindAction } from '../../keybindings'
+import { isEscapeKey, KeybindAction } from '../../keybindings'
 import useKeyBindingAction from '../../hooks/useKeyBindingAction'
 import { CloseButton } from '../Dialog'
 import { enterKeySendsKeyboardShortcuts } from '../KeyboardShortcutHint'
@@ -301,6 +301,10 @@ const Composer = forwardRef<
 
   const onEmojiIconClick = () => setShowEmojiPicker(!showEmojiPicker)
   const shiftPressed = useRef(false)
+  const showEmojiPickerRef = useRef(showEmojiPicker)
+  const showAppPickerRef = useRef(showAppPicker)
+  showEmojiPickerRef.current = showEmojiPicker
+  showAppPickerRef.current = showAppPicker
   const onEmojiSelect = (emoji: EmojiData) => {
     log.debug(`EmojiPicker: Selected ${emoji.id}`)
     currentComposerMessageInputRef.current?.insertStringAtCursorPosition(
@@ -316,9 +320,12 @@ const Composer = forwardRef<
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       shiftPressed.current = ev.shiftKey
-      if (ev.type === 'keydown' && ev.code === 'Escape') {
-        setShowEmojiPicker(false)
-        setShowAppPicker(false)
+      if (ev.type === 'keydown' && isEscapeKey(ev)) {
+        if (showEmojiPickerRef.current || showAppPickerRef.current) {
+          setShowEmojiPicker(false)
+          setShowAppPicker(false)
+          ev.stopImmediatePropagation()
+        }
       }
     }
     // these options are needed, otherwise emoji mart sometimes eats the keydown event

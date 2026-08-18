@@ -16,6 +16,7 @@ declare global {
     readonly __contextMenuActive: boolean
     __setContextMenuActive: (newVal: boolean) => void
     __settingsOpened: boolean
+    __settingsInSubView: boolean
     __keybindingsDialogOpened: boolean
     __aboutDialogOpened: boolean
     __setQuoteInDraft: ((msgId: number) => void) | null
@@ -24,6 +25,10 @@ declare global {
     __chatlistSetSearch:
       | ((searchTerm: string, chatId: number | null) => void)
       | undefined
+    __chatlistClearSearch: (() => void) | undefined
+    __chatlistIsSearchActive: (() => boolean) | undefined
+    __chatlistExitArchivedView: (() => void) | undefined
+    __chatlistIsArchivedView: (() => boolean) | undefined
     __refetchChatlist: undefined | (() => void)
     /**
      * Setting this will make the MessageList component `jumpToMessage`
@@ -75,6 +80,8 @@ declare global {
     __internal_current_message_list_instance_id?: symbol
     __updateAccountListSidebar: (() => void) | undefined
     __closeAllDialogs: () => void | undefined
+    __isReactionsBarShown: boolean
+    __hideReactionsBar: (() => void) | undefined
 
     /**
      * Used for E2E tests.

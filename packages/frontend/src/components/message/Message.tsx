@@ -304,9 +304,7 @@ function isIncomingForwardeePrv(message: T.Message): boolean {
 
   const sharedStatus = info.shared?.status?.trim().toLowerCase()
   const hasRealSharedAccess =
-    !!sharedStatus &&
-    sharedStatus !== 'not_found' &&
-    sharedStatus !== 'none'
+    !!sharedStatus && sharedStatus !== 'not_found' && sharedStatus !== 'none'
 
   if (hasRealSharedAccess) return false
 
@@ -448,7 +446,12 @@ async function buildContextMenu(
     // Forward message
     showForward && {
       label: tx('forward'),
-      action: openForwardDialog.bind(null, openDialog, message, chat.isSelfTalk),
+      action: openForwardDialog.bind(
+        null,
+        openDialog,
+        message,
+        chat.isSelfTalk
+      ),
       rightIcon: 'forward',
     },
     // Send emoji reaction
@@ -704,8 +707,10 @@ async function fetchPrivittyBubbleState(
       isIncomingForwardee = isIncomingForwardeePrv(messageWithInfo)
 
       const normalize = (s?: string) => s?.trim().toLowerCase()
-      if (normalize(info.shared?.status) === 'waiting_owner_action' ||
-          normalize(info.shared?.status) === 'requested') {
+      if (
+        normalize(info.shared?.status) === 'waiting_owner_action' ||
+        normalize(info.shared?.status) === 'requested'
+      ) {
         waitingCount++
       }
       waitingCount += info.forwarded.filter(f =>
@@ -718,7 +723,13 @@ async function fetchPrivittyBubbleState(
     console.error('Red dot count error:', err)
   }
 
-  return { status, expiryTime, waitingCount, isPrivittyForwarded, isIncomingForwardee }
+  return {
+    status,
+    expiryTime,
+    waitingCount,
+    isPrivittyForwarded,
+    isIncomingForwardee,
+  }
 }
 
 function matchesFileAccessChange(
@@ -868,7 +879,6 @@ export default function Message(props: {
     hasLocation,
     hasHtml,
     isInfo,
-    isForwarded,
     systemMessageType,
     parentId,
     sender,
@@ -879,7 +889,7 @@ export default function Message(props: {
   const [isPrivittyForwarded, setIsPrivittyForwarded] = useState(() =>
     isPrivittyForwardedPrvSync(message)
   )
-  const [isIncomingForwardee, setIsIncomingForwardee] = useState(() =>
+  const [setIsIncomingForwardee] = useState(() =>
     isIncomingForwardeePrv(message)
   )
   // Synchronously hide on first render if the text looks like a raw Privitty
@@ -996,7 +1006,7 @@ export default function Message(props: {
       unsubscribeForwardAccessRequested()
       if (intervalId) clearInterval(intervalId)
     }
-  }, [accountId, id, file, chatId])
+  }, [accountId, id, file, chatId, message, setIsIncomingForwardee])
   // handshake messages. Must wait for server readiness — same reason as the
   // isPduMessage effect above: calling checkIsPrivittyMessage before
   // switchProfile completes returns false, causing replacement text to be
@@ -1566,7 +1576,9 @@ export default function Message(props: {
                       fontWeight: 'normal',
                       opacity: 0.72,
                       color:
-                        direction === 'outgoing' ? '#FFF' : 'var(--messageText, #444)',
+                        direction === 'outgoing'
+                          ? '#FFF'
+                          : 'var(--messageText, #444)',
                     }}
                   >
                     Forwarded Message

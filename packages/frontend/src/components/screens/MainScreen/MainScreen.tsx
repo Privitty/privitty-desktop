@@ -239,6 +239,28 @@ function MainScreenInner({ accountId }: Props) {
   const isSearchActive = queryStr.length > 0 || queryChatId !== null
   const showArchivedChats = !isSearchActive && archivedChatsSelected
 
+  useEffect(() => {
+    window.__chatlistClearSearch = handleSearchClear
+    window.__chatlistIsSearchActive = () =>
+      queryStr.length > 0 || queryChatId !== null
+    window.__chatlistExitArchivedView = () => setArchivedChatsSelected(false)
+    window.__chatlistIsArchivedView = () =>
+      !isSearchActive && archivedChatsSelected
+
+    return () => {
+      window.__chatlistClearSearch = undefined
+      window.__chatlistIsSearchActive = undefined
+      window.__chatlistExitArchivedView = undefined
+      window.__chatlistIsArchivedView = undefined
+    }
+  }, [
+    handleSearchClear,
+    queryStr,
+    queryChatId,
+    isSearchActive,
+    archivedChatsSelected,
+  ])
+
   return (
     <div
       className={`main-screen ${smallScreenMode ? 'small-screen' : ''} ${
@@ -565,8 +587,12 @@ function ChatNavButtons({ chat }: { chat: T.FullChat }) {
         {/* Remote-access button: visible when the peer is an edge gateway */}
         {remoteAccessAvailable && (
           <Button
-            aria-label={tunnelActive ? 'Remote Access (Active)' : 'Remote Access'}
-            title={tunnelActive ? 'Remote Access — tunnel active' : 'Remote Access'}
+            aria-label={
+              tunnelActive ? 'Remote Access (Active)' : 'Remote Access'
+            }
+            title={
+              tunnelActive ? 'Remote Access — tunnel active' : 'Remote Access'
+            }
             className='navbar-button'
             styling='borderless'
             onClick={onRemoteAccessClick}
@@ -583,7 +609,11 @@ function ChatNavButtons({ chat }: { chat: T.FullChat }) {
               strokeLinecap='round'
               strokeLinejoin='round'
               aria-hidden='true'
-              style={{ color: tunnelActive ? 'var(--colorSuccess, #2e7d32)' : undefined }}
+              style={{
+                color: tunnelActive
+                  ? 'var(--colorSuccess, #2e7d32)'
+                  : undefined,
+              }}
             >
               {/* Monitor / display icon (matches Android ic_baseline_devices_24) */}
               <rect x='2' y='3' width='20' height='14' rx='2' ry='2' />

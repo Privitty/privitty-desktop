@@ -139,7 +139,9 @@ function sharedRequestee(info: T.PrivittySharedInfo): FileAccessRequestee {
   }
 }
 
-function forwardedRequestee(info: T.PrivittyForwardedInfo): FileAccessRequestee {
+function forwardedRequestee(
+  info: T.PrivittyForwardedInfo
+): FileAccessRequestee {
   return {
     contactId: info.contactAddr,
     name: info.contactName,
@@ -215,7 +217,11 @@ export function canRevokeAccess(status?: string | null): boolean {
 
 export function isAccessBlockedForPermissions(status?: string | null): boolean {
   const normalized = (status ?? '').trim().toLowerCase()
-  return normalized === 'denied' || normalized === 'revoked' || normalized === 'expired'
+  return (
+    normalized === 'denied' ||
+    normalized === 'revoked' ||
+    normalized === 'expired'
+  )
 }
 
 export function shouldShowYouBadge(
@@ -224,9 +230,7 @@ export function shouldShowYouBadge(
   selfAccountAddr: string | null
 ): boolean {
   if (requestee.isForwarded) {
-    return (
-      isPeer2Mode && emailsEqual(selfAccountAddr, requestee.contactId)
-    )
+    return isPeer2Mode && emailsEqual(selfAccountAddr, requestee.contactId)
   }
   if (requestee.isOwner) {
     return !isPeer2Mode
@@ -236,7 +240,6 @@ export function shouldShowYouBadge(
 
 export async function buildFileAccessSections(
   accountId: number,
-  chatId: number,
   msgId: number,
   fallbackFileName?: string
 ): Promise<FileAccessSections> {
@@ -302,10 +305,7 @@ export async function buildFileAccessSections(
     isSender ? sharedInfo?.contactAddr : null
   )
 
-  if (
-    !isSender &&
-    isForwardeeForwardedRelayView(message, forwardedEntries)
-  ) {
+  if (!isSender && isForwardeeForwardedRelayView(message, forwardedEntries)) {
     forwardedEntries = forwardedEntries.map(entry => ({
       ...entry,
       contactName: selfName,
@@ -319,7 +319,9 @@ export async function buildFileAccessSections(
     }
   }
 
-  sharedList.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  sharedList.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  )
   forwardedList.sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
   )

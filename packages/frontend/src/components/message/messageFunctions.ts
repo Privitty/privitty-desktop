@@ -182,13 +182,19 @@ async function resolvePrivittySourceChatId(
   if (!targetPath) return message.chatId
   try {
     const chatIds = await BackendRemote.rpc.getChatlistEntries(
-      accountId, null, null, null
+      accountId,
+      null,
+      null,
+      null
     )
     for (const [chatIdNum] of chatIds) {
       if (chatIdNum === message.chatId) continue
       try {
         const msgIds = await BackendRemote.rpc.getMessageIds(
-          accountId, chatIdNum, false, false
+          accountId,
+          chatIdNum,
+          false,
+          false
         )
         for (const msgId of msgIds) {
           const msg = await BackendRemote.rpc.getMessage(accountId, msgId)
@@ -196,7 +202,10 @@ async function resolvePrivittySourceChatId(
           if (!msg.file) continue
           const candidatePath = msg.file.replace(/\\/g, '/')
           if (candidatePath === targetPath) {
-            log.debug('resolvePrivittySourceChatId: found source chat', chatIdNum)
+            log.debug(
+              'resolvePrivittySourceChatId: found source chat',
+              chatIdNum
+            )
             return chatIdNum
           }
         }
@@ -386,7 +395,11 @@ export async function confirmForwardMessage(
           )
         }
       } else {
-        await BackendRemote.rpc.forwardMessages(accountId, [message.id], chat.id)
+        await BackendRemote.rpc.forwardMessages(
+          accountId,
+          [message.id],
+          chat.id
+        )
       }
     } catch (e) {
       log.error('confirmForwardMessage: error forwarding', e)

@@ -141,7 +141,10 @@ export default class ScreenController extends Component {
       // was fire-and-forget, which created a race where the user could open
       // Settings before the store finished loading (causing a null crash).
       await SettingsStoreInstance.effect.load().catch(err => {
-        log.warn('Failed to pre-load settings store during account selection:', err)
+        log.warn(
+          'Failed to pre-load settings store during account selection:',
+          err
+        )
       })
     } else {
       log.info('account is already selected')

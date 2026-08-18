@@ -60,10 +60,9 @@ export function PrivittyChatProvider({
     if (accountId == null) return
     if (privittyStore.isPrivitty(accountId, chatId)) return
     try {
-      const isEncrypted = await (BackendRemote.rpc as any).privittyIsChatEncrypted(
-        accountId,
-        chatId
-      )
+      const isEncrypted = await (
+        BackendRemote.rpc as any
+      ).privittyIsChatEncrypted(accountId, chatId)
       if (isEncrypted === true) {
         privittyStore.markPrivitty(accountId, chatId)
       }
@@ -161,9 +160,13 @@ export function PrivittyChatProvider({
   // Core event: peer handshake completed → mark the chat as Privitty-protected.
   useEffect(() => {
     if (accountId == null) return
-    return onDCEvent(accountId, 'PrivittyPeerHandshakeComplete', ({ chatId }) => {
-      privittyStore.markPrivitty(accountId, chatId)
-    })
+    return onDCEvent(
+      accountId,
+      'PrivittyPeerHandshakeComplete',
+      ({ chatId }) => {
+        privittyStore.markPrivitty(accountId, chatId)
+      }
+    )
   }, [accountId])
 
   // Core event: chat encryption state changed (e.g. after key rotation).

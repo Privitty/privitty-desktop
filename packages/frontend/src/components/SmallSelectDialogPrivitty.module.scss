@@ -140,6 +140,10 @@ $accent: #6750a4;
   font-size: 12px;
   color: var(--textPrimary);
 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
   &:hover:not(:disabled):not(.daySelected) {
     background: color-mix(in srgb, #{$accent} 14%, transparent);
   }

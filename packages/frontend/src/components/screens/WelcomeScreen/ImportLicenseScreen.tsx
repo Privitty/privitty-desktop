@@ -90,7 +90,9 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
     try {
       text = await navigator.clipboard.readText()
     } catch {
-      setErrorMsg('Could not read clipboard. Please copy the license URL first.')
+      setErrorMsg(
+        'Could not read clipboard. Please copy the license URL first.'
+      )
       setStep('error')
       return
     }
@@ -136,7 +138,11 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
           ref={qrRef}
           onScanSuccess={handleScanSuccess}
           onError={err => {
-            setErrorMsg(typeof err === 'string' ? err : (err as any)?.message ?? String(err))
+            setErrorMsg(
+              typeof err === 'string'
+                ? err
+                : ((err as any)?.message ?? String(err))
+            )
             setStep('error')
           }}
         />
@@ -172,9 +178,7 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
         <span className={styles.successIcon}>✓</span>
         <p className={styles.stateTitle}>License Imported</p>
         {customerName && customerName !== 'Unknown' && (
-          <p className={styles.subtitleCompact}>
-            Licensed to: {customerName}
-          </p>
+          <p className={styles.subtitleCompact}>Licensed to: {customerName}</p>
         )}
         <Button
           styling='primary'

@@ -151,8 +151,8 @@ export default function useMessage() {
         })
 
         // OTK (one-time key) PDU is now queued automatically by the Privitty
-      // core inside privittySendFile / privittySendGroupFile, so we no longer
-      // need to send a separate text message here.
+        // core inside privittySendFile / privittySendGroupFile, so we no longer
+        // need to send a separate text message here.
         // DELETE ENCRYPTED .prv FILE AFTER SUCCESSFUL SEND
         // (File is in user's folder, use deleteEncryptedFile not removeTempFile)
         if (sharedData?.encryptedFilePath) {

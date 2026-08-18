@@ -15,7 +15,6 @@ import { DesktopSettings } from '../desktop_settings.js'
 import { StdioServer } from './stdio_server.js'
 import { migrateAccountsIfNeeded } from './migration.js'
 
-
 const app = rawApp as ExtendedAppMainProcess
 const log = getLogger('main/deltachat')
 
@@ -85,8 +84,7 @@ function findDeltaChatBinaryInPackagedApp(): string | null {
     }
 
     log.error(
-      'stdio-rpc-server not found in app.asar.unpacked. ' +
-        'Tried packages:',
+      'stdio-rpc-server not found in app.asar.unpacked. ' + 'Tried packages:',
       packageCandidates
     )
     return null
@@ -240,7 +238,10 @@ export default class DeltaChatController extends EventEmitter {
       await (this.jsonrpcRemote.rpc as any).privittyInitialize(accountId)
       log.info('openPrivittyVault: privittyInitialize completed', { accountId })
     } catch (error) {
-      log.warn('openPrivittyVault: privittyInitialize failed (non-fatal):', error)
+      log.warn(
+        'openPrivittyVault: privittyInitialize failed (non-fatal):',
+        error
+      )
     }
 
     // Obtain the Delta Chat contact-invite URL.
@@ -253,15 +254,21 @@ export default class DeltaChatController extends EventEmitter {
     let inviteLink: string | null = null
     const accountsToTry: number[] = [accountId]
     try {
-      const allIds: number[] = await (this.jsonrpcRemote.rpc as any).getAllAccountIds()
+      const allIds: number[] = await (
+        this.jsonrpcRemote.rpc as any
+      ).getAllAccountIds()
       for (const id of allIds) {
         if (!accountsToTry.includes(id)) accountsToTry.push(id)
       }
-    } catch (_) { /* ignore — we'll still try the primary account */ }
+    } catch (_) {
+      /* ignore — we'll still try the primary account */
+    }
 
     for (const tryId of accountsToTry) {
       try {
-        const configured: boolean = await (this.jsonrpcRemote.rpc as any).isConfigured(tryId)
+        const configured: boolean = await (
+          this.jsonrpcRemote.rpc as any
+        ).isConfigured(tryId)
         if (!configured) continue
         // Retry once after 3 s: on a freshly created chatmail account the
         // Ed25519 key pair may not be on disk yet when ImapConnected fires.
@@ -269,23 +276,36 @@ export default class DeltaChatController extends EventEmitter {
         for (let attempt = 0; attempt < 2; attempt++) {
           if (attempt > 0) await new Promise(r => setTimeout(r, 3000))
           try {
-            link = await (this.jsonrpcRemote.rpc as any).getChatSecurejoinQrCode(tryId, null)
+            link = await (
+              this.jsonrpcRemote.rpc as any
+            ).getChatSecurejoinQrCode(tryId, null)
             if (link) break
           } catch (inner) {
-            log.info('openPrivittyVault: getChatSecurejoinQrCode attempt failed', { tryId, attempt, reason: (inner as any)?.message ?? inner })
+            log.info(
+              'openPrivittyVault: getChatSecurejoinQrCode attempt failed',
+              { tryId, attempt, reason: (inner as any)?.message ?? inner }
+            )
           }
         }
         if (link) {
           inviteLink = link
-          log.info('openPrivittyVault: invite link generated', { accountId: tryId, inviteLink })
+          log.info('openPrivittyVault: invite link generated', {
+            accountId: tryId,
+            inviteLink,
+          })
           break
         }
       } catch (error) {
-        log.info('openPrivittyVault: could not generate invite link for account (trying next):', { tryId, error })
+        log.info(
+          'openPrivittyVault: could not generate invite link for account (trying next):',
+          { tryId, error }
+        )
       }
     }
     if (!inviteLink) {
-      log.warn('openPrivittyVault: no configured account has an invite link yet — will retry on next ImapConnected')
+      log.warn(
+        'openPrivittyVault: no configured account has an invite link yet — will retry on next ImapConnected'
+      )
     }
 
     // Initialise the global Privitty license manager.
@@ -302,20 +322,24 @@ export default class DeltaChatController extends EventEmitter {
     {
       const licDir = join(getConfigPath(), 'license')
       const licFilePath = join(licDir, 'privitty.lic')
-      const licensePath: string | null = existsSync(licFilePath) ? licFilePath : null
+      const licensePath: string | null = existsSync(licFilePath)
+        ? licFilePath
+        : null
 
       if (licensePath) {
         log.info('openPrivittyVault: found license file', { licFilePath })
       } else {
-        log.info('openPrivittyVault: no license file on disk, using cached DB state')
+        log.info(
+          'openPrivittyVault: no license file on disk, using cached DB state'
+        )
       }
 
       try {
         await (this.jsonrpcRemote.rpc as any).privittyLicenseInit(
-          licDir,       // dataDir — where privitty_license.db is stored
-          licensePath,  // JWT file path, or null to use cached DB state
+          licDir, // dataDir — where privitty_license.db is stored
+          licensePath, // JWT file path, or null to use cached DB state
           PLM_SERVER_URL,
-          inviteLink    // contact-invite URL so WatchTower can link this device
+          inviteLink // contact-invite URL so WatchTower can link this device
         )
         log.info('openPrivittyVault: license manager initialised', { licDir })
       } catch (error) {
@@ -329,7 +353,9 @@ export default class DeltaChatController extends EventEmitter {
         let statusCode: number = await (
           this.jsonrpcRemote.rpc as any
         ).privittyLicenseGetStatus()
-        log.info('openPrivittyVault: license status before auto-activate', { statusCode })
+        log.info('openPrivittyVault: license status before auto-activate', {
+          statusCode,
+        })
 
         // Attempt activation for any status that is not already confirmed active.
         // This covers NOT_ACTIVATED (3), BYPASS/debug (99), etc.
@@ -341,10 +367,17 @@ export default class DeltaChatController extends EventEmitter {
           try {
             await (this.jsonrpcRemote.rpc as any).privittyLicenseActivate()
             log.info('openPrivittyVault: auto-activation succeeded')
-            statusCode = await (this.jsonrpcRemote.rpc as any).privittyLicenseGetStatus()
-            log.info('openPrivittyVault: license status after auto-activate', { statusCode })
+            statusCode = await (
+              this.jsonrpcRemote.rpc as any
+            ).privittyLicenseGetStatus()
+            log.info('openPrivittyVault: license status after auto-activate', {
+              statusCode,
+            })
           } catch (activateErr) {
-            log.warn('openPrivittyVault: auto-activation failed (user can retry via dialog):', activateErr)
+            log.warn(
+              'openPrivittyVault: auto-activation failed (user can retry via dialog):',
+              activateErr
+            )
           }
         } else if (statusCode === 0 || statusCode === 1) {
           // Device is already activated — re-activate unconditionally so PLM
@@ -358,18 +391,28 @@ export default class DeltaChatController extends EventEmitter {
           // QR is available at this moment.
           try {
             if (inviteLink !== null) {
-              await (this.jsonrpcRemote.rpc as any).privittyLicenseSetInviteLink(inviteLink)
+              await (
+                this.jsonrpcRemote.rpc as any
+              ).privittyLicenseSetInviteLink(inviteLink)
             }
             await (this.jsonrpcRemote.rpc as any).privittyLicenseActivate()
-            log.info('openPrivittyVault: re-activation pushed to PLM', { inviteLinkPresent: inviteLink !== null })
+            log.info('openPrivittyVault: re-activation pushed to PLM', {
+              inviteLinkPresent: inviteLink !== null,
+            })
           } catch (syncErr) {
-            log.warn('openPrivittyVault: re-activation failed (non-fatal):', syncErr)
+            log.warn(
+              'openPrivittyVault: re-activation failed (non-fatal):',
+              syncErr
+            )
           }
         }
 
         mainWindow.send('privittyLicenseStatus', { accountId, statusCode })
       } catch (error) {
-        log.warn('openPrivittyVault: license status check failed (non-fatal):', error)
+        log.warn(
+          'openPrivittyVault: license status check failed (non-fatal):',
+          error
+        )
       }
     }
 
@@ -495,7 +538,9 @@ export default class DeltaChatController extends EventEmitter {
               } else if (event.kind.startsWith('Error')) {
                 logCoreEvent.error(contextId, event.msg)
               } else if (event.kind === 'ImapConnected') {
-                log.info('ImapConnected: triggering openPrivittyVault', { contextId })
+                log.info('ImapConnected: triggering openPrivittyVault', {
+                  contextId,
+                })
                 this.openPrivittyVault(contextId)
               } else if (app.rc['log-debug']) {
                 // in debug mode log all core events

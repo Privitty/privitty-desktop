@@ -30,6 +30,7 @@ export enum KeybindAction {
   ChatList_SwitchToArchiveView = 'chatlist:switch-to-archive-view',
   ChatList_SwitchToNormalView = 'chatlist:switch-to-normal-view',
   AboutDialog_Open = 'about:open',
+  Global_Dismiss = 'global:dismiss',
 
   // Composite Actions (actions that trigger other actions)
   // ChatList_FocusAndClearSearchInput = 'chatlist:focus-and-clear-search',
@@ -38,6 +39,10 @@ export enum KeybindAction {
 
   // Debug
   Debug_MaybeNetwork = 'debug:maybe_network',
+}
+
+export function isEscapeKey(ev: KeyboardEvent): boolean {
+  return ev.key === 'Escape' || ev.key === 'Esc' || ev.code === 'Escape'
 }
 
 export namespace ActionEmitter {
@@ -132,12 +137,16 @@ export function keyDownEvent2Action(
       (ev.key === ',' || ev.code === 'Comma')
     ) {
       return KeybindAction.Settings_Open
-    } else if (ev.code === 'Escape') {
+    } else if (isEscapeKey(ev)) {
+      if (window.__settingsOpened && window.__settingsInSubView) {
+        return
+      }
       if ((ev.target as any).id === 'chat-list-search') {
         return KeybindAction.ChatList_ExitSearch
       } else if ((ev.target as any).id === 'composer-textarea') {
         return KeybindAction.Composer_CancelReply
       }
+      return KeybindAction.Global_Dismiss
     } else if (
       (ev.target as any).id === 'chat-list-search' &&
       (ev.key === 'Enter' || ev.code === 'ArrowDown')

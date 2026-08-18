@@ -39,7 +39,10 @@ export default function PrivittyLicenseDialog({
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    if (statusCode === PRIVITTY_STATUS_ACTIVE || statusCode === PRIVITTY_STATUS_BYPASS) {
+    if (
+      statusCode === PRIVITTY_STATUS_ACTIVE ||
+      statusCode === PRIVITTY_STATUS_BYPASS
+    ) {
       return
     }
     licenseGetInfo()

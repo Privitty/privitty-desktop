@@ -135,13 +135,15 @@ class BrowserRuntime implements Runtime {
   importLicenseFromUrl(
     _url: string
   ): Promise<{ customerName: string; licensePath: string }> {
-    return Promise.reject(new Error('License import not supported in browser runtime'))
+    return Promise.reject(
+      new Error('License import not supported in browser runtime')
+    )
   }
 
-  importLicenseFromFile(
-    _filePath: string
-  ): Promise<{ licensePath: string }> {
-    return Promise.reject(new Error('License file import not supported in browser runtime'))
+  importLicenseFromFile(_filePath: string): Promise<{ licensePath: string }> {
+    return Promise.reject(
+      new Error('License file import not supported in browser runtime')
+    )
   }
 
   onDrop: DropListener | null = null
