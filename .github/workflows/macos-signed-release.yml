@@ -73,18 +73,48 @@ jobs:
           KEYCHAIN_PATH="$RUNNER_TEMP/privitty-sign.keychain-db"
           KEYCHAIN_PASS="$(openssl rand -hex 16)"
           CERT_PATH="$RUNNER_TEMP/DeveloperIDApp.p12"
+          B64_PATH="$RUNNER_TEMP/DeveloperIDApp.b64"
 
-          # Decode the base64 secret to a real .p12 file
-          echo "$CSC_LINK" | base64 --decode > "$CERT_PATH"
+          if [ -z "${CSC_LINK:-}" ]; then
+            echo "ERROR: CSC_LINK secret is empty."
+            exit 1
+          fi
 
-          # Create a temporary keychain
+          # Write secret to a file first (avoids shell escaping issues with long values).
+          # Strip accidental whitespace/newlines from copy-paste.
+          printf '%s' "$CSC_LINK" | tr -d ' \n\r\t' > "$B64_PATH"
+
+          # macOS runners use BSD base64 (-D), not GNU base64 (--decode).
+          base64 -D -i "$B64_PATH" -o "$CERT_PATH"
+
+          CERT_BYTES=$(wc -c < "$CERT_PATH" | tr -d ' ')
+          echo "Decoded certificate size: ${CERT_BYTES} bytes"
+          if [ "$CERT_BYTES" -lt 1000 ]; then
+            echo "ERROR: Decoded .p12 is too small — CSC_LINK is likely invalid or truncated."
+            echo "Re-encode with: base64 -i YourCert.p12 | tr -d '\\n' | pbcopy"
+            exit 1
+          fi
+
+          # Normalize password: GitHub secret set to a single space means "no password".
+          CERT_PASS="${CSC_KEY_PASSWORD:-}"
+          CERT_PASS="$(printf '%s' "$CERT_PASS" | tr -d ' \n\r\t')"
+
+          # Validate PKCS#12 before touching the keychain.
+          if ! openssl pkcs12 -in "$CERT_PATH" -passin "pass:${CERT_PASS}" -noout 2>/dev/null; then
+            echo "ERROR: CSC_LINK is not a valid .p12 (or CSC_KEY_PASSWORD is wrong)."
+            echo "Export again from Keychain Access:"
+            echo "  1. Open Keychain Access → login → My Certificates"
+            echo "  2. Expand 'Developer ID Application: Alanring Technologies...'"
+            echo "  3. Select BOTH the certificate AND its private key (child item)"
+            echo "  4. File → Export Items… → Personal Information Exchange (.p12)"
+            echo "  5. base64 -i exported.p12 | tr -d '\\n' | pbcopy"
+            exit 1
+          fi
+
           security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
 
-          # Import the certificate.
-          # CSC_KEY_PASSWORD may be empty (no password set during .p12 export).
-          CERT_PASS="${CSC_KEY_PASSWORD:-}"
           security import "$CERT_PATH" \
             -k "$KEYCHAIN_PATH" \
             -P "$CERT_PASS" \
@@ -92,19 +122,15 @@ jobs:
             -T /usr/bin/productbuild \
             -T /usr/bin/pkgbuild
 
-          # Allow codesign to use the key without a password prompt
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
             -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
 
-          # Prepend our keychain to the search list so electron-builder finds it
           security list-keychains -d user -s "$KEYCHAIN_PATH" \
             $(security list-keychains -d user | tr -d '"')
 
-          # Persist path for cleanup step
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
-          # Confirm the identity is visible
           echo ":: Available signing identities ::"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
@@ -119,7 +145,9 @@ jobs:
           KEY_DIR="$RUNNER_TEMP/private_keys"
           mkdir -p "$KEY_DIR"
           KEY_PATH="$KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8"
-          echo "$APPLE_API_KEY" | base64 --decode > "$KEY_PATH"
+          B64_PATH="$RUNNER_TEMP/AuthKey.b64"
+          printf '%s' "$APPLE_API_KEY" | tr -d ' \n\r\t' > "$B64_PATH"
+          base64 -D -i "$B64_PATH" -o "$KEY_PATH"
           chmod 600 "$KEY_PATH"
 
           echo "API_KEY_PATH=$KEY_PATH" >> "$GITHUB_ENV"
