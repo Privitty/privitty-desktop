@@ -248,7 +248,12 @@ build['deb'] = {
 }
 
 build['win'] = {
-  icon: 'build/icon.png',
+  // Use a pre-built multi-resolution ICO (16–256 px, 9 sizes).
+  // Supplying an ICO file directly avoids the PNG→ICO conversion that
+  // electron-builder performs via rcedit/wine on non-Windows builders,
+  // which can silently fail and leave the default Electron atom icon in
+  // the exe (visible in Start-menu search and the installer title bar).
+  icon: 'build/icon.ico',
   // Use a fixed prefix for Windows installer filenames
   artifactName: 'PrivittyChat-${version}-Setup.${arch}.${ext}', // specifying it inside of build['nsis'] does not work for unknown reasons.
   files: [...files, PREBUILD_FILTERS.NOT_MAC, PREBUILD_FILTERS.NOT_LINUX],
@@ -325,6 +330,9 @@ build['appx'] = {
   identityName: 'merlinux.privittyChat',
   languages,
   artifactName: '${productName}-${version}-Package.${arch}.${ext}',
+  // Dark tile background so the white Privitty logo is always clearly visible
+  // regardless of whether the user has Windows light or dark mode enabled.
+  backgroundColor: '#1a1a2e',
 }
 
 // see https://www.electron.build/configuration/nsis
