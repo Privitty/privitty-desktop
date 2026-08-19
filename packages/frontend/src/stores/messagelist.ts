@@ -707,7 +707,7 @@ class MessageListStore extends Store<MessageListState> {
         false,
         true
       )
-      let indexEnd = -1
+      let indexEnd: number
       const last_item: Type.MessageListItem | undefined =
         this.state.messageListItems[this.state.messageListItems.length - 1]
 
@@ -883,9 +883,9 @@ class MessageListStore extends Store<MessageListState> {
     // However, let's keep the code that supports arbitrary chatId,
     // which can be "enabled" by setting `chatIdPreset = undefined`.
     const chatIdPreset: number | undefined = this.chatId
-    let chatId: number | undefined = undefined
+    let chatId: number | undefined
 
-    let jumpToMessageStack: number[] = []
+    let jumpToMessageStack: number[]
     if (jumpToMessageId === undefined) {
       // jump down
       const jumpToMessageStackLength = this.state.jumpToMessageStack.length

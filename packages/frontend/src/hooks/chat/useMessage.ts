@@ -143,7 +143,7 @@ export default function useMessage() {
       message: Partial<T.MessageData>
     ) => {
       log.debug('filePathName', message)
-      let msgId = 0
+      let msgId: number
       if (message.file && message.filename) {
         msgId = await BackendRemote.rpc.sendMsg(accountId, chatId, {
           ...MESSAGE_DEFAULT,
