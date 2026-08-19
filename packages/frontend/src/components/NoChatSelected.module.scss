@@ -31,21 +31,26 @@
 
 .welcomeGrid {
   display: grid;
-  grid-template-columns: 1.2fr 1.2fr 0.8fr;
-  gap: 24px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
 
 .welcomeCard {
   background: var(--bp4DialogBgSecondary);
   border-radius: 18px;
   padding: 18px;
+  min-height: 200px;
+  box-sizing: border-box;
 
   h3 {
     color: var(--globalText);
+    margin: 0 0 16px;
   }
 
   p {
     color: var(--textSecondary);
+    margin: 0;
+    line-height: 1.4;
   }
 }
 
