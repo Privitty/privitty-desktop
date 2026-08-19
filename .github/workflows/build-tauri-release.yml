@@ -45,7 +45,7 @@ jobs:
 
       - name: install frontend dependencies
         run: |
-          npm i -g pnpm
+          npm i -g pnpm@10
           pnpm install
 
       - uses: tauri-apps/tauri-action@v0
