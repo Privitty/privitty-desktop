@@ -252,9 +252,10 @@ build['win'] = {
   // Use a fixed prefix for Windows installer filenames
   artifactName: 'PrivittyChat-${version}-Setup.${arch}.${ext}', // specifying it inside of build['nsis'] does not work for unknown reasons.
   files: [...files, PREBUILD_FILTERS.NOT_MAC, PREBUILD_FILTERS.NOT_LINUX],
-  // Disable signing when CSC_LINK is absent (unsigned CI builds).
-  // signAndEditExecutable is the correct electron-builder 26.x knob.
-  signAndEditExecutable: shouldSign,
+  // Keep executable resource editing (icon + metadata) enabled even for unsigned
+  // builds. Setting signAndEditExecutable to false skips rcedit entirely, which
+  // leaves the default Electron icon on the .exe (Start menu search uses that).
+  // Signing is controlled separately via CSC_* env vars / certificates.
 }
 
 build['portable'] = {
