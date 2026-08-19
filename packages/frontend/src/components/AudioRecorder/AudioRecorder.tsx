@@ -10,8 +10,8 @@ import { getLogger } from '@deltachat-desktop/shared/logger'
 const log = getLogger('renderer/AudioRecorder')
 
 export enum AudioErrorType {
-  'NO_INPUT',
-  'OTHER_ERROR',
+  NO_INPUT,
+  OTHER_ERROR,
 }
 
 export class AudioRecorderError extends Error {
@@ -105,7 +105,7 @@ export const AudioRecorder = ({
   }, [openDialog, tx])
 
   const onRecordingStart = async () => {
-    let access = 'unknown'
+    let access: string
     try {
       access = await runtime.checkMediaAccess('microphone')
       log.debug('checkMediaAccess', { access })

@@ -674,7 +674,7 @@ async function fetchPrivittyBubbleState(
   }
 
   const filePath = normalizePrivittyFilePath(file)
-  let status: PrivittyStatus = 'none'
+  let status: PrivittyStatus
   let expiryTime: number | null = null
   let waitingCount = 0
   let isPrivittyForwarded = false
@@ -1184,7 +1184,7 @@ export default function Message(props: {
   useEffect(() => {
     const resizeHandler = () => {
       if (messageContainerRef.current) {
-        let messageWidth = 0
+        let messageWidth: number
         // set message width which is used by reaction component
         // to adapt the number of visible reactions
         if (fileMime || window.innerWidth < 900) {
@@ -1296,8 +1296,6 @@ export default function Message(props: {
   const onContactClick = async (contact: T.Contact) => {
     openViewProfileDialog(accountId, contact.id)
   }
-
-  let onClickMessageBody
 
   // Check if the message is saved or has a saved message
   // in both cases we display the bookmark icon
@@ -1605,13 +1603,7 @@ export default function Message(props: {
             </div>
           )}
           {/* <p>Document File</p> */}
-          <div
-            className={classNames('msg-body', {
-              'msg-body--clickable': onClickMessageBody,
-            })}
-            onClick={onClickMessageBody}
-            tabIndex={onClickMessageBody ? tabindexForInteractiveContents : -1}
-          >
+          <div className='msg-body' tabIndex={-1}>
             {message.quote !== null && (
               <Quote
                 quote={message.quote}

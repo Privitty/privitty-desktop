@@ -7,8 +7,7 @@ export default function InputTransferKey(
         autocryptkey: string[]
         onChange: (
           event:
-            | React.FormEvent<HTMLElement>
-            | React.ChangeEvent<HTMLInputElement>
+            React.FormEvent<HTMLElement> | React.ChangeEvent<HTMLInputElement>
         ) => void
       }
     | {

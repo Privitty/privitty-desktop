@@ -23,8 +23,7 @@ declare global {
     __enterEditMessageMode: ((messageToEdit: T.Message) => void) | null
     __reloadDraft: (() => void) | null
     __chatlistSetSearch:
-      | ((searchTerm: string, chatId: number | null) => void)
-      | undefined
+      ((searchTerm: string, chatId: number | null) => void) | undefined
     __chatlistClearSearch: (() => void) | undefined
     __chatlistIsSearchActive: (() => boolean) | undefined
     __chatlistExitArchivedView: (() => void) | undefined

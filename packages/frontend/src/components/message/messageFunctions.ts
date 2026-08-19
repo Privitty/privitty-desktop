@@ -71,7 +71,7 @@ export async function openAttachmentInShell(
       notificationType: 0,
     })
 
-    throw new Error('File is no longer available')
+    throw new Error('File is no longer available', { cause: error })
   }
 
   let filePathName = tmpFile

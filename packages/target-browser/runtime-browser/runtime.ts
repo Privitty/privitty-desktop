@@ -182,8 +182,7 @@ class BrowserRuntime implements Runtime {
   // not used in browser, there is no menu to trigger these
   onChooseLanguage: ((locale: string) => Promise<void>) | undefined
   onShowDialog:
-    | ((kind: 'about' | 'keybindings' | 'settings') => void)
-    | undefined
+    ((kind: 'about' | 'keybindings' | 'settings') => void) | undefined
 
   // not used in browser - other reasons
   onResumeFromSleep: (() => void) | undefined
@@ -290,7 +289,8 @@ class BrowserRuntime implements Runtime {
           ).json()
         } else {
           throw new Error(
-            'language load failed, even alternative of base language failed.'
+            'language load failed, even alternative of base language failed.',
+            { cause: error1 }
           )
         }
       } catch (error2) {
@@ -299,7 +299,6 @@ class BrowserRuntime implements Runtime {
           error1,
           error2
         )
-        locale = 'en'
         localeMessages = messagesEnglish
       }
     }

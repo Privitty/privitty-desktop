@@ -83,9 +83,7 @@ const enum LoadStatus {
  */
 export function ChatListPart<
   T extends
-    | ChatListItemData
-    | ChatListContactItemData
-    | ChatListMessageItemData,
+    ChatListItemData | ChatListContactItemData | ChatListMessageItemData,
 >({
   isRowLoaded,
   loadMoreRows,

@@ -31,7 +31,7 @@ export default function Reactions(props: Props) {
   const { reactionsByContact, reactions } = props.reactions
 
   useEffect(() => {
-    let emojiSpaces = 0
+    let emojiSpaces: number
     if (messageWidth <= 234) {
       emojiSpaces = 1
     } else {

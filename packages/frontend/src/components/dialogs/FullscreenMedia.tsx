@@ -127,7 +127,7 @@ export default function FullscreenMedia(props: Props & DialogProps) {
     },
   ])
 
-  let elm = null
+  let elm: React.ReactNode
 
   if (isImage(fileMime)) {
     const imageHeight =

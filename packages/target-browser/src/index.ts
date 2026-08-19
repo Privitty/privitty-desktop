@@ -191,14 +191,14 @@ app.get('/themes.json', async (_req, res) => {
   res.json(await readThemeDir())
 })
 
-let certificate = ''
+let certificate: string
 if (process.env.PRIVATE_CERTIFICATE_CERT) {
   certificate = process.env.PRIVATE_CERTIFICATE_CERT
 } else {
   certificate = await readFile(PRIVATE_CERTIFICATE_CERT, 'utf8')
 }
 
-let certificateKey = ''
+let certificateKey: string
 if (process.env.PRIVATE_CERTIFICATE_KEY) {
   certificateKey = process.env.PRIVATE_CERTIFICATE_KEY
 } else {

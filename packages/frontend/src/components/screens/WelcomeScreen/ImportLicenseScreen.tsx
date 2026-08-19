@@ -86,7 +86,7 @@ export default function ImportLicenseScreen({ onBack, onDone }: Props) {
 
   const handlePasteUrl = useCallback(async () => {
     if (processingRef.current) return
-    let text = ''
+    let text: string
     try {
       text = await navigator.clipboard.readText()
     } catch {

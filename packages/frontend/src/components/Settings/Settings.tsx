@@ -21,11 +21,7 @@ import useTranslationFunction from '../../hooks/useTranslationFunction'
 import type { DialogProps } from '../../contexts/DialogContext'
 
 type SettingsView =
-  | 'main'
-  | 'chats_and_media'
-  | 'notifications'
-  | 'appearance'
-  | 'advanced'
+  'main' | 'chats_and_media' | 'notifications' | 'appearance' | 'advanced'
 
 export default function Settings({ onClose }: DialogProps) {
   const { openDialog, closeDialog, openDialogIds } = useDialog()
