@@ -109,8 +109,7 @@ export const PseudoListItemAddContact = ({
   queryStr: string
   queryStrIsEmail: boolean
   onClick:
-    | undefined
-    | ((ev: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void)
+    undefined | ((ev: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void)
 }) => {
   const tx = window.static_translate // static_translate because the context method produced sometimes an 'Invalid hook call' crash
 

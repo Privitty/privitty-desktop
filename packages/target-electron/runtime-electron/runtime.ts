@@ -191,8 +191,7 @@ class ElectronRuntime implements Runtime {
     | undefined
   onOpenQrUrl: ((url: string) => void) | undefined
   onShowDialog:
-    | ((kind: 'about' | 'keybindings' | 'settings') => void)
-    | undefined
+    ((kind: 'about' | 'keybindings' | 'settings') => void) | undefined
   onDragFileOut(file: string): void {
     ipcBackend.send('ondragstart', file)
   }

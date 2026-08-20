@@ -16,11 +16,7 @@ import type { setLogHandler as setLogHandlerFunction } from '@deltachat-desktop/
 
 export type MediaType = 'microphone' | 'camera'
 export type MediaAccessStatus =
-  | 'not-determined'
-  | 'granted'
-  | 'denied'
-  | 'restricted'
-  | 'unknown'
+  'not-determined' | 'granted' | 'denied' | 'restricted' | 'unknown'
 
 export type DropListener = {
   /** element that gets compared against the event target,
@@ -224,8 +220,7 @@ export interface Runtime {
    * either because system theme changed or the theme changed that was watched by --theme-watch  */
   onThemeUpdate: (() => void) | undefined
   onShowDialog:
-    | ((kind: 'about' | 'keybindings' | 'settings') => void)
-    | undefined
+    ((kind: 'about' | 'keybindings' | 'settings') => void) | undefined
   onOpenQrUrl: ((url: string) => void) | undefined
   onWebxdcSendToChat:
     | ((

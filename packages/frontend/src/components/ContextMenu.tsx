@@ -31,8 +31,7 @@ type ContextMenuItemExpandable = {
 
 export type ContextMenuItem =
   | ({ type?: 'item'; label: string; dataTestid?: string } & (
-      | ContextMenuItemActionable
-      | ContextMenuItemExpandable
+      ContextMenuItemActionable | ContextMenuItemExpandable
     ))
   | { type: 'separator' }
 

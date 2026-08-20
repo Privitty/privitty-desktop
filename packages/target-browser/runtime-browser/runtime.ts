@@ -182,8 +182,7 @@ class BrowserRuntime implements Runtime {
   // not used in browser, there is no menu to trigger these
   onChooseLanguage: ((locale: string) => Promise<void>) | undefined
   onShowDialog:
-    | ((kind: 'about' | 'keybindings' | 'settings') => void)
-    | undefined
+    ((kind: 'about' | 'keybindings' | 'settings') => void) | undefined
 
   // not used in browser - other reasons
   onResumeFromSleep: (() => void) | undefined

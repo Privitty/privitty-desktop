@@ -36,8 +36,7 @@ type RetGeneric<T extends (...args: any) => any, Loading extends boolean> = {
  * Union type representing the two possible states of a fetch hook
  */
 type Ret<T extends (...args: any) => any> =
-  | RetGeneric<T, true>
-  | RetGeneric<T, false>
+  RetGeneric<T, true> | RetGeneric<T, false>
 
 type AsyncFNoArgs = () => Promise<any>
 

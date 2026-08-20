@@ -70,12 +70,7 @@ export default function FileAccessStatusDialog({
       setLoading(true)
       setError(null)
 
-      const sections = await buildFileAccessSections(
-        accountId,
-        chatId,
-        msgId,
-        fileName
-      )
+      const sections = await buildFileAccessSections(accountId, msgId, fileName)
 
       setOwnerList(sections.ownerList)
       setSharedList(sections.sharedList)

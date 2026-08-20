@@ -744,8 +744,7 @@ class TauriRuntime implements Runtime {
   onChooseLanguage: ((locale: string) => Promise<void>) | undefined
   onThemeUpdate: (() => void) | undefined
   onShowDialog:
-    | ((kind: 'about' | 'keybindings' | 'settings') => void)
-    | undefined
+    ((kind: 'about' | 'keybindings' | 'settings') => void) | undefined
   onOpenQrUrl: ((url: string) => void) | undefined
   onWebxdcSendToChat:
     | ((
