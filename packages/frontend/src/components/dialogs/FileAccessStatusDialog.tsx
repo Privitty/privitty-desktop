@@ -72,7 +72,6 @@ export default function FileAccessStatusDialog({
 
       const sections = await buildFileAccessSections(
         accountId,
-        chatId,
         msgId,
         fileName
       )
