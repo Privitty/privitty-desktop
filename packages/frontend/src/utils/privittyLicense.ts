@@ -138,6 +138,25 @@ export async function licenseGetInfo(): Promise<PrivittyLicenseInfo> {
 }
 
 /**
+ * Set (or clear) a human-readable device name forwarded to WatchTower during
+ * the next {@link licenseActivate} call.  WatchTower will display this name
+ * instead of the raw device ID, making it easy to identify devices in the
+ * management dashboard.
+ *
+ * Typically pass the user's DC display name
+ * (`BackendRemote.rpc.getConfig(accountId, 'displayname')`).
+ * Call this **before** {@link licenseActivate}.
+ * Pass `null` or an empty string to clear a previously set value.
+ *
+ * Equivalent to Android FFI `privitty_license_set_device_name`.
+ */
+export async function licenseSetDeviceName(
+  deviceName: string | null
+): Promise<void> {
+  await (BackendRemote.rpc as any).privittyLicenseSetDeviceName(deviceName)
+}
+
+/**
  * Synchronise the license state with the server (re-validates the JWT,
  * updates the local cache, resets the grace-period counter).
  *

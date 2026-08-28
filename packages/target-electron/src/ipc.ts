@@ -134,6 +134,37 @@ async function getInviteLinkFromAnyConfiguredAccount(
   return null
 }
 
+/**
+ * Return the DC display name from the first configured account.
+ * Falls back to `configured_addr` when displayname is empty.
+ * Returns null if no configured account exists yet.
+ */
+async function getDisplayNameFromAnyConfiguredAccount(
+  rpc: any
+): Promise<string | null> {
+  try {
+    const allIds: number[] = await rpc.getAllAccountIds()
+    for (const id of allIds) {
+      try {
+        const configured: boolean = await rpc.isConfigured(id)
+        if (!configured) continue
+        const name: string | null = await rpc.getConfig(id, 'displayname')
+        if (name && name.trim().length > 0) return name.trim()
+        const addr: string | null = await rpc.getConfig(
+          id,
+          'configured_addr'
+        )
+        if (addr && addr.trim().length > 0) return addr.trim()
+      } catch (_inner) {
+        /* skip account */
+      }
+    }
+  } catch (e) {
+    log.warn('getDisplayNameFromAnyConfiguredAccount: failed to list accounts:', e)
+  }
+  return null
+}
+
 async function initAndActivateLicense(
   licPath: string
 ): Promise<{ statusCode: number }> {
@@ -186,6 +217,11 @@ async function initAndActivateLicense(
   if (statusCode !== 0 /* ACTIVE */ && statusCode !== 1 /* GRACE_PERIOD */) {
     log.info('initAndActivateLicense: calling privittyLicenseActivate …')
     try {
+      const deviceName = await getDisplayNameFromAnyConfiguredAccount(rpc)
+      if (deviceName) {
+        await rpc.privittyLicenseSetDeviceName(deviceName)
+        log.info('initAndActivateLicense: device name set', { deviceName })
+      }
       await rpc.privittyLicenseActivate()
       log.info('initAndActivateLicense: privittyLicenseActivate succeeded')
     } catch (activateErr) {

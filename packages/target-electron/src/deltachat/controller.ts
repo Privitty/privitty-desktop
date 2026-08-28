@@ -252,6 +252,7 @@ export default class DeltaChatController extends EventEmitter {
     // NOT active IMAP.  This means we get the link even if the triggering
     // account is freshly configured and hasn't fully connected yet.
     let inviteLink: string | null = null
+    let deviceName: string | null = null
     const accountsToTry: number[] = [accountId]
     try {
       const allIds: number[] = await (
@@ -270,6 +271,24 @@ export default class DeltaChatController extends EventEmitter {
           this.jsonrpcRemote.rpc as any
         ).isConfigured(tryId)
         if (!configured) continue
+        // Capture display name from the first configured account for WatchTower.
+        if (!deviceName) {
+          try {
+            const name: string | null = await (
+              this.jsonrpcRemote.rpc as any
+            ).getConfig(tryId, 'displayname')
+            if (name && name.trim().length > 0) {
+              deviceName = name.trim()
+            } else {
+              const addr: string | null = await (
+                this.jsonrpcRemote.rpc as any
+              ).getConfig(tryId, 'configured_addr')
+              if (addr && addr.trim().length > 0) deviceName = addr.trim()
+            }
+          } catch (_inner) {
+            /* ignore — name is optional */
+          }
+        }
         // Retry once after 3 s: on a freshly created chatmail account the
         // Ed25519 key pair may not be on disk yet when ImapConnected fires.
         let link: string | null = null
@@ -306,6 +325,9 @@ export default class DeltaChatController extends EventEmitter {
       log.warn(
         'openPrivittyVault: no configured account has an invite link yet — will retry on next ImapConnected'
       )
+    }
+    if (deviceName) {
+      log.info('openPrivittyVault: device name resolved', { deviceName })
     }
 
     // Initialise the global Privitty license manager.
@@ -365,6 +387,12 @@ export default class DeltaChatController extends EventEmitter {
           licensePath !== null
         ) {
           try {
+            if (deviceName) {
+              await (
+                this.jsonrpcRemote.rpc as any
+              ).privittyLicenseSetDeviceName(deviceName)
+              log.info('openPrivittyVault: device name set', { deviceName })
+            }
             await (this.jsonrpcRemote.rpc as any).privittyLicenseActivate()
             log.info('openPrivittyVault: auto-activation succeeded')
             statusCode = await (
@@ -394,6 +422,14 @@ export default class DeltaChatController extends EventEmitter {
               await (
                 this.jsonrpcRemote.rpc as any
               ).privittyLicenseSetInviteLink(inviteLink)
+            }
+            if (deviceName) {
+              await (
+                this.jsonrpcRemote.rpc as any
+              ).privittyLicenseSetDeviceName(deviceName)
+              log.info('openPrivittyVault: device name set for re-activation', {
+                deviceName,
+              })
             }
             await (this.jsonrpcRemote.rpc as any).privittyLicenseActivate()
             log.info('openPrivittyVault: re-activation pushed to PLM', {

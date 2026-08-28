@@ -169,6 +169,9 @@ export default function InstantOnboardingScreen({
             )
             if (link) {
               await rpc.privittyLicenseSetInviteLink(link)
+              if (displayName && displayName.trim().length > 0) {
+                await rpc.privittyLicenseSetDeviceName(displayName.trim())
+              }
               await rpc.privittyLicenseActivate()
               // success — stop retrying
               break
