@@ -142,7 +142,7 @@ importers:
         version: 1.7.0
       '@privitty/jsonrpc-client':
         specifier: 'catalog:'
-        version: 2.52.1(ws@7.5.10)
+        version: 2.52.2(ws@7.5.10)
       chart.js:
         specifier: ^4.5.1
         version: 4.5.1
