@@ -60,5 +60,8 @@
     "typescript-eslint": "^8.67.0",
     "xml-js": "^1.6.11",
     "yaml": "^2.9.0"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1"
   }
 }
