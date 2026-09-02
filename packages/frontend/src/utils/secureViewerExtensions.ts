@@ -1,21 +1,11 @@
 import { extname } from 'path'
 
 export type SecureViewerType =
-  | 'pdf'
-  | 'image'
-  | 'video'
-  | 'docx'
-  | 'xlsx'
-  | 'xls'
-  | 'pptx'
-  | 'unsupported'
+  'pdf' | 'image' | 'video' | 'docx' | 'xlsx' | 'xls' | 'pptx' | 'unsupported'
 
 export type OfficeViewerType = 'docx' | 'xlsx' | 'xls' | 'pptx'
 
-export type RoutableSecureViewerType = Exclude<
-  SecureViewerType,
-  'unsupported'
->
+export type RoutableSecureViewerType = Exclude<SecureViewerType, 'unsupported'>
 
 const OFFICE_VIEWER_TYPES = new Set<OfficeViewerType>([
   'docx',
@@ -73,7 +63,6 @@ export const SUPPORTED_SECURE_VIEWER_EXTENSIONS = [
 
 const IMAGE_EXTENSION_SET = new Set<string>(SUPPORTED_IMAGE_EXTENSIONS)
 const VIDEO_EXTENSION_SET = new Set<string>(SUPPORTED_VIDEO_EXTENSIONS)
-const OFFICE_EXTENSION_SET = new Set<string>(SUPPORTED_OFFICE_EXTENSIONS)
 
 export function stripPrvExtension(fileName: string): string {
   return fileName.toLowerCase().endsWith('.prv')
@@ -100,7 +89,9 @@ export function isSupportedSecureViewerFileName(fileName: string): boolean {
   )
 }
 
-export function getSecureViewerTypeFromPath(filePath: string): SecureViewerType {
+export function getSecureViewerTypeFromPath(
+  filePath: string
+): SecureViewerType {
   const extension = extname(filePath).toLowerCase()
 
   if (extension === '.pdf') {

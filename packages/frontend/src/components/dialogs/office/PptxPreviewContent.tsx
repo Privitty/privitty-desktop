@@ -34,17 +34,20 @@ export default function PptxPreviewContent({
     canvas.style.height = `${height}px`
   }, [])
 
-  const renderCurrentSlide = useCallback(async (viewer: PPTXViewer) => {
-    const canvas = canvasRef.current
-    if (!canvas) {
-      return
-    }
+  const renderCurrentSlide = useCallback(
+    async (viewer: PPTXViewer) => {
+      const canvas = canvasRef.current
+      if (!canvas) {
+        return
+      }
 
-    sizeCanvasToContainer()
-    await viewer.render(canvas)
-    setCurrentSlide(viewer.getCurrentSlideIndex() + 1)
-    setTotalSlides(viewer.getSlideCount())
-  }, [sizeCanvasToContainer])
+      sizeCanvasToContainer()
+      await viewer.render(canvas)
+      setCurrentSlide(viewer.getCurrentSlideIndex() + 1)
+      setTotalSlides(viewer.getSlideCount())
+    },
+    [sizeCanvasToContainer]
+  )
 
   useEffect(() => {
     let cancelled = false

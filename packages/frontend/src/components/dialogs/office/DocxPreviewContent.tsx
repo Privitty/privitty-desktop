@@ -48,7 +48,9 @@ export default function DocxPreviewContent({
       } catch (err) {
         if (!cancelled) {
           onError(
-            err instanceof Error ? err.message : 'Failed to preview Word document'
+            err instanceof Error
+              ? err.message
+              : 'Failed to preview Word document'
           )
         }
       }
